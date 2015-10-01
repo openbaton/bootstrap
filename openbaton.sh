@@ -43,7 +43,7 @@ function installMessageQueue() {
 
 function prereq(){
     # TODO differentiate between fedora, OS X, ubuntu..
-    sudo apt-get update && sudo apt-get -y install mysql-server openjdk-7-jdk curl wget screen git
+    sudo apt-get update && sudo apt-get -y install openjdk-7-jdk curl wget screen git
 }
 
 
@@ -103,7 +103,6 @@ function deployOpenBaton {
 function compileGenericVNFM {
     echo "compiling the generic VNFM"
     pushd "${_generic_vnfm}"
-    git checkout develop
     ./generic-vnfm.sh compile
     popd
 }
