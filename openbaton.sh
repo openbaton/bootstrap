@@ -36,7 +36,7 @@ function installMessageQueue() {
     wget "${_message_queue_url}"
     echo "Installing message queue..."
     tar -zxvf "${_openbaton_base}/${_message_queue_archive}"
-    chown -R activemq ${_openbaton_base}/${_message_queue_base}
+    chown -R root ${_openbaton_base}/${_message_queue_base}
     ${_openbaton_base}/${_message_queue_base}/bin/activemq start
     popd
 }
