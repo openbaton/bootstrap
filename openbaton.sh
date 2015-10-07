@@ -31,13 +31,19 @@ function checkBinary {
 }
 
 function installMessageQueue() {
-    echo "Downloading message queue.."
     pushd "${_openbaton_base}"
+    echo "Downloading message queue.."
     wget "${_message_queue_url}"
     echo "Installing message queue..."
-    tar -zxvf "${_openbaton_base}/${_message_queue_archive}"
-    chown -R activemq ${_openbaton_base}/${_message_queue_base}
-    ${_openbaton_base}/${_message_queue_base}/bin/activemq start
+    tar -zxvf "${_message_queue_archive}"
+    #remove the archive
+    rm -f "${_message_queue_archive}"
+    # chown -R activemq ${_openbaton_base}/${_message_queue_base}
+    ${_message_queue_base}/bin/activemq start
+    if [ $? -ne 0 ]; then
+	echo "ERROR: activemq is not running properly (check the problem in ${_openbaton_base}/${_message_queue_base}/data/activemq.log) "
+	exit 1
+    fi
     popd
 }
 
@@ -73,6 +79,11 @@ function checkoutOpenBaton {
     echo "Getting OpenBaton..."
     rm -rf "${_openbaton_base}"
     git clone --recursive "${_openbaton_base_repo}" "${_nfvo}"
+    #Creating the /etc/openbaton folders
+    rm -rf /etc/openbaton
+    mkdir -p /etc/openbaton
+    #Copy openbaton.properties in the right directory
+    cp "${_nfvo}/etc/openbaton.properties" "/etc/openbaton/openbaton.properties"
 }
 
 function checkoutGenericVNFM {
@@ -82,9 +93,13 @@ function checkoutGenericVNFM {
 
 
 function compileNFVO {
-    echo "compiling the NFVO"
+    echo "compiling the NFVO..."
     pushd "${_nfvo}"
     ./openbaton.sh compile
+    if [ $? -ne 0 ]; then
+    	echo "ERROR: The compilation of the NFVO failed"
+	exit 1
+    fi
     popd
 }
 
@@ -92,10 +107,10 @@ function startNFVO {
     echo "starting the NFVO"
     pushd ${_nfvo}
     ./openbaton.sh start
+    popd
 }
 
 function deployOpenBaton {
-    pushd "${_nfvo}"
     compileNFVO
     startNFVO
 }
@@ -104,17 +119,21 @@ function compileGenericVNFM {
     echo "compiling the generic VNFM"
     pushd "${_generic_vnfm}"
     ./generic-vnfm.sh compile
+    if [ $? -ne 0 ]; then
+    	echo "ERROR: The compilation of the Generic VNFM failed"
+	exit 1
+    fi
     popd
 }
 
 function startGenericVNFM {
     echo "starting the generic VNFM"
-    pushd ${_generic_vnfm}
+    pushd "${_generic_vnfm}"
     ./generic-vnfm.sh start
+    popd
 }
 
 function deployGenericVNFM {
-    pushd "${_generic_vnfm}"
     compileGenericVNFM
     startGenericVNFM
 }
@@ -142,4 +161,5 @@ function bootstrap() {
 }
 
 bootstrap
+
 
