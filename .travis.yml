@@ -2,4 +2,4 @@ language: bash
 sudo: required
 
 script:
-    - bash openbaton.sh
+    - sudo ./openbaton.sh
