@@ -122,7 +122,6 @@ function deployGenericVNFM {
 
 
 function bootstrap() {
-    [ ! -d ".git" ] || { echo "Do not bootstrap within a repository"; exit 4; }
     # install prerq
     prereq
     # checkout OpenBaton
