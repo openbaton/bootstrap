@@ -2,4 +2,4 @@ language: bash
 sudo: required
 
 script:
-    - sudo ./openbaton.sh
+    - sudo ./bootstrap
