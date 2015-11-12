@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 set -e
+#
+# This script allows you to install openbaton. To execute it: 
+# 
+# 'curl -fsSkL http://get.openbaton.org/bootstrap | bash'
+
 
 export DEBIAN_FRONTEND=noninteractive
 _dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -7,9 +12,9 @@ _dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 _openbaton_base_repo="https://github.com/openbaton/NFVO.git"
 _openbaton_generic_vnfm_repo="https://github.com/openbaton/generic-vnfm.git"
 
-_message_queue_base="apache-activemq-5.11.1"
+_message_queue_base="apache-activemq-5.11.3"
 _message_queue_archive="${_message_queue_base}-bin.tar.gz"
-_message_queue_url="http://mirrors.sonic.net/apache/activemq/5.11.1/${_message_queue_archive}"
+_message_queue_url="http://mirrors.sonic.net/apache/activemq/5.11.3/${_message_queue_archive}"
 
 _base=/opt
 _openbaton_base="${_base}/openbaton"
@@ -158,4 +163,6 @@ function bootstrap() {
 }
 
 bootstrap
+
+
 
