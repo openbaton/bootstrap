@@ -12,10 +12,6 @@ _dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 _openbaton_base_repo="https://github.com/openbaton/NFVO.git"
 _openbaton_generic_vnfm_repo="https://github.com/openbaton/generic-vnfm.git"
 
-_message_queue_base="apache-activemq-5.11.3"
-_message_queue_archive="${_message_queue_base}-bin.tar.gz"
-_message_queue_url="http://mirrors.sonic.net/apache/activemq/5.11.3/${_message_queue_archive}"
-
 _base=/opt
 _openbaton_base="${_base}/openbaton"
 _nfvo="${_openbaton_base}/nfvo"
@@ -36,20 +32,19 @@ function checkBinary {
 }
 
 function installMessageQueue() {
-    pushd "${_openbaton_base}"
-    echo "Downloading message queue.."
-    wget "${_message_queue_url}"
-    echo "Installing message queue..."
-    tar -zxvf "${_message_queue_archive}"
-    # remove the archive
-    rm -f "${_message_queue_archive}"
-    #chown -R activemq ${_openbaton_base}/${_message_queue_base}
-    ${_message_queue_base}/bin/activemq start
+    echo "installing message queue.."
+    sudo apt-get install -y rabbitmq-server
+    ulimit -S -n 4096
+
+    sudo rabbitmqctl add_user admin openbaton
+    sudo rabbitmqctl set_user_tags admin administrator
+    sudo rabbitmqctl set_permissions -p / admin ".*" ".*" ".*"
+    sudo rabbitmq-plugins enable rabbitmq_management
+    sudo service rabbitmq-server restart
     if [ $? -ne 0 ]; then
-	    echo "ERROR: activemq is not running properly (check the problem in ${_openbaton_base}/${_message_queue_base}/data/activemq.log)"
+	    echo "ERROR: rabbitmq is not running properly (check the problem in /var/log/rabbitmq)"
 	    exit 1
     fi
-    popd
 }
 
 function prereq(){
