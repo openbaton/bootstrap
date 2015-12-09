@@ -163,7 +163,7 @@ function deployGenericVNFM {
     startGenericVNFM
 }
 
-funtion usage {
+function usage {
   echo 'bootstrap [-y]'
 }
 
