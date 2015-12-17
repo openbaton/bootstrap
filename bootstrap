@@ -22,6 +22,16 @@ _generic_vnfm="${_openbaton_base}/generic-vnfm"
 _installer_folder="${_base}/tmp"
 _logfile="${_installer_folder}/log"
 
+_user="$(id -un 2>/dev/null || true)"
+
+_ex='sh -c'
+if [ "$_user" != 'root' ]; then
+    if command_exists sudo; then
+        _ex='sudo -E sh -c'
+    elif command_exists su; then
+        _ex='su -c'
+fi
+
 function checkBinary {
   echo -n " * Checking for '$1'..."
   if command -v $1 >/dev/null 2>&1; then
@@ -35,14 +45,13 @@ function checkBinary {
 
 function installMessageQueue() {
     echo "installing message queue.."
-    sudo apt-get install -y rabbitmq-server
+    _ex apt-get install -y rabbitmq-server
     ulimit -S -n 4096
-
-    sudo rabbitmqctl add_user admin openbaton
-    sudo rabbitmqctl set_user_tags admin administrator
-    sudo rabbitmqctl set_permissions -p / admin ".*" ".*" ".*"
-    sudo rabbitmq-plugins enable rabbitmq_management
-    sudo service rabbitmq-server restart
+    _ex rabbitmqctl add_user admin openbaton
+    _ex rabbitmqctl set_user_tags admin administrator
+    _ex rabbitmqctl set_permissions -p / admin ".*" ".*" ".*"
+    _ex rabbitmq-plugins enable rabbitmq_management
+    _ex service rabbitmq-server restart
     if [ $? -ne 0 ]; then
       echo "ERROR: rabbitmq is not running properly (check the problem in /var/log/rabbitmq)"
       exit 1
@@ -51,7 +60,7 @@ function installMessageQueue() {
 
 function prereq(){
     # TODO differentiate between fedora, OS X, ubuntu..
-    sudo apt-get update && sudo apt-get -y install openjdk-7-jdk curl wget screen git
+    _ex apt-get update && _ex apt-get -y install openjdk-7-jdk curl wget screen git
 }
 
 
@@ -77,16 +86,23 @@ function checkContainer {
     fi
 }
 
+function createOpenBatonBase {
+    echo "Creating the OpenBaton base folder"
+    # removing it if exists
+    _ex rm -rf "${_openbaton_base}"
+    _ex mkdir "${_nfvo}"
+    _ex chown -R  "${_user}" "${_nfvo}"
+}
+
 function checkoutOpenBaton {
     echo "Getting OpenBaton..."
-    rm -rf "${_openbaton_base}"
     git clone --recursive "${_openbaton_base_repo}" "${_nfvo}"
     pushd "${_nfvo}"
     git checkout ${_tag}
     popd
-    rm -rf "/etc/openbaton"
-    mkdir "/etc/openbaton"
-    cp "${_nfvo}/etc/openbaton.properties" "/etc/openbaton/openbaton.properties"
+    _ex rm -rf "/etc/openbaton"
+    _ex mkdir "/etc/openbaton"
+    _ex cp "${_nfvo}/etc/openbaton.properties" "/etc/openbaton/openbaton.properties"
 }
 
 function promptSetProperties {
@@ -163,10 +179,6 @@ function deployGenericVNFM {
     startGenericVNFM
 }
 
-function usage {
-  echo 'bootstrap [-y]'
-}
-
 
 function bootstrap() {
     # install prerq
@@ -180,13 +192,7 @@ function bootstrap() {
     # checkout the generic VNFM code
     checkoutGenericVNFM
     # prompting properties
-    if [ $# -eq 0 ]; then
-      promptSetProperties
-    else
-      if [ $1 != "-y" ]; then
-            usage
-      fi
-    fi
+    promptSetProperties
     # deploy and compile OpenBaton orchestrator
     deployOpenBaton
     # deploy and compile the Generic VNFM
