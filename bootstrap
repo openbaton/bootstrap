@@ -11,8 +11,8 @@ _dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 _openbaton_base_repo="https://github.com/openbaton/NFVO.git"
 _openbaton_generic_vnfm_repo="https://github.com/openbaton/generic-vnfm.git"
-_tag="develop"
-#_tag="tags/0.15"
+#_tag="develop"
+_tag="tags/0.15"
 
 _base=/opt
 _openbaton_base="${_base}/openbaton"
