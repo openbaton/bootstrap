@@ -2,4 +2,5 @@ language: bash
 sudo: required
 
 script:
-    - sudo ./bootstrap
+    - sudo su
+    - ./bootstrap

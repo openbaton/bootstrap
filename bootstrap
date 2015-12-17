@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -e
 #
-# This script allows you to install openbaton. To execute it: 
-# 
+# This script allows you to install openbaton. To execute it:
+#
 # 'curl -fsSkL http://get.openbaton.org/bootstrap | bash'
 
 
@@ -11,6 +11,8 @@ _dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 _openbaton_base_repo="https://github.com/openbaton/NFVO.git"
 _openbaton_generic_vnfm_repo="https://github.com/openbaton/generic-vnfm.git"
+#_tag="develop"
+_tag="tags/0.15"
 
 _base=/opt
 _openbaton_base="${_base}/openbaton"
@@ -42,8 +44,8 @@ function installMessageQueue() {
     sudo rabbitmq-plugins enable rabbitmq_management
     sudo service rabbitmq-server restart
     if [ $? -ne 0 ]; then
-	    echo "ERROR: rabbitmq is not running properly (check the problem in /var/log/rabbitmq)"
-	    exit 1
+      echo "ERROR: rabbitmq is not running properly (check the problem in /var/log/rabbitmq)"
+      exit 1
     fi
 }
 
@@ -79,14 +81,39 @@ function checkoutOpenBaton {
     echo "Getting OpenBaton..."
     rm -rf "${_openbaton_base}"
     git clone --recursive "${_openbaton_base_repo}" "${_nfvo}"
+    pushd "${_nfvo}"
+    git checkout ${_tag}
+    popd
     rm -rf "/etc/openbaton"
     mkdir "/etc/openbaton"
     cp "${_nfvo}/etc/openbaton.properties" "/etc/openbaton/openbaton.properties"
 }
 
+function promptSetProperties {
+  read -p "Enter the rabbitmq broker ip [localhost]: " brokerIp
+  if [[ $brokerIp != "" ]]; then
+      sed -i "s/nfvo.rabbit.brokerIp = localhost/nfvo.rabbit.brokerIp = $brokerIp/g" /etc/openbaton/openbaton.properties
+  fi
+
+  read -p "Enter the rabbitmq management port [15672]: " managementPort
+  if [[ $managementPort != "" ]]; then
+  sed -i "s/nfvo.rabbit.management.port = 15672/nfvo.rabbit.management.port = $managementPort/g" /etc/openbaton/openbaton.properties
+  fi
+
+  read -p "Do you want to enable security [N/y]: " security
+  if [[ $security != "" ]]; then
+     if [ $security = "y" -o $security = "Y" -o $security = "yes" ]; then
+       sed -i "s/# nfvo.security.enabled = true/nfvo.security.enabled = true/g" /etc/openbaton/openbaton.properties
+     fi
+  fi
+}
+
 function checkoutGenericVNFM {
     echo "Getting generic-vnfm..."
     git clone --recursive "${_openbaton_generic_vnfm_repo}" "${_generic_vnfm}"
+    pushd "${_generic_vnfm}"
+    git checkout ${_tag}
+    popd
 }
 
 
@@ -136,6 +163,9 @@ function deployGenericVNFM {
     startGenericVNFM
 }
 
+function usage {
+  echo 'bootstrap [-y]'
+}
 
 
 function bootstrap() {
@@ -149,6 +179,14 @@ function bootstrap() {
     checkEnvironment
     # checkout the generic VNFM code
     checkoutGenericVNFM
+    # prompting properties
+    if [ $# -eq 0 ]; then
+      promptSetProperties
+    else
+      if [ $1 != "-y" ]; then
+            usage
+      fi
+    fi
     # deploy and compile OpenBaton orchestrator
     deployOpenBaton
     # deploy and compile the Generic VNFM
@@ -158,6 +196,3 @@ function bootstrap() {
 }
 
 bootstrap
-
-
-
