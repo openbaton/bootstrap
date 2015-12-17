@@ -18,9 +18,7 @@ _base=/opt
 _openbaton_base="${_base}/openbaton"
 _nfvo="${_openbaton_base}/nfvo"
 _generic_vnfm="${_openbaton_base}/generic-vnfm"
-
-_installer_folder="${_base}/tmp"
-_logfile="${_installer_folder}/log"
+_log_folder=/var/log/openbaton
 
 _user="$(id -un 2>/dev/null || true)"
 
@@ -93,6 +91,10 @@ function createOpenBatonBase {
     $_ex 'rm -rf '$_openbaton_base
     $_ex 'mkdir -p '$_nfvo
     $_ex 'chown -R '"$_user $_openbaton_base"
+ 
+    # create log folder and give perission
+    $_ex 'rm -rf '$_log_folder
+    $_ex 'mkdir -p '$_log_folder
 }
 
 function checkoutOpenBaton {
