@@ -95,6 +95,7 @@ function createOpenBatonBase {
     # create log folder and give perission
     $_ex 'rm -rf '$_log_folder
     $_ex 'mkdir -p '$_log_folder
+    $_ex 'chown -R '"$_user $_log_folder"
 }
 
 function checkoutOpenBaton {
