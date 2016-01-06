@@ -112,18 +112,18 @@ function checkoutOpenBaton {
 function promptSetProperties {
   read -p "Enter the rabbitmq broker ip [localhost]: " brokerIp
   if [[ $brokerIp != "" ]]; then
-      sed -i "s/nfvo.rabbit.brokerIp = localhost/nfvo.rabbit.brokerIp = $brokerIp/g" /etc/openbaton/openbaton.properties
+      $_ex 'sed -i "s/nfvo.rabbit.brokerIp = localhost/nfvo.rabbit.brokerIp = $brokerIp/g" /etc/openbaton/openbaton.properties'
   fi
 
   read -p "Enter the rabbitmq management port [15672]: " managementPort
   if [[ $managementPort != "" ]]; then
-  sed -i "s/nfvo.rabbit.management.port = 15672/nfvo.rabbit.management.port = $managementPort/g" /etc/openbaton/openbaton.properties
+      $_ex 'sed -i "s/nfvo.rabbit.management.port = 15672/nfvo.rabbit.management.port = $managementPort/g" /etc/openbaton/openbaton.properties'
   fi
 
   read -p "Do you want to enable security [N/y]: " security
   if [[ $security != "" ]]; then
      if [ $security = "y" -o $security = "Y" -o $security = "yes" ]; then
-       sed -i "s/# nfvo.security.enabled = true/nfvo.security.enabled = true/g" /etc/openbaton/openbaton.properties
+       $_ex 'sed -i "s/# nfvo.security.enabled = true/nfvo.security.enabled = true/g" /etc/openbaton/openbaton.properties'
      fi
   fi
 }
