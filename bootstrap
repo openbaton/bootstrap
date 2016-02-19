@@ -5,22 +5,27 @@ set -e
 #
 # 'curl -fsSkL http://get.openbaton.org/bootstrap | bash'
 
+_tag="tags/1.0"
+
 
 export DEBIAN_FRONTEND=noninteractive
 _dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 _openbaton_base_repo="https://github.com/openbaton/NFVO.git"
 _openbaton_generic_vnfm_repo="https://github.com/openbaton/generic-vnfm.git"
-_tag="develop"
-#_tag="tags/1.0"
+_openbaton_plugins="http://get.openbaton.org/plugins/stable/"
 
 _base=/opt
 _openbaton_base="${_base}/openbaton"
+_openbaton_conf="/etc/openbaton"
+_openbaton_log="/var/log/openbaton"
 _nfvo="${_openbaton_base}/nfvo"
+_nfvo_vim_drivers="${_nfvo}/plugins/vim-drivers"
 _generic_vnfm="${_openbaton_base}/generic-vnfm"
 
 _installer_folder="${_base}/tmp"
 _logfile="${_installer_folder}/log"
+_tmpfolder=`mktemp -d`
 
 _user="$(id -un 2>/dev/null || true)"
 
@@ -79,13 +84,6 @@ function checkEnvironment {
   fi
 }
 
-function checkContainer {
-    echo "Checking is running..."
-    isRunning="$(curl -s -m 2 http://localhost:8080 > /dev/null; echo $?)"
-    if [ "${isRunning}" != "0" ]; then
-      startContainer
-    fi
-}
 
 function createOpenBatonBase {
     echo "Creating the OpenBaton base folder"
@@ -95,16 +93,33 @@ function createOpenBatonBase {
     $_ex 'chown -R '"$_user $_openbaton_base"
 }
 
+function createOpenBatonLog {
+    echo "Creating the OpenBaton log folder"
+    # removing it if exists
+    $_ex 'rm -rf '$_openbaton_log
+    $_ex 'mkdir -p '$_openbaton_log
+    $_ex 'chown -R '"$_user $_openbaton_log"
+}
+
 function checkoutOpenBaton {
     echo "Getting OpenBaton..."
     createOpenBatonBase
+    createOpenBatonLog
     git clone --recursive "${_openbaton_base_repo}" "${_nfvo}"
     pushd "${_nfvo}"
     git checkout ${_tag}
     popd
-    $_ex 'rm -rf "/etc/openbaton"; mkdir "/etc/openbaton"'
-    $_ex 'cp '"${_nfvo}/etc/openbaton.properties /etc/openbaton/openbaton.properties"
+    $_ex 'rm -rf '"${_openbaton_conf}; mkdir -p ${_openbaton_conf}"
+    $_ex 'cp '"${_nfvo}/etc/openbaton.properties ${_openbaton_conf}/openbaton.properties"
 }
+
+
+function downloadPlugins {
+    echo "Getting OpenBaton Plugins..."
+    wget -nH --cut-dirs 2 -r --no-parent  --reject "index.html*" "${_openbaton_plugins}" -P "${_tmpfolder}"
+    cp -r ${_tmpfolder}/* "${_nfvo_vim_drivers}"
+}
+
 
 function promptSetProperties {
   read -p "Enter the rabbitmq broker ip [localhost]: " brokerIp
@@ -189,6 +204,8 @@ function bootstrap {
     prereq
     # checkout OpenBaton
     checkoutOpenBaton
+    # moved message queue installation part
+    downloadPlugins
     # moved message queue installation part
     installMessageQueue
     # check if all the required libraries are available
