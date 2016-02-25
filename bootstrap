@@ -12,13 +12,15 @@ _dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 _openbaton_base_repo="https://github.com/openbaton/NFVO.git"
 _openbaton_generic_vnfm_repo="https://github.com/openbaton/generic-vnfm.git"
 #_tag="develop"
-_tag="tags/0.15"
+_tag="tags/1.0"
 
 _base=/opt
 _openbaton_base="${_base}/openbaton"
 _nfvo="${_openbaton_base}/nfvo"
 _generic_vnfm="${_openbaton_base}/generic-vnfm"
-_log_folder=/var/log/openbaton
+
+_installer_folder="${_base}/tmp"
+_logfile="${_installer_folder}/log"
 
 _user="$(id -un 2>/dev/null || true)"
 
@@ -111,16 +113,19 @@ function checkoutOpenBaton {
 
 function promptSetProperties {
   read -p "Enter the rabbitmq broker ip [localhost]: " brokerIp
+  export brokerIp=$brokerIp
   if [[ $brokerIp != "" ]]; then
       $_ex 'sed -i "s/nfvo.rabbit.brokerIp = localhost/nfvo.rabbit.brokerIp = $brokerIp/g" /etc/openbaton/openbaton.properties'
   fi
 
   read -p "Enter the rabbitmq management port [15672]: " managementPort
+  export managementPort=$managementPort
   if [[ $managementPort != "" ]]; then
-      $_ex 'sed -i "s/nfvo.rabbit.management.port = 15672/nfvo.rabbit.management.port = $managementPort/g" /etc/openbaton/openbaton.properties'
+    $_ex 'sed -i "s/nfvo.rabbit.management.port = 15672/nfvo.rabbit.management.port = $managementPort/g" /etc/openbaton/openbaton.properties'
   fi
 
   read -p "Do you want to enable security [N/y]: " security
+  export security=$security
   if [[ $security != "" ]]; then
      if [ $security = "y" -o $security = "Y" -o $security = "yes" ]; then
        $_ex 'sed -i "s/# nfvo.security.enabled = true/nfvo.security.enabled = true/g" /etc/openbaton/openbaton.properties'
