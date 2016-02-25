@@ -111,6 +111,7 @@ function checkoutOpenBaton {
     popd
     $_ex 'rm -rf '"${_openbaton_conf}; mkdir -p ${_openbaton_conf}"
     $_ex 'cp '"${_nfvo}/etc/openbaton.properties ${_openbaton_conf}/openbaton.properties"
+    $_ex 'cp '"${_nfvo}/etc/keystore.p12 ${_openbaton_conf}/keystore.p12"
 }
 
 
@@ -139,6 +140,16 @@ function promptSetProperties {
   if [[ $security != "" ]]; then
      if [ $security = "y" -o $security = "Y" -o $security = "yes" ]; then
        $_ex 'sed -i "s/# nfvo.security.enabled = true/nfvo.security.enabled = true/g" /etc/openbaton/openbaton.properties'
+        # server.port: 8443       
+       $_ex 'sed -i "s/# server.port: 8443/server.port: 8443/g" /etc/openbaton/openbaton.properties'
+        # server.ssl.key-store = /etc/openbaton/keystore.p12
+       $_ex 'sed -i -e "s@# server.ssl.key-store = \/etc\/openbaton\/keystore.p12@server.ssl.key-store = \/etc\/openbaton\/keystore.p12@g" /etc/openbaton/openbaton.properties'
+       # server.ssl.key-store-password = password
+       $_ex 'sed -i "s/# server.ssl.key-store-password = password/server.ssl.key-store-password = password/g" /etc/openbaton/openbaton.properties'
+       # server.ssl.keyStoreType = PKCS12
+       $_ex 'sed -i "s/# server.ssl.keyStoreType = PKCS12/server.ssl.keyStoreType = PKCS12/g" /etc/openbaton/openbaton.properties'
+       # server.ssl.keyAlias = tomcat
+       $_ex 'sed -i "s/# server.ssl.keyAlias = tomcat/server.ssl.keyAlias = tomcat/g" /etc/openbaton/openbaton.properties'
      fi
   fi
 }
