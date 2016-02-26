@@ -141,8 +141,16 @@ function promptSetProperties {
   if [[ $security != "" ]]; then
      if [ $security = "y" -o $security = "Y" -o $security = "yes" ]; then
        $_ex 'sed -i "s/# nfvo.security.enabled = true/nfvo.security.enabled = true/g" /etc/openbaton/openbaton.properties'
-        # server.port: 8443       
-       $_ex 'sed -i "s/# server.port: 8443/server.port: 8443/g" /etc/openbaton/openbaton.properties'
+     fi
+  fi
+  read -p "Do you want to enable HTTPS (##NOTE##: No sdk will work, currently under development :( )[N/y]: " https
+  export https=$https
+  if [[ $https != "" ]]; then
+    if [ $https = "y" -o $http = "Y" -o $https = "yes" ]; then
+       # server.https = false
+       $_ex 'sed -i "s/# server.https = false/server.https = true/g" /etc/openbaton/openbaton.properties'
+        # server.port = 8443       
+       $_ex 'sed -i "s/# server.port = 8443/server.port = 8443/g" /etc/openbaton/openbaton.properties'
         # server.ssl.key-store = /etc/openbaton/keystore.p12
        $_ex 'sed -i -e "s@# server.ssl.key-store = \/etc\/openbaton\/keystore.p12@server.ssl.key-store = \/etc\/openbaton\/keystore.p12@g" /etc/openbaton/openbaton.properties'
        # server.ssl.key-store-password = password
@@ -152,7 +160,7 @@ function promptSetProperties {
        # server.ssl.keyAlias = tomcat
        $_ex 'sed -i "s/# server.ssl.keyAlias = tomcat/server.ssl.keyAlias = tomcat/g" /etc/openbaton/openbaton.properties'
      fi
-  fi
+   fi
 }
 
 function checkoutGenericVNFM {
