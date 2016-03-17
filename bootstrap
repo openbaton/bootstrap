@@ -5,7 +5,7 @@ set -e
 #
 # 'curl -fsSkL http://get.openbaton.org/bootstrap | bash'
 
-_tag="tags/1.0.1"
+_tag="tags/1.0.2"
 #_tag="develop"
 
 
