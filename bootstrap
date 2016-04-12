@@ -119,6 +119,7 @@ function checkoutOpenBaton {
 function downloadPlugins {
     echo "Getting OpenBaton Plugins..."
     wget -nH --cut-dirs 2 -r --no-parent  --reject "index.html*" "${_openbaton_plugins}" -P "${_tmpfolder}"
+    mkdir -p ${_nfvo_vim_drivers}
     cp -r ${_tmpfolder}/* "${_nfvo_vim_drivers}"
 }
 
