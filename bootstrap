@@ -136,7 +136,7 @@ function promptSetProperties {
   if [[ $managementPort != "" ]]; then
     $_ex 'sed -i "s/nfvo.rabbit.management.port = 15672/nfvo.rabbit.management.port = $managementPort/g" /etc/openbaton/openbaton.properties'
   fi
-  read -p "Do you want to enable HTTPS (##NOTE##: No sdk will work, currently under development :( )[N/y]: " https
+  read -p "Do you want to enable HTTPS [N/y]: " https
   export https=$https
   if [[ $https != "" ]]; then
     if [ $https = "y" -o $http = "Y" -o $https = "yes" ]; then
@@ -186,7 +186,7 @@ function startNFVO {
 function deployOpenBaton {
     compileNFVO
     installMySQL
-    setPassword
+    # setPassword
     startNFVO
 }
 
@@ -218,7 +218,7 @@ function installMySQL {
   export mysql=$mysql
   if [[ $mysql != "" ]]; then
       if [ $mysql = "y" -o $mysql = "Y" -o $mysql = "yes" ]; then
-        $_ex 'sudo apt-get install mysql-server'
+        $_ex 'sudo apt-get install mysql-server -y'
         $_ex 'sed -i "s/spring.datasource.url=jdbc:hsqldb:file:\/tmp\/openbaton\/openbaton.hsdb/# spring.datasource.url=jdbc:hsqldb:file:\/tmp\/openbaton\/openbaton.hsdb/g" /etc/openbaton/openbaton.properties'
         $_ex 'sed -i "s/spring.datasource.driver-class-name=org.hsqldb.jdbc.JDBCDriver/# spring.datasource.driver-class-name=org.hsqldb.jdbc.JDBCDriver/g" /etc/openbaton/openbaton.properties'
         $_ex 'sed -i "s/spring.jpa.database-platform=org.hibernate.dialect.HSQLDialect/# spring.jpa.database-platform=org.hibernate.dialect.HSQLDialect/g" /etc/openbaton/openbaton.properties'
@@ -230,25 +230,25 @@ function installMySQL {
         $_ex 'sed -i "s/# spring.datasource.url=jdbc:mysql:\/\/localhost:3306\/openbaton/spring.datasource.url=jdbc:mysql:\/\/localhost:3306\/openbaton/g" /etc/openbaton/openbaton.properties'
         $_ex 'sed -i "s/# spring.datasource.driver-class-name=com.mysql.jdbc.Driver/spring.datasource.driver-class-name=com.mysql.jdbc.Driver/g" /etc/openbaton/openbaton.properties'
         $_ex 'sed -i "s/# spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect/spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect/g" /etc/openbaton/openbaton.properties'
-        read -p "Please, type the name of the mysql user you would like Openbaton to use[admin]:" sqluser
-        export sqluser=$sqluser
+        read -p "Please, type the name of the mysql user you would like Openbaton to use [admin]: " sqluser
         dbuser=admin
         dbpassword=changeme
         if [[ $sqluser != "" ]]; then
           dbuser=$sqluser
           $_ex 'sed -i "s/spring.datasource.username=admin/spring.datasource.username=$sqluser/g" /etc/openbaton/openbaton.properties'
         fi
-        read -p "Please, provide the password for this user[changeme]:" sqlpassword
-        export sqlpassword=$sqlpassword
+        read -s -p "Please, provide the password for this user [changeme]: " sqlpassword
+	echo ""
         if [[ $sqlpassword != "" ]]; then
           dbpassword=$sqlpassword
           $_ex 'sed -i "s/spring.datasource.password=changeme/spring.datasource.password=$sqlpassword/g" /etc/openbaton/openbaton.properties'
         fi
-        echo "Please, provide the root password to mysql database[changeme]:"
-        read -s  rootpasswd
-        if [[ $rootpasswd = "" ]]; then
-          $rootpasswd=changeme
-        fi
+        # echo "Please, provide the root password to mysql database[changeme]:"
+        read -s -p "Please, provide the password of the root user of mysql: " rootpasswd
+	echo ""
+        # if [[ $rootpasswd = "" ]]; then
+          # rootpasswd=changeme
+        # fi
         mysql -uroot -p${rootpasswd} -e "CREATE DATABASE openbaton /*\!40100 DEFAULT CHARACTER SET utf8 */;"
         mysql -uroot -p${rootpasswd} -e "CREATE USER ${dbuser}@localhost IDENTIFIED BY '${dbpassword}';"
         mysql -uroot -p${rootpasswd} -e "GRANT ALL ON openbaton.* TO '${dbuser}'@'localhost';"
@@ -260,19 +260,19 @@ function installMySQL {
 
 }
 function setPassword {
-  echo "Provide the new password for admin user of Openbaton: "
-  read -s openbatonpswd
-  if [[ $openbatonpswd != "" ]]; then
-      export openbatonpswd=$openbatonpswd
-        echo "Please repeat: "
-        read -s openbatonpswd2
-            export openbatonpswd2=$openbatonpswd2
-          if [[ $openbatonpswd = $openbatonpswd2 ]]; then
-            $_ex 'sed -i "s/# nfvo.security.admin.password\ =\ openbaton/nfvo.security.admin.password\ =\ $openbatonpswd/g" /etc/openbaton/openbaton.properties'
-            return
-          fi
-          setPassword
-  fi
+	read -s -p "Provide the new password for admin user of Openbaton: " openbatonpswd
+	echo ""
+	if [[ $openbatonpswd != "" ]]; then
+      		export openbatonpswd=$openbatonpswd
+      		read -s -p "repeat the password: " openbatonpswd2
+		echo ""
+      		export openbatonpswd2=$openbatonpswd2
+		if [[ $openbatonpswd = $openbatonpswd2 ]]; then
+      			$_ex 'sed -i "s/# nfvo.security.admin.password\ =\ openbaton/nfvo.security.admin.password\ =\ $openbatonpswd/g" /etc/openbaton/openbaton.properties'
+            		return
+          	fi
+          	setPassword
+  	fi
 }
 
 function deleteAdminPassword {
@@ -298,7 +298,10 @@ function bootstrap {
     deployOpenBaton
     # deploy and compile the Generic VNFM
     deployGenericVNFM
-    sleep 180
+	echo "waiting for Open Baton to be up..."
+	while ! nc -z localhost 8080; do   
+	  	sleep 1 # wait for 1 second before check again
+	done
     echo "Now open http://localhost:8080/"
     deleteAdminPassword
 }
