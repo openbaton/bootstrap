@@ -139,7 +139,7 @@ function promptSetProperties {
   read -p "Do you want to enable HTTPS [N/y]: " https
   export https=$https
   if [[ $https != "" ]]; then
-    if [ $https = "y" -o $http = "Y" -o $https = "yes" ]; then
+    if [ $https = "y" -o $https = "Y" -o $https = "yes" ]; then
        # server.https = false
        $_ex 'sed -i "s/# server.https = false/server.https = true/g" /etc/openbaton/openbaton.properties'
         # server.port = 8443
