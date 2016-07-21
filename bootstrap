@@ -94,19 +94,22 @@ configureSecurity () {
         export https=${https}
         if [ "${https}" != "" ]; then
             if [ "${https}" = "y" -o "${https}" = "Y" -o "${https}" = "yes" ]; then
-                log_success_msg "Enabling HTTPS"
-                # server.https = false
-                $_ex 'sed -i "s/# server.https = false/server.https = true/g" /etc/openbaton/openbaton.properties'
+                log_success_msg "Enabling HTTPS .."
+
                 # server.port = 8443
                 $_ex 'sed -i "s/# server.port = 8443/server.port = 8443/g" /etc/openbaton/openbaton.properties'
+                # server.ssl.enabled = true
+                $_ex 'sed -i "s/# server.ssl.enabled = true/server.ssl.enabled = true/g" /etc/openbaton/openbaton.properties'
                 # server.ssl.key-store = /etc/openbaton/keystore.p12
                 $_ex 'sed -i -e "s@# server.ssl.key-store = \/etc\/openbaton\/keystore.p12@server.ssl.key-store = \/etc\/openbaton\/keystore.p12@g" /etc/openbaton/openbaton.properties'               
-                # server.ssl.key-store-password = password                                                                                                                           
+                # server.ssl.key-store-password = password                                                                                                                         
                 $_ex 'sed -i "s/# server.ssl.key-store-password = password/server.ssl.key-store-password = password/g" /etc/openbaton/openbaton.properties'
                 # server.ssl.keyStoreType = PKCS12                                                 
                 $_ex 'sed -i "s/# server.ssl.keyStoreType = PKCS12/server.ssl.keyStoreType = PKCS12/g" /etc/openbaton/openbaton.properties'                
                 # server.ssl.keyAlias = tomcat                
                 $_ex 'sed -i "s/# server.ssl.keyAlias = tomcat/server.ssl.keyAlias = tomcat/g" /etc/openbaton/openbaton.properties'                                              
+                # nfvo.https = false
+                $_ex 'sed -i "s/# nfvo.https = false/nfvo.https = true/g" /etc/openbaton/openbaton.properties'
             fi                                                                                                                                   
         fi        
     fi
