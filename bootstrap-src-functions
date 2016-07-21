@@ -1,8 +1,4 @@
 #!/bin/sh
-#
-# This script allows you to install openbaton. To execute it:
-#
-# 'curl -fsSkL http://get.openbaton.org/bootstrap | bash'
 
 #_tag="tags/1.0.1"
 _tag="develop"
