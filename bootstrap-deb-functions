@@ -1,0 +1,202 @@
+#!/bin/sh
+
+##########################
+#### General Settings ####
+##########################
+
+set -e
+set -u
+set -x # only for DEBUG
+
+# Make available the functions defined in /lib/lsb/init-functions
+. /lib/lsb/init-functions
+
+
+##########################
+#### Global Variables ####
+##########################
+
+USER="$(id -un 2>/dev/null || true)"
+
+DEB_OPENBATON_BASE=/usr
+DEB_OPENBATON_PLUGINS_FOLDER=${DEB_OPENBATON_BASE}/lib/openbaton/plugins
+TMPFOLDER=$(mktemp -d)
+
+# Temporary until plugin installation via deb
+OPENBATON_PLUGINS_OPENSTACK_URL="http://get.openbaton.org/plugins/1.0.2-liberty/openstack-plugin-1.0.2-liberty.jar"
+
+
+#############################
+#### VIM-Drivers Plugins ####
+#############################
+
+deb_pluginsPrereq () {
+    log_success_msg "Configuring the Plugins environment .."
+    mkdir -p ${DEB_OPENBATON_PLUGINS_FOLDER}    
+    export DEB_OPENBATON_PLUGINS_FOLDER="${DEB_OPENBATON_PLUGINS_FOLDER}"
+    $_ex 'sed -i "s~nfvo.plugin.installation-dir = ./plugins~nfvo.plugin.installation-dir = "${OPENBATON_PLUGINS_FOLDER}"~" /etc/openbaton/openbaton.properties'                
+}
+
+deb_getOpenStackVIMPlugin () {
+    deb_pluginsPrereq
+
+    #### TODO install plugin via deb
+    log_success_msg "Getting OpenStack VIM Plugin .."                          
+    wget -nH --cut-dirs 2 -r --no-parent  --reject "index.html*" "${OPENBATON_PLUGINS_OPENSTACK_URL}" -P "${TMPFOLDER}"
+    export DEB_OPENBATON_PLUGINS_FOLDER="${DEB_OPENBATON_PLUGINS_FOLDER}"
+    export TMPFOLDER="${TMPFOLDER}"
+    $_ex 'cp ${TMPFOLDER}/* "${DEB_OPENBATON_PLUGINS_FOLDER}"'
+    ####
+}
+
+
+deb_installOpenStackVIMPlugin () {
+    if [ "${DEBIAN_FRONTEND}" = "interactive" ]; then
+        read -p "Do you want to install the OpenStack VIM-Driver Plugins? [Y/n]: " yn                                    
+        if [ "${yn}" != "n" -a "${yn}" != "N" ]; then
+            deb_getOpenStackVIMPlugin
+        fi                                                                  
+    else
+        # TO TEST
+        #deb_getOpenStackVIMPlugin
+        echo "Fix me!!"
+    fi                        
+}
+
+#installVIMDriverPlugins () {
+#    read -p "Do you want to install any of the available VIM-Driver Plugins? [Y/n]: " yn
+#    if [ "${yn}" != "n" -a "${yn}" != "N" ]; then
+#        echo "Options available are: "
+#        echo "    1. Download 'OpenStack' VIM-Driver Plugin"
+#        echo "    2. Download 'XYZ' VIM-Driver Plugin"
+#        read -p "Insert the number(s) of the plugin(s) you want to install (in case of multiple plugins insert the numbers separated by a space - e.g. 1 2) [no default]: " plugins
+#        if [ "${plugins}" = "" ]; then
+#            installVIMDriverPlugins
+#        else
+#            set -- ${plugins} # Create the array for the cycle for
+#            for plug in ${@}
+#            do
+#                case ${plug} in
+#                    1 ) installOpenStackVIMPlugin ;;
+#                    2 ) installXYZVIMPlugin ;;
+#                    * ) installVIMDriverPlugins ;;
+#                esac
+#            done
+#        fi
+#    fi
+#}
+
+
+
+####################
+#### Open Baton ####
+####################
+
+prereq () {
+    $_ex 'apt-get install -y wget'
+}
+
+deb_addRepoRefs () {
+    export codename=${1}
+
+    # Add Open Baton Public Key to the APT keys
+    $_ex 'wget -O - http://get.openbaton.org/keys/public.gpg.key | apt-key add -'
+
+    # Add Open Baton Repo to sources.list file
+    result=$(grep /etc/apt/sources.list -e "deb http://get.openbaton.org/repos/apt/debian/ ${codename} main" | wc -l)
+    if [ ${result} -eq 0 ]; then
+        $_ex 'echo "\ndeb http://get.openbaton.org/repos/apt/debian/ ${codename} main" >> /etc/apt/sources.list'
+    fi
+    $_ex 'apt-get update'
+}
+
+deb_installNFVO () {
+    export codename=${1}
+
+    # Install the correct NFVO package according to the given input parameter
+    if [ "${codename}" = "stable" ]; then
+        $_ex 'apt-get install -y openbaton-nfvo'
+    else
+        $_ex 'apt-get install -y openbaton-nfvo-nightly'
+    fi    
+}
+
+deb_installGVNFM () {
+    export codename=${1}
+
+    # Ask for Generic VNFM installation 
+    read -p "Do you want to install also the Generic VNFM? (if you do not, then you can still install it later with 'sudo apt-get install openbaton-gvnfm') (Y/n): " gvnfm
+    
+    # Print correct warning message
+    if [ "${gvnfm}" = "n" -o "${gvnfm}" = "N" ]; then
+        echo " * [WARN] Open Baton Generic VNFM not installed"
+        if [ "${codename}" = "stable" ]; then
+            echo " * To install the latest release package:"
+            echo " *     sudo apt-get install openbaton-gvnfm"
+        else
+            echo " * To install the latest nightly-build package:"
+            echo " *     sudo apt-get install openbaton-gvnfm-nightly"
+        fi
+        return
+    fi
+
+    # Install the correct Generic VNFM package according to the given input parameter
+    if [ "${codename}" = "stable" ]; then
+        $_ex 'apt-get install -y openbaton-gvnfm'
+    else
+        $_ex 'apt-get install -y openbaton-gvnfm-nightly'
+    fi
+}
+
+deb_stopNFVO () {
+    if $_ex 'systemctl stop openbaton-nfvo.service' >/dev/null 2>&1 ; then    
+        #log_success_msg "Stopping the Open Baton NFVO .."        
+        log_success_msg ".."        
+    elif $_ex 'stop openbaton-nfvo' >/dev/null 2>&1 ; then
+        #log_success_msg "Stopping the Open Baton NFVO .."                                            
+        log_success_msg ".."        
+    else                                                        
+        log_failure_msg "Stopping the Open Baton NFVO"        
+    fi
+}
+
+deb_startNFVO () {
+    if $_ex 'systemctl start openbaton-nfvo.service' >/dev/null 2>&1 ; then    
+        #log_success_msg "Starting the Open Baton NFVO .."        
+        log_success_msg ".."        
+    elif $_ex 'start openbaton-nfvo' >/dev/null 2>&1 ; then
+        #log_success_msg "Starting the Open Baton NFVO .."                                            
+        log_success_msg ".."        
+    else                                                        
+        log_failure_msg "Starting the Open Baton NFVO"        
+    fi
+}
+
+deb_restartNFVO () {
+    log_success_msg "Restarting the Open Baton NFVO .."        
+    deb_stopNFVO
+    deb_startNFVO
+}
+
+deb_restartGVNFM () {
+    deb_stopGVNFM
+    deb_startGVNFM
+}
+
+
+###################
+#### Bootstrap ####
+###################
+
+deb_bootstrap () {
+    deb_prereq
+    deb_addRepoRefs ${1}
+    deb_installNFVO ${1}
+    deb_installOpenStackVIMPlugin
+    deb_installGVNFM ${1}
+    installMySQL
+    deb_restartNFVO
+    #deb_restartGVNFM
+}
+
+
