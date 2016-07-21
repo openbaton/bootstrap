@@ -26,7 +26,7 @@ fi
 
 set -e
 set -u
-set -x # only for DEBUG
+#set -x # only for DEBUG
 
 # Make available the functions defined in /lib/lsb/init-functions
 . /lib/lsb/init-functions
@@ -212,6 +212,7 @@ main () {
     esac
 
     configureSecurity
+    log_success_msg "Open Baton installation complete."
 }
 
 
