@@ -2,7 +2,7 @@
 #
 # This script allows you to install openbaton. To execute it:
 #
-# 'sh <(curl -s http://get.openbaton.org/bootstraps/bootstrap)' [release | nightly | develop]
+# 'sh <(curl -s http://get.openbaton.org/bootstrap)' [release | nightly | develop]
 
 ###############
 #### Usage ####
@@ -10,8 +10,8 @@
 
 usage () {
     echo "Usage:"
-    echo "./bootstrap-main [release | nightly | develop]                                                  (if you already stored locally the 'bootstrap-main' file)"
-    echo "sh <(curl -s http://get.openbaton.org/bootstraps/bootstrap) [release | nightly | develop]       (otherwise)"
+    echo "./bootstrap [release | nightly | develop]                                            (if the script is already locally available)"
+    echo "sh <(curl -s http://get.openbaton.org/bootstrap) [release | nightly | develop]       (otherwise)"
 }
 
 if [ ${#} -gt 1 ]; then
@@ -38,8 +38,8 @@ set -u
 
 USER="$(id -un 2>/dev/null || true)"
 
-OPENBATON_BOOTSTRAP_SRC_FUNCTIONS_URL=http://get.openbaton.org/bootstraps/bootstrap-src-functions
-OPENBATON_BOOTSTRAP_DEB_FUNCTIONS_URL=http://get.openbaton.org/bootstraps/bootstrap-deb-functions
+OPENBATON_BOOTSTRAP_SRC_FUNCTIONS_URL=http://get.openbaton.org/bootstrap-src-functions
+OPENBATON_BOOTSTRAP_DEB_FUNCTIONS_URL=http://get.openbaton.org/bootstrap-deb-functions
 
 OPENBATON_PLUGINS_OPENSTACK_URL="http://get.openbaton.org/plugins/1.0.2-liberty/openstack-plugin-1.0.2-liberty.jar"
 
@@ -53,8 +53,8 @@ DEBIAN_FRONTEND=${DEBIAN_FRONTEND:-$DEBIAN_FRONTEND_DEFAULT}
 
 usage () {
     echo "Usage:"
-    echo "./bootstrap                                                            (if the script is already locally available)"
-    echo "sh <(curl -s http://get.openbaton.org/bootstraps/bootstrap)            (otherwise)"
+    echo "./bootstrap                                                 (if the script is already locally available)"
+    echo "sh <(curl -s http://get.openbaton.org/bootstrap)            (otherwise)"
 }
 
 
@@ -183,13 +183,13 @@ installMySQL () {
 #### Main ####
 ##############
 
-main_src () {
+mainSrc () {
     wget "${OPENBATON_BOOTSTRAP_SRC_FUNCTIONS_URL}"
     . ./bootstrap-src-functions
     src_bootstrap
 }
 
-main_deb () {
+mainDeb () {
     wget "${OPENBATON_BOOTSTRAP_DEB_FUNCTIONS_URL}"
     . ./bootstrap-deb-functions
     deb_bootstrap ${1}
@@ -204,21 +204,28 @@ main () {
     read -p "Select the Open Baton installation type you prefer [2]: " install_type
     case ${install_type} in
         1 ) 
-            main_src ;;
+            mainSrc ;;
         3 ) 
-            main_deb unstable;;
+            mainDeb unstable;;
         * ) 
-            main_deb stable ;;
+            mainDeb stable ;;
     esac
 
-    configureSecurity
-    log_success_msg "Open Baton installation complete."
+    log_success_msg "Open Baton installation complete"
 }
 
+fixJavaSecurity () {
+    $_ex 'sed -i "s_securerandom.source=file:/dev/urandom_securerandom.source=file:/dev/./urandom_g" /usr/lib/jvm/java-7-openjdk-amd64/jre/lib/security/java.security'
+}
 
 prereq () {
     $_ex 'apt-get install -y wget'
 }
+
+
+#####################
+#### Entry Point ####
+#####################
 
 prereq
 
@@ -226,13 +233,13 @@ if [ -n "${1+1}" ]; then
     case ${1} in
         "release" )
             echo " * [INFO] Installing the latest RELEASE package"
-            main_deb stable ;;
+            mainDeb stable ;;
         "nightly" )
             echo " * [INFO] Installing the latest NIGHTLY-BUILD package"
-            main_deb unstable ;;
+            mainDeb unstable ;;
         "develop" )
             echo " * [INFO] Installing the latest source code"
-            main_src ;;
+            mainSrc ;;
         *)
             usage
             exit 1 ;;

@@ -94,6 +94,7 @@ src_downloadPlugins () {
 src_prereq () {
     # TODO differentiate between fedora, OS X, ubuntu..
     $_ex 'apt-get update; apt-get -y install openjdk-7-jdk curl wget screen git'
+    fixJavaSecurity
 }
 
 src_checkEnvironment () {
@@ -225,6 +226,8 @@ src_bootstrap () {
     src_checkEnvironment
     # checkout the generic VNFM code
     src_checkoutGenericVNFM
+    # configure the Open Baton security 
+    configureSecurity
     # deploy and compile OpenBaton orchestrator
     src_deployOpenBaton
     # deploy and compile the Generic VNFM

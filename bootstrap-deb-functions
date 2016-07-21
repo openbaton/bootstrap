@@ -92,9 +92,9 @@ deb_installOpenStackVIMPlugin () {
 #### Open Baton ####
 ####################
 
-prereq () {
-    $_ex 'apt-get install -y wget'
-}
+#prereq () {
+#    $_ex 'apt-get install -y wget'
+#}
 
 deb_addRepoRefs () {
     export codename=${1}
@@ -176,6 +176,7 @@ deb_restartNFVO () {
     log_success_msg "Restarting the Open Baton NFVO .."        
     deb_stopNFVO
     deb_startNFVO
+    #log_success_msg "Started Open Baton NFVO"        
 }
 
 deb_restartGVNFM () {
@@ -195,6 +196,8 @@ deb_bootstrap () {
     deb_installOpenStackVIMPlugin
     deb_installGVNFM ${1}
     installMySQL
+    fixJavaSecurity
+    configureSecurity
     deb_restartNFVO
     #deb_restartGVNFM
 }
