@@ -189,7 +189,7 @@ deb_restartGVNFM () {
 ###################
 
 deb_bootstrap () {
-    deb_prereq
+    prereq
     deb_addRepoRefs ${1}
     deb_installNFVO ${1}
     deb_installOpenStackVIMPlugin
