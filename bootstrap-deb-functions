@@ -52,14 +52,12 @@ deb_getOpenStackVIMPlugin () {
 
 deb_installOpenStackVIMPlugin () {
     if [ "${DEBIAN_FRONTEND}" = "interactive" ]; then
-        read -p "Do you want to install the OpenStack VIM-Driver Plugins? [Y/n]: " yn                                    
+        read -p "Do you want to install the OpenStack VIM-Driver Plugin? [Y/n]: " yn                                    
         if [ "${yn}" != "n" -a "${yn}" != "N" ]; then
             deb_getOpenStackVIMPlugin
         fi                                                                  
     else
-        # TO TEST
-        #deb_getOpenStackVIMPlugin
-        echo "Fix me!!"
+        echo " * [WARN] NOT installing the OpenStack VIM-Driver Plugin"
     fi                        
 }
 
@@ -92,10 +90,6 @@ deb_installOpenStackVIMPlugin () {
 #### Open Baton ####
 ####################
 
-#prereq () {
-#    $_ex 'apt-get install -y wget'
-#}
-
 deb_addRepoRefs () {
     export codename=${1}
 
@@ -124,20 +118,22 @@ deb_installNFVO () {
 deb_installGVNFM () {
     export codename=${1}
 
-    # Ask for Generic VNFM installation 
-    read -p "Do you want to install also the Generic VNFM? (if you do not, then you can still install it later with 'sudo apt-get install openbaton-gvnfm') (Y/n): " gvnfm
+    if [ "${DEBIAN_FRONTEND}" = "interactive" ]; then
+        # Ask for Generic VNFM installation 
+        read -p "Do you want to install also the Generic VNFM? (if you do not, then you can still install it later with 'sudo apt-get install openbaton-gvnfm') (Y/n): " gvnfm
     
-    # Print correct warning message
-    if [ "${gvnfm}" = "n" -o "${gvnfm}" = "N" ]; then
-        echo " * [WARN] Open Baton Generic VNFM not installed"
-        if [ "${codename}" = "stable" ]; then
-            echo " * To install the latest release package:"
-            echo " *     sudo apt-get install openbaton-gvnfm"
-        else
-            echo " * To install the latest nightly-build package:"
-            echo " *     sudo apt-get install openbaton-gvnfm-nightly"
+        # Print correct warning message
+        if [ "${gvnfm}" = "n" -o "${gvnfm}" = "N" ]; then
+            echo " * [WARN] Open Baton Generic VNFM not installed"
+            if [ "${codename}" = "stable" ]; then
+                echo " * To install the latest release package:"
+                echo " *     sudo apt-get install openbaton-gvnfm"
+            else
+                echo " * To install the latest nightly-build package:"
+                echo " *     sudo apt-get install openbaton-gvnfm-nightly"
+            fi
+            return
         fi
-        return
     fi
 
     # Install the correct Generic VNFM package according to the given input parameter
@@ -148,40 +144,24 @@ deb_installGVNFM () {
     fi
 }
 
-deb_stopNFVO () {
-    if $_ex 'systemctl stop openbaton-nfvo.service' >/dev/null 2>&1 ; then    
-        #log_success_msg "Stopping the Open Baton NFVO .."        
-        log_success_msg ".."        
-    elif $_ex 'stop openbaton-nfvo' >/dev/null 2>&1 ; then
-        #log_success_msg "Stopping the Open Baton NFVO .."                                            
-        log_success_msg ".."        
-    else                                                        
-        log_failure_msg "Stopping the Open Baton NFVO"        
-    fi
-}
-
-deb_startNFVO () {
-    if $_ex 'systemctl start openbaton-nfvo.service' >/dev/null 2>&1 ; then    
-        #log_success_msg "Starting the Open Baton NFVO .."        
-        log_success_msg ".."        
-    elif $_ex 'start openbaton-nfvo' >/dev/null 2>&1 ; then
-        #log_success_msg "Starting the Open Baton NFVO .."                                            
-        log_success_msg ".."        
-    else                                                        
-        log_failure_msg "Starting the Open Baton NFVO"        
-    fi
-}
-
 deb_restartNFVO () {
-    log_success_msg "Restarting the Open Baton NFVO .."        
-    deb_stopNFVO
-    deb_startNFVO
-    #log_success_msg "Started Open Baton NFVO"        
+    if $_ex 'systemctl restart openbaton-nfvo.service' >/dev/null 2>&1 ; then    
+        log_success_msg "Restarting the Open Baton NFVO .."
+    elif $_ex 'restart openbaton-nfvo' >/dev/null 2>&1 ; then
+        log_success_msg "Restarting the Open Baton NFVO .."
+    else                                                        
+        log_failure_msg "Restaring the Open Baton NFVO"
+    fi
 }
 
 deb_restartGVNFM () {
-    deb_stopGVNFM
-    deb_startGVNFM
+    if $_ex 'systemctl restart openbaton-gvnfm.service' >/dev/null 2>&1 ; then    
+        log_success_msg "Restarting the Open Baton GVNFM .."        
+    elif $_ex 'restart openbaton-gvnfm' >/dev/null 2>&1 ; then
+        log_success_msg "Restarting the Open Baton GVNFM .."        
+    else                                                        
+        log_failure_msg "Restarting the Open Baton GVNFM"
+    fi
 }
 
 
@@ -198,8 +178,12 @@ deb_bootstrap () {
     installMySQL
     fixJavaSecurity
     configureSecurity
+    #########
+    # Temporary workaround to avoid the spawning of multiple 'Test VIM Driver Plugin' processes during installation
+    log_success_msg "Finalising Open Baton installation .."
+    sleep 60
+    #########
     deb_restartNFVO
-    #deb_restartGVNFM
+    deb_restartGVNFM
 }
-
 

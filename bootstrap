@@ -135,8 +135,9 @@ configureMySQL () {
     $_ex 'sed -i "s/# spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect/spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect/g" /etc/openbaton/openbaton.properties'
     
     # In case of "noninteractive" FRONTEND the default value will remain valid (sqluser: admin ; sqlpassword: changeme)
+    # Redundant check since the 'configureMySQL' function is executed only when 'DEBIAN_FRONTEND = interactive'
     if [ "${DEBIAN_FRONTEND}" = "interactive" ]; then
-        read -p "Please, type the name of the mysql user you would like Openbaton to use [admin]: " sqluser
+        read -p "Please, type the name of the mysql user you would like Open Baton to use [admin]: " sqluser
         export dbuser=admin
         export dbpassword=changeme                           
         if [ "${sqluser}" != "" ]; then                                  
@@ -168,16 +169,19 @@ configureMySQL () {
 }
 
 installMySQL () {
-    read -p "Do you want to enable the persistence through MySQL? [N/y]: " mysql
-    if [ "${mysql}" != "" ]; then
-        if [ "${mysql}" = "y" -o "${mysql}" = "Y" -o "${mysql}" = "yes" ]; then
-            echo " * [INFO] Enabling MySQL Persistence"
-            $_ex 'apt-get update'
-            $_ex 'apt-get install -y mysql-server'
-            configureMySQL
+    # In case of "noninteractive" FRONTEND the default value will remain valid (sqluser: admin ; sqlpassword: changeme)
+    if [ "${DEBIAN_FRONTEND}" = "interactive" ]; then
+        read -p "Do you want to enable the persistence through MySQL? [N/y]: " mysql
+        if [ "${mysql}" != "" ]; then
+            if [ "${mysql}" = "y" -o "${mysql}" = "Y" -o "${mysql}" = "yes" ]; then
+                echo " * [INFO] Enabling MySQL Persistence"
+                $_ex 'apt-get update'
+                $_ex 'apt-get install -y mysql-server'
+                configureMySQL
+            fi
+        else
+            echo " * [WARN] NOT Enabling MySQL Persistence"
         fi
-    else
-        echo " * [WARN] NOT Enabling MySQL Persistence"
     fi
 }
 
@@ -199,20 +203,25 @@ mainDeb () {
 }
 
 main () {
-    echo "Welcome to the Open Baton menu installation."
-    echo "Available installation types are the following:"
-    echo "    1. develop: it will be downloaded the source code for all the components which will be executed in screens"
-    echo "    2. release: it will be installed the binary version of the latest stable version"
-    echo "    3. nightly: it will be installed the binary version of the latest nightly build (unstable version)"
-    read -p "Select the Open Baton installation type you prefer [2]: " install_type
-    case ${install_type} in
-        1 ) 
-            mainSrc ;;
-        3 ) 
-            mainDeb unstable;;
-        * ) 
-            mainDeb stable ;;
-    esac
+    # In case of "noninteractive" FRONTEND the latest RELEASE package will be installed
+    if [ "${DEBIAN_FRONTEND}" = "interactive" ]; then
+        echo "Welcome to the Open Baton menu installation."
+        echo "Available installation types are the following:"
+        echo "    1. develop: it will be downloaded the source code for all the components which will be executed in screens"
+        echo "    2. release: it will be installed the binary version of the latest stable version"
+        echo "    3. nightly: it will be installed the binary version of the latest nightly build (unstable version)"
+        read -p "Select the Open Baton installation type you prefer [2]: " install_type
+        case ${install_type} in
+            1 ) 
+                mainSrc ;;
+            3 ) 
+                mainDeb unstable;;
+            * ) 
+                mainDeb stable ;;
+        esac
+    else
+        mainDeb stable
+    fi
 
     log_success_msg "Open Baton installation complete"
 }
