@@ -41,7 +41,7 @@ deb_getOpenStackVIMPlugin () {
     deb_pluginsPrereq
 
     #### TODO install plugin via deb
-    log_success_msg "Getting OpenStack VIM Plugin .."                          
+    log_success_msg "Getting OpenStack VIM-Driver Plugin .."
     wget -nH --cut-dirs 2 -r --no-parent  --reject "index.html*" "${OPENBATON_PLUGINS_OPENSTACK_URL}" -P "${TMPFOLDER}"
     export DEB_OPENBATON_PLUGINS_FOLDER="${DEB_OPENBATON_PLUGINS_FOLDER}"
     export TMPFOLDER="${TMPFOLDER}"
@@ -57,7 +57,8 @@ deb_installOpenStackVIMPlugin () {
             deb_getOpenStackVIMPlugin
         fi                                                                  
     else
-        echo " * [WARN] NOT installing the OpenStack VIM-Driver Plugin"
+        echo " * [INFO] Installing the OpenStack VIM-Driver Plugin"
+        deb_getOpenStackVIMPlugin
     fi                        
 }
 
