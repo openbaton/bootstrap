@@ -1,48 +1,80 @@
-#!/usr/bin/env bash
-set -e
+#!/bin/sh
 #
 # This script allows you to install openbaton. To execute it:
 #
-# 'curl -fsSkL http://get.openbaton.org/bootstrap | bash'
+# 'sh <(curl -s http://get.openbaton.org/bootstrap)' [release | nightly | develop]
 
-_tag="tags/2.0.1"
-#_tag="develop"
+###############
+#### Usage ####
+###############
+
+usage () {
+    echo "Usage:"
+    echo "./bootstrap [release | nightly | develop]                                            (if the script is already locally available)"
+    echo "sh <(curl -s http://get.openbaton.org/bootstrap) [release | nightly | develop]       (otherwise)"
+}
+
+if [ ${#} -gt 1 ]; then
+    usage
+    exit 1
+fi
 
 
-export DEBIAN_FRONTEND=noninteractive
-_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+##########################
+#### General Settings ####
+##########################
 
-_openbaton_base_repo="https://github.com/openbaton/NFVO.git"
-_openbaton_generic_vnfm_repo="https://github.com/openbaton/generic-vnfm.git"
-_openbaton_plugins="http://get.openbaton.org/plugins/stable/"
+set -e
+set -u
+#set -x # only for DEBUG
 
-_base=/opt
-_openbaton_base="${_base}/openbaton"
-_openbaton_conf="/etc/openbaton"
-_openbaton_log="/var/log/openbaton"
-_nfvo="${_openbaton_base}/nfvo"
-_nfvo_vim_drivers="${_nfvo}/plugins/vim-drivers"
-_generic_vnfm="${_openbaton_base}/generic-vnfm"
+# Make available the functions defined in /lib/lsb/init-functions
+. /lib/lsb/init-functions
 
-_installer_folder="${_base}/tmp"
-_logfile="${_installer_folder}/log"
-_tmpfolder=`mktemp -d`
 
-_user="$(id -un 2>/dev/null || true)"
+##########################
+#### Global Variables ####
+##########################
 
-function checkBinary {
-  echo -n " * Checking for '$1'..."
+USER="$(id -un 2>/dev/null || true)"
+
+OPENBATON_BOOTSTRAP_SRC_FUNCTIONS_URL=http://get.openbaton.org/bootstrap-src-functions
+OPENBATON_BOOTSTRAP_DEB_FUNCTIONS_URL=http://get.openbaton.org/bootstrap-deb-functions
+
+OPENBATON_PLUGINS_OPENSTACK_URL="http://get.openbaton.org/plugins/1.0.2-liberty/openstack-plugin-1.0.2-liberty.jar"
+
+DEBIAN_FRONTEND_DEFAULT=interactive
+DEBIAN_FRONTEND=${DEBIAN_FRONTEND:-$DEBIAN_FRONTEND_DEFAULT}
+
+
+###############
+#### Usage ####
+###############
+
+usage () {
+    echo "Usage:"
+    echo "./bootstrap                                                 (if the script is already locally available)"
+    echo "sh <(curl -s http://get.openbaton.org/bootstrap)            (otherwise)"
+}
+
+
+##############################
+#### Execution privileges ####
+##############################
+
+checkBinary () {
+  echo -n " * Checking for '$1' ... "
   if command -v $1 >/dev/null 2>&1; then
      echo "OK"
      return 0
-   else
-     echo >&2 "FAILED."
+  else
+     echo >&2 "FAILED"
      return 1
-   fi
+  fi
 }
 
 _ex='sh -c'
-if [ "$_user" != 'root' ]; then
+if [ "${USER}" != "root" ]; then
     if checkBinary sudo; then
         _ex='sudo -E sh -c'
     elif checkBinary su; then
@@ -50,197 +82,181 @@ if [ "$_user" != 'root' ]; then
     fi
 fi
 
-function prereq(){
-    # TODO differentiate between fedora, OS X, ubuntu..
-    $_ex 'apt-get update; apt-get -y install openjdk-7-jdk curl wget screen git'
-}
 
+##################
+#### Security ####
+##################
 
-function installMessageQueue() {
-    echo "installing message queue.."
-    $_ex 'apt-get install -y rabbitmq-server'
-    ulimit -S -n 4096
-    $_ex 'rabbitmqctl add_user admin openbaton'
-    $_ex 'rabbitmqctl set_user_tags admin administrator'
-    $_ex 'rabbitmqctl set_permissions -p / admin ".*" ".*" ".*"'
-    $_ex 'rabbitmq-plugins enable rabbitmq_management'
-    $_ex 'service rabbitmq-server restart'
-    if [ $? -ne 0 ]; then
-      echo "ERROR: rabbitmq is not running properly (check the problem in /var/log/rabbitmq)"
-      exit 1
+configureSecurity () {
+    # In case of "noninteractive" FRONTEND the default value will remain valid (see in lines below)
+    if [ "${DEBIAN_FRONTEND}" = "interactive" ]; then
+        read -p "Do you want to enable HTTPS? [N/y]: " https
+        export https=${https}
+        if [ "${https}" != "" ]; then
+            if [ "${https}" = "y" -o "${https}" = "Y" -o "${https}" = "yes" ]; then
+                log_success_msg "Enabling HTTPS .."
+
+                # server.port = 8443
+                $_ex 'sed -i "s/# server.port = 8443/server.port = 8443/g" /etc/openbaton/openbaton.properties'
+                # server.ssl.enabled = true
+                $_ex 'sed -i "s/# server.ssl.enabled = true/server.ssl.enabled = true/g" /etc/openbaton/openbaton.properties'
+                # server.ssl.key-store = /etc/openbaton/keystore.p12
+                $_ex 'sed -i -e "s@# server.ssl.key-store = \/etc\/openbaton\/keystore.p12@server.ssl.key-store = \/etc\/openbaton\/keystore.p12@g" /etc/openbaton/openbaton.properties'               
+                # server.ssl.key-store-password = password                                                                                                                         
+                $_ex 'sed -i "s/# server.ssl.key-store-password = password/server.ssl.key-store-password = password/g" /etc/openbaton/openbaton.properties'
+                # server.ssl.keyStoreType = PKCS12                                                 
+                $_ex 'sed -i "s/# server.ssl.keyStoreType = PKCS12/server.ssl.keyStoreType = PKCS12/g" /etc/openbaton/openbaton.properties'                
+                # server.ssl.keyAlias = tomcat                
+                $_ex 'sed -i "s/# server.ssl.keyAlias = tomcat/server.ssl.keyAlias = tomcat/g" /etc/openbaton/openbaton.properties'                                              
+                # nfvo.https = false
+                $_ex 'sed -i "s/# nfvo.https = false/nfvo.https = true/g" /etc/openbaton/openbaton.properties'
+            fi                                                                                                                                   
+        fi        
     fi
 }
 
-function checkEnvironment {
-  _error=0
-  echo "Checking environment..."
-  checkBinary java; _error=$(($_error + $?))
-  checkBinary javac; _error=$(($_error + $?))
-  checkBinary curl; _error=$(($_error + $?))
-  checkBinary screen; _error=$(($_error + $?))
-  checkBinary wget; _error=$(($_error + $?))
-  if [ "0" != "$_error" ]; then
-    echo >&2 "FAILED. Please install the above mentioned binaries."
-    exit 1
-  fi
+
+###############
+#### MySQL ####
+###############
+
+configureMySQL () {
+    log_success_msg "Configuring MySQL for Open Baton .."        
+    $_ex 'sed -i "s/spring.datasource.url=jdbc:hsqldb:file:\/tmp\/openbaton\/openbaton.hsdb/# spring.datasource.url=jdbc:hsqldb:file:\/tmp\/openbaton\/openbaton.hsdb/g" /etc/openbaton/openbaton.properties'        
+    $_ex 'sed -i "s/spring.datasource.driver-class-name=org.hsqldb.jdbc.JDBCDriver/# spring.datasource.driver-class-name=org.hsqldb.jdbc.JDBCDriver/g" /etc/openbaton/openbaton.properties'        
+    $_ex 'sed -i "s/spring.jpa.database-platform=org.hibernate.dialect.HSQLDialect/# spring.jpa.database-platform=org.hibernate.dialect.HSQLDialect/g" /etc/openbaton/openbaton.properties'
+    $_ex 'sed -i "s/spring.jpa.hibernate.ddl-auto=create-drop/# spring.jpa.hibernate.ddl-auto=create-drop/g" /etc/openbaton/openbaton.properties'        
+    $_ex 'sed -i "s/# spring.jpa.hibernate.ddl-auto=update/spring.jpa.hibernate.ddl-auto=update/g" /etc/openbaton/openbaton.properties'
+    $_ex 'sed -i "s/# spring.datasource.validationQuery=SELECT 1/spring.datasource.validationQuery=SELECT 1/g" /etc/openbaton/openbaton.properties'
+    $_ex 'sed -i "s/# spring.datasource.testOnBorrow=true/spring.datasource.testOnBorrow=true/g" /etc/openbaton/openbaton.properties'
+    # Enable MySQL
+    $_ex 'sed -i "s/# spring.datasource.url=jdbc:mysql:\/\/localhost:3306\/openbaton/spring.datasource.url=jdbc:mysql:\/\/localhost:3306\/openbaton/g" /etc/openbaton/openbaton.properties'                      
+    $_ex 'sed -i "s/# spring.datasource.driver-class-name=com.mysql.jdbc.Driver/spring.datasource.driver-class-name=com.mysql.jdbc.Driver/g" /etc/openbaton/openbaton.properties'
+    $_ex 'sed -i "s/# spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect/spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect/g" /etc/openbaton/openbaton.properties'
+    
+    # In case of "noninteractive" FRONTEND the default value will remain valid (sqluser: admin ; sqlpassword: changeme)
+    # Redundant check since the 'configureMySQL' function is executed only when 'DEBIAN_FRONTEND = interactive'
+    if [ "${DEBIAN_FRONTEND}" = "interactive" ]; then
+        read -p "Please, type the name of the mysql user you would like Open Baton to use [admin]: " sqluser
+        export dbuser=admin
+        export dbpassword=changeme                           
+        if [ "${sqluser}" != "" ]; then                                  
+            dbuser=${sqluser}                                       
+            $_ex 'sed -i "s/spring.datasource.username=admin/spring.datasource.username=${dbuser}/g" /etc/openbaton/openbaton.properties'                             
+        fi
+        # Turning echo on and off between password reading          
+        stty -echo                                                          
+        read -p "Please, provide the password for this user [changeme]: " sqlpassword ; echo                  
+        stty echo                                                                                            
+        if [ "${sqlpassword}" != "" ]; then                 
+            dbpassword=${sqlpassword}                                          
+            $_ex 'sed -i "s/spring.datasource.password=changeme/spring.datasource.password=${dbpassword}/g" /etc/openbaton/openbaton.properties'                                     
+        fi                                                                                                                                                
+        # Turning echo on and off between password reading          
+        stty -echo                                                          
+        read -p "Please, provide the password of the root user of mysql: " rootpasswd ; echo                  
+        stty echo                                                                                            
+        if [ "${rootpasswd}" = "" ]; then                 
+            rootpasswd=changeme                                         
+        fi                               
+        # Create the Database          
+        mysql -uroot -p${rootpasswd} -e "CREATE DATABASE openbaton /*\!40100 DEFAULT CHARACTER SET utf8 */;"                             
+        mysql -uroot -p${rootpasswd} -e "CREATE USER ${dbuser}@localhost IDENTIFIED BY '${dbpassword}';"                                                                             
+        mysql -uroot -p${rootpasswd} -e "GRANT ALL ON openbaton.* TO '${dbuser}'@'localhost';"        
+        mysql -uroot -p${rootpasswd} -e "FLUSH PRIVILEGES;"       
+        mysql -uroot -p${rootpasswd} -e "USE openbaton;"                                                           
+    fi      
 }
 
-
-function createOpenBatonBase {
-    echo "Creating the OpenBaton base folder"
-    # removing it if exists
-    $_ex 'rm -rf '$_openbaton_base
-    $_ex 'mkdir -p '$_nfvo
-    $_ex 'chown -R '"$_user $_openbaton_base"
-}
-
-function createOpenBatonLog {
-    echo "Creating the OpenBaton log folder"
-    # removing it if exists
-    $_ex 'rm -rf '$_openbaton_log
-    $_ex 'mkdir -p '$_openbaton_log
-    $_ex 'chown -R '"$_user $_openbaton_log"
-}
-
-function checkoutOpenBaton {
-    echo "Getting OpenBaton..."
-    createOpenBatonBase
-    createOpenBatonLog
-    git clone --recursive "${_openbaton_base_repo}" "${_nfvo}"
-    pushd "${_nfvo}"
-    git checkout ${_tag}
-    popd
-    $_ex 'rm -rf '"${_openbaton_conf}; mkdir -p ${_openbaton_conf}"
-    $_ex 'cp '"${_nfvo}/etc/openbaton.properties ${_openbaton_conf}/openbaton.properties"
-    $_ex 'cp '"${_nfvo}/etc/keystore.p12 ${_openbaton_conf}/keystore.p12"
-}
-
-
-function downloadPlugins {
-    echo "Getting OpenBaton Plugins..."
-    wget -nH --cut-dirs 2 -r --no-parent  --reject "index.html*" "${_openbaton_plugins}" -P "${_tmpfolder}"
-    mkdir -p ${_nfvo_vim_drivers}
-    cp -r ${_tmpfolder}/* "${_nfvo_vim_drivers}"
-}
-
-
-function promptSetProperties {
-  read -p "Enter the rabbitmq broker ip [localhost]: " brokerIp
-  export brokerIp=$brokerIp
-  if [[ $brokerIp != "" ]]; then
-      $_ex 'sed -i "s/nfvo.rabbit.brokerIp = localhost/nfvo.rabbit.brokerIp = $brokerIp/g" /etc/openbaton/openbaton.properties'
-  fi
-
-  read -p "Enter the rabbitmq management port [15672]: " managementPort
-  export managementPort=$managementPort
-  if [[ $managementPort != "" ]]; then
-    $_ex 'sed -i "s/nfvo.rabbit.management.port = 15672/nfvo.rabbit.management.port = $managementPort/g" /etc/openbaton/openbaton.properties'
-  fi
-
-  read -p "Do you want to enable security [N/y]: " security
-  export security=$security
-  if [[ $security != "" ]]; then
-     if [ $security = "y" -o $security = "Y" -o $security = "yes" ]; then
-       $_ex 'sed -i "s/# nfvo.security.enabled = true/nfvo.security.enabled = true/g" /etc/openbaton/openbaton.properties'
-     fi
-  fi
-  read -p "Do you want to enable HTTPS (##NOTE##: No sdk will work, currently under development :( )[N/y]: " https
-  export https=$https
-  if [[ $https != "" ]]; then
-    if [ $https = "y" -o $http = "Y" -o $https = "yes" ]; then
-       # server.https = false
-       $_ex 'sed -i "s/# server.https = false/server.https = true/g" /etc/openbaton/openbaton.properties'
-        # server.port = 8443       
-       $_ex 'sed -i "s/# server.port = 8443/server.port = 8443/g" /etc/openbaton/openbaton.properties'
-        # server.ssl.key-store = /etc/openbaton/keystore.p12
-       $_ex 'sed -i -e "s@# server.ssl.key-store = \/etc\/openbaton\/keystore.p12@server.ssl.key-store = \/etc\/openbaton\/keystore.p12@g" /etc/openbaton/openbaton.properties'
-       # server.ssl.key-store-password = password
-       $_ex 'sed -i "s/# server.ssl.key-store-password = password/server.ssl.key-store-password = password/g" /etc/openbaton/openbaton.properties'
-       # server.ssl.keyStoreType = PKCS12
-       $_ex 'sed -i "s/# server.ssl.keyStoreType = PKCS12/server.ssl.keyStoreType = PKCS12/g" /etc/openbaton/openbaton.properties'
-       # server.ssl.keyAlias = tomcat
-       $_ex 'sed -i "s/# server.ssl.keyAlias = tomcat/server.ssl.keyAlias = tomcat/g" /etc/openbaton/openbaton.properties'
-     fi
-   fi
-}
-
-function checkoutGenericVNFM {
-    echo "Getting generic-vnfm..."
-    git clone --recursive "${_openbaton_generic_vnfm_repo}" "${_generic_vnfm}"
-    pushd "${_generic_vnfm}"
-    git checkout ${_tag}
-    popd
-}
-
-
-function compileNFVO {
-    echo "compiling the NFVO"
-    pushd "${_nfvo}"
-    ./openbaton.sh compile
-    if [ $? -ne 0 ]; then
-        echo "ERROR: The compilation of the NFVO failed"
-        exit 1
+installMySQL () {
+    # In case of "noninteractive" FRONTEND the default value will remain valid (sqluser: admin ; sqlpassword: changeme)
+    if [ "${DEBIAN_FRONTEND}" = "interactive" ]; then
+        read -p "Do you want to enable the persistence through MySQL? [N/y]: " mysql
+        if [ "${mysql}" != "" ]; then
+            if [ "${mysql}" = "y" -o "${mysql}" = "Y" -o "${mysql}" = "yes" ]; then
+                echo " * [INFO] Enabling MySQL Persistence"
+                $_ex 'apt-get update'
+                $_ex 'apt-get install -y mysql-server'
+                configureMySQL
+            fi
+        else
+            echo " * [WARN] NOT Enabling MySQL Persistence"
+        fi
     fi
-    popd
 }
 
-function startNFVO {
-    echo "starting the NFVO"
-    pushd ${_nfvo}
-    ./openbaton.sh start
-    popd
+
+##############
+#### Main ####
+##############
+
+mainSrc () {
+    wget "${OPENBATON_BOOTSTRAP_SRC_FUNCTIONS_URL}"
+    . ./bootstrap-src-functions
+    src_bootstrap
 }
 
-function deployOpenBaton {
-    compileNFVO
-    startNFVO
+mainDeb () {
+    wget "${OPENBATON_BOOTSTRAP_DEB_FUNCTIONS_URL}"
+    . ./bootstrap-deb-functions
+    deb_bootstrap ${1}
 }
 
-function compileGenericVNFM {
-    echo "compiling the generic VNFM"
-    pushd "${_generic_vnfm}"
-    ./generic-vnfm.sh compile
-    if [ $? -ne 0 ]; then
-        echo "ERROR: The compilation of the Generic VNFM failed"
-        exit 1
+main () {
+    # In case of "noninteractive" FRONTEND the latest RELEASE package will be installed
+    if [ "${DEBIAN_FRONTEND}" = "interactive" ]; then
+        echo "Welcome to the Open Baton menu installation."
+        echo "Available installation types are the following:"
+        echo "    1. develop: it will be downloaded the source code for all the components which will be executed in screens"
+        echo "    2. release: it will be installed the binary version of the latest stable version"
+        echo "    3. nightly: it will be installed the binary version of the latest nightly build (unstable version)"
+        read -p "Select the Open Baton installation type you prefer [2]: " install_type
+        case ${install_type} in
+            1 ) 
+                mainSrc ;;
+            3 ) 
+                mainDeb unstable;;
+            * ) 
+                mainDeb stable ;;
+        esac
+    else
+        mainDeb stable
     fi
-    popd
+
+    log_success_msg "Open Baton installation complete"
 }
 
-function startGenericVNFM {
-    echo "starting the generic VNFM"
-    pushd ${_generic_vnfm}
-    ./generic-vnfm.sh start
-    popd
+fixJavaSecurity () {
+    $_ex 'sed -i "s_securerandom.source=file:/dev/urandom_securerandom.source=file:/dev/./urandom_g" /usr/lib/jvm/java-7-openjdk-amd64/jre/lib/security/java.security'
 }
 
-function deployGenericVNFM {
-    compileGenericVNFM
-    startGenericVNFM
+prereq () {
+    $_ex 'apt-get install -y wget'
 }
 
 
-function bootstrap {
-    # install prerq
-    prereq
-    # checkout OpenBaton
-    checkoutOpenBaton
-    # moved message queue installation part
-    downloadPlugins
-    # moved message queue installation part
-    installMessageQueue
-    # check if all the required libraries are available
-    checkEnvironment
-    # checkout the generic VNFM code
-    checkoutGenericVNFM
-    # prompting properties
-    promptSetProperties
-    # deploy and compile OpenBaton orchestrator
-    deployOpenBaton
-    # deploy and compile the Generic VNFM
-    deployGenericVNFM
-    echo "Now open http://localhost:8080/"
+#####################
+#### Entry Point ####
+#####################
 
-}
+prereq
 
-bootstrap
+if [ -n "${1+1}" ]; then
+    case ${1} in
+        "release" )
+            echo " * [INFO] Installing the latest RELEASE package"
+            mainDeb stable ;;
+        "nightly" )
+            echo " * [INFO] Installing the latest NIGHTLY-BUILD package"
+            mainDeb unstable ;;
+        "develop" )
+            echo " * [INFO] Installing the latest source code"
+            mainSrc ;;
+        *)
+            usage
+            exit 1 ;;
+    esac
+else
+    main
+fi
+

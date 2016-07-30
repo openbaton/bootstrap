@@ -1,0 +1,242 @@
+#!/bin/sh
+
+#_tag="tags/1.0.1"
+_tag="develop"
+
+
+##########################
+#### General Settings ####
+##########################
+
+set -e
+set -u
+#set -x # only for DEBUG
+
+# Make available the functions defined in /lib/lsb/init-functions
+. /lib/lsb/init-functions
+
+
+##########################
+#### Global Variables ####
+##########################
+
+_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+_openbaton_base_repo="https://github.com/openbaton/NFVO.git"
+_openbaton_generic_vnfm_repo="https://github.com/openbaton/generic-vnfm.git"
+_openbaton_plugins="http://get.openbaton.org/plugins/stable/"
+
+_base=/opt
+_openbaton_base="${_base}/openbaton"
+_openbaton_conf="/etc/openbaton"
+_openbaton_log="/var/log/openbaton"
+_nfvo="${_openbaton_base}/nfvo"
+_nfvo_vim_drivers="${_nfvo}/plugins/vim-drivers"
+_generic_vnfm="${_openbaton_base}/generic-vnfm"
+
+_installer_folder="${_base}/tmp"
+_logfile="${_installer_folder}/log"
+_tmpfolder=`mktemp -d`
+
+_user="$(id -un 2>/dev/null || true)"
+
+
+##################
+#### RabbitMQ ####
+##################
+
+src_installMessageQueue () {
+    echo "installing message queue.."
+    $_ex 'apt-get install -y rabbitmq-server'
+    ulimit -S -n 4096
+    $_ex 'rabbitmqctl add_user admin openbaton'
+    $_ex 'rabbitmqctl set_user_tags admin administrator'
+    $_ex 'rabbitmqctl set_permissions -p / admin ".*" ".*" ".*"'
+    $_ex 'rabbitmq-plugins enable rabbitmq_management'
+    $_ex 'service rabbitmq-server restart'
+    if [ $? -ne 0 ]; then
+      echo "ERROR: rabbitmq is not running properly (check the problem in /var/log/rabbitmq)"
+      exit 1
+    fi
+}
+
+src_configureMessageQueue () {
+  read -p "Enter the rabbitmq broker ip [localhost]: " brokerIp
+  export brokerIp=$brokerIp
+  if [[ $brokerIp != "" ]]; then
+      $_ex 'sed -i "s/nfvo.rabbit.brokerIp = localhost/nfvo.rabbit.brokerIp = $brokerIp/g" /etc/openbaton/openbaton.properties'
+  fi
+
+  read -p "Enter the rabbitmq management port [15672]: " managementPort
+  export managementPort=$managementPort
+  if [[ $managementPort != "" ]]; then
+    $_ex 'sed -i "s/nfvo.rabbit.management.port = 15672/nfvo.rabbit.management.port = $managementPort/g" /etc/openbaton/openbaton.properties'
+  fi
+}
+
+
+#############################
+#### VIM-Drivers Plugins ####
+#############################
+
+src_downloadPlugins () {
+    echo "Getting OpenBaton Plugins..."
+    wget -nH --cut-dirs 2 -r --no-parent  --reject "index.html*" "${_openbaton_plugins}" -P "${_tmpfolder}"
+    mkdir -p ${_nfvo_vim_drivers}
+    cp -r ${_tmpfolder}/* "${_nfvo_vim_drivers}"
+}
+
+
+####################
+#### Open Baton ####
+####################
+
+src_prereq () {
+    # TODO differentiate between fedora, OS X, ubuntu..
+    $_ex 'apt-get update; apt-get -y install openjdk-7-jdk curl wget screen git'
+    fixJavaSecurity
+}
+
+src_checkEnvironment () {
+  _error=0
+  echo "Checking environment..."
+  checkBinary java; _error=$(($_error + $?))
+  checkBinary javac; _error=$(($_error + $?))
+  checkBinary curl; _error=$(($_error + $?))
+  checkBinary screen; _error=$(($_error + $?))
+  checkBinary wget; _error=$(($_error + $?))
+  if [ "0" != "$_error" ]; then
+    echo >&2 "FAILED. Please install the above mentioned binaries."
+    exit 1
+  fi
+}
+
+src_createOpenBatonBase () {
+    echo "Creating the OpenBaton base folder"
+    # removing it if exists
+    $_ex 'rm -rf '$_openbaton_base
+    $_ex 'mkdir -p '$_nfvo
+    $_ex 'chown -R '"$_user $_openbaton_base"
+}
+
+src_createOpenBatonLog () {
+    echo "Creating the OpenBaton log folder"
+    # removing it if exists
+    $_ex 'rm -rf '$_openbaton_log
+    $_ex 'mkdir -p '$_openbaton_log
+    $_ex 'chown -R '"$_user $_openbaton_log"
+}
+
+src_checkoutOpenBaton () {
+    echo "Getting OpenBaton..."
+    src_createOpenBatonBase
+    src_createOpenBatonLog
+    git clone --recursive "${_openbaton_base_repo}" "${_nfvo}"
+    cd "${_nfvo}"
+    git checkout ${_tag}
+    $_ex 'rm -rf '"${_openbaton_conf}; mkdir -p ${_openbaton_conf}"
+    $_ex 'cp '"${_nfvo}/etc/openbaton.properties ${_openbaton_conf}/openbaton.properties"
+    $_ex 'cp '"${_nfvo}/etc/keystore.p12 ${_openbaton_conf}/keystore.p12"
+}
+
+src_checkoutGenericVNFM () {
+    echo "Getting generic-vnfm..."
+    git clone --recursive "${_openbaton_generic_vnfm_repo}" "${_generic_vnfm}"
+    cd "${_generic_vnfm}"
+    git checkout ${_tag}
+}
+
+src_compileNFVO () {
+    echo "compiling the NFVO"
+    cd "${_nfvo}"
+    ./openbaton.sh compile
+    if [ $? -ne 0 ]; then
+        echo "ERROR: The compilation of the NFVO failed"
+        exit 1
+    fi
+}
+
+src_startNFVO () {
+    echo "starting the NFVO"
+    cd "${_nfvo}"
+    ./openbaton.sh start
+}
+
+src_deployOpenBaton () {
+    src_compileNFVO
+    installMySQL
+    # setPassword
+    src_startNFVO
+}
+
+src_compileGenericVNFM () {
+    echo "compiling the generic VNFM"
+    cd "${_generic_vnfm}"
+    ./generic-vnfm.sh compile
+    if [ $? -ne 0 ]; then
+        echo "ERROR: The compilation of the Generic VNFM failed"
+        exit 1
+    fi
+}
+
+src_startGenericVNFM () {
+    echo "starting the generic VNFM"
+    cd "${_generic_vnfm}"
+    ./generic-vnfm.sh start
+}
+
+src_deployGenericVNFM () {
+    src_compileGenericVNFM
+    src_startGenericVNFM
+}
+
+src_setPassword () {
+	read -s -p "Provide the new password for admin user of Openbaton: " openbatonpswd
+	echo ""
+	if [[ $openbatonpswd != "" ]]; then
+      		export openbatonpswd=$openbatonpswd
+      		read -s -p "repeat the password: " openbatonpswd2
+		echo ""
+      		export openbatonpswd2=$openbatonpswd2
+		if [[ $openbatonpswd = $openbatonpswd2 ]]; then
+      			$_ex 'sed -i "s/# nfvo.security.admin.password\ =\ openbaton/nfvo.security.admin.password\ =\ $openbatonpswd/g" /etc/openbaton/openbaton.properties'
+            		return
+          	fi
+          	src_setPassword
+  	fi
+}
+
+src_deleteAdminPassword () {
+      $_ex 'sed -i "/^nfvo.security.admin.password =/d" /etc/openbaton/openbaton.properties'
+}
+
+src_bootstrap () {
+    # install prerq
+    src_prereq
+    # checkout OpenBaton
+    src_checkoutOpenBaton
+    # moved message queue installation part
+    src_downloadPlugins
+    # moved message queue installation and configuration part
+    src_installMessageQueue
+    src_configureMessageQueue
+    # moved security configuration part
+    configureSecurity
+    # check if all the required libraries are available
+    src_checkEnvironment
+    # checkout the generic VNFM code
+    src_checkoutGenericVNFM
+    # configure the Open Baton security 
+    configureSecurity
+    # deploy and compile OpenBaton orchestrator
+    src_deployOpenBaton
+    # deploy and compile the Generic VNFM
+    src_deployGenericVNFM
+	echo " * [INFO] Waiting for Open Baton to be up..."
+	while ! nc -z localhost 8080; do   
+	  	sleep 1 # wait for 1 second before check again
+	done
+    echo " * [INFO] Now open http://localhost:8080/"
+    src_deleteAdminPassword
+}
+
