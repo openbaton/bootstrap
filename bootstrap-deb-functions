@@ -177,7 +177,7 @@ deb_bootstrap () {
     deb_installOpenStackVIMPlugin
     deb_installGVNFM ${1}
     installMySQL
-    fixJavaSecurity
+    #fixJavaSecurity
     configureSecurity
     #########
     # Temporary workaround to avoid the spawning of multiple 'Test VIM Driver Plugin' processes during installation
