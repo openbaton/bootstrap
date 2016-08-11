@@ -16,8 +16,6 @@
 
 
 docker {
-    // If done after checkout of the 'tag' it should take the correct version
-    //name "openbaton/standalone:${version}"
     name "openbaton/standalone:2.1.1"
     dockerfile 'gradle/gradle/scripts/docker/Dockerfile'
     files 'gradle/gradle/scripts/docker/supervisord.conf'
