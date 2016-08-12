@@ -94,7 +94,7 @@ src_downloadPlugins () {
 src_prereq () {
     # TODO differentiate between fedora, OS X, ubuntu..
     $_ex 'apt-get update; apt-get -y install openjdk-7-jdk curl wget screen git'
-    fixJavaSecurity
+    #fixJavaSecurity
 }
 
 src_checkEnvironment () {
