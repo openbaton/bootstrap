@@ -22,9 +22,6 @@ DEB_OPENBATON_BASE=/usr
 DEB_OPENBATON_PLUGINS_FOLDER=${DEB_OPENBATON_BASE}/lib/openbaton/plugins
 TMPFOLDER=$(mktemp -d)
 
-# Temporary until plugin installation via deb
-OPENBATON_PLUGINS_OPENSTACK_URL="http://get.openbaton.org/plugins/1.0.2-liberty/openstack-plugin-1.0.2-liberty.jar"
-
 
 #############################
 #### VIM-Drivers Plugins ####
