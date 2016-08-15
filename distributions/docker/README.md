@@ -3,17 +3,24 @@
 To have a running standalone Open Baton Docker container type the following commands:
 
 ```bash
-sudo docker pull openbaton/standalone:2.1.1
-sudo docker run -d -h openbaton-rabbitmq -p 8080:8080 -p 5672:5672 -p 15672:15672 -p 8443:8443 -e RABBITMQ_BROKERIP=<RabbitMQ IP> openbaton/standalone:2.1.1
+sudo docker pull openbaton/standalone:<Open Baton version>
+sudo docker run -d -h openbaton-rabbitmq -p 8080:8080 -p 5672:5672 -p 15672:15672 -p 8443:8443 -e RABBITMQ_BROKERIP=<RabbitMQ IP> openbaton/standalone:<Open Baton version>
 ```
 
-Then you should see as output an alphanumeric string similar to the following:
+***VERY IMPORTANT NOTE*** *- You should put the Open Baton version which you would like to run. You can see which ones
+  are available from [this][reference-to-op-repo-on-public-docker-hub] list*
+
+***VERY IMPORTANT NOTE*** *- You should put as input for the RABBITMQ_BROKERIP the RabbitMQ IP making sure that this IP can be
+  reached by external components (VMs, or host where will run other VNFMs) otherwise you will have runtime issues.
+  In particular, you should select the external IP of your host on top of which the docker container is running**
+
+After running the container you should see as output an alphanumeric string (which represents the Open Baton container's full ID running) similar to the following:
 
 ```bash
 cfc4a7fb23d02c47e25b447d30f6fe7c0464355a16ee1b02d84657f6fba88e07
 ```
 
-You should see that the container is running by typing the following command:
+To verify that the container is running you can type the following command:
 
 ```bash
 sudo docker ps -a
@@ -45,3 +52,4 @@ sudo docker rm cfc4a7fb23d02c47e25b447d30f6fe7c0464355a16ee1b02d84657f6fba88e07
 ```
 
 
+[reference-to-op-repo-on-public-docker-hub]:https://hub.docker.com/r/openbaton/standalone/tags/
