@@ -1,6 +1,6 @@
 # Open Baton via Vagrant
 
-If you already have Vagrant installed in your system, you can install the latest RELEASE Open Baton version by using this [Vagrantfile] (https://github.com/openbaton/bootstrap/distributions/vagrant/Vagrantfile) and simply typing the following command:  
+If you already have Vagrant installed in your system, you can install the latest RELEASE Open Baton version by using this [Vagrantfile] (https://github.com/openbaton/bootstrap/blob/develop/distributions/vagrant/Vagrantfile) and simply typing the following command:  
 
 ```bash
 vagrant up
