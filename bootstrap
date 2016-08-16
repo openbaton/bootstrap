@@ -41,8 +41,6 @@ USER="$(id -un 2>/dev/null || true)"
 OPENBATON_BOOTSTRAP_SRC_FUNCTIONS_URL=http://get.openbaton.org/bootstrap-src-functions
 OPENBATON_BOOTSTRAP_DEB_FUNCTIONS_URL=http://get.openbaton.org/bootstrap-deb-functions
 
-OPENBATON_PLUGINS_OPENSTACK_URL="http://get.openbaton.org/plugins/2.1.2/openstack-plugin-2.1.2.jar"
-
 OPENJDK_7_LINUX_X86_64_SECURITYFILE="/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/security/java.security"
 OPENJDK_7_LINUX_I386_SECURITYFILE="/usr/lib/jvm/java-7-openjdk-i386/jre/lib/security/java.security"
 OPENJDK_7_OSX_SECURITYFILE="/Library/Java/JavaVirtualMachines/jdk1.7.*.jdk/Contents/Home/jre/lib/security/java.security"

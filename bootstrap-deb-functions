@@ -16,46 +16,22 @@ set -u
 #### Global Variables ####
 ##########################
 
-USER="$(id -un 2>/dev/null || true)"
-
-DEB_OPENBATON_BASE=/usr
-DEB_OPENBATON_PLUGINS_FOLDER=${DEB_OPENBATON_BASE}/lib/openbaton/plugins
-TMPFOLDER=$(mktemp -d)
 
 
 #############################
 #### VIM-Drivers Plugins ####
 #############################
 
-deb_pluginsPrereq () {
-    log_success_msg "Configuring the Plugins environment .."
-    mkdir -p ${DEB_OPENBATON_PLUGINS_FOLDER}    
-    export DEB_OPENBATON_PLUGINS_FOLDER="${DEB_OPENBATON_PLUGINS_FOLDER}"
-    $_ex 'sed -i "s~nfvo.plugin.installation-dir = ./plugins~nfvo.plugin.installation-dir = "${OPENBATON_PLUGINS_FOLDER}"~" /etc/openbaton/openbaton.properties'                
-}
-
-deb_getOpenStackVIMPlugin () {
-    deb_pluginsPrereq
-
-    #### TODO install plugin via deb
-    log_success_msg "Getting OpenStack VIM-Driver Plugin .."
-    wget -nH --cut-dirs 2 -r --no-parent  --reject "index.html*" "${OPENBATON_PLUGINS_OPENSTACK_URL}" -P "${TMPFOLDER}"
-    export DEB_OPENBATON_PLUGINS_FOLDER="${DEB_OPENBATON_PLUGINS_FOLDER}"
-    export TMPFOLDER="${TMPFOLDER}"
-    $_ex 'cp ${TMPFOLDER}/* "${DEB_OPENBATON_PLUGINS_FOLDER}"'
-    ####
-}
-
-
 deb_installOpenStackVIMPlugin () {
     if [ "${DEBIAN_FRONTEND}" = "interactive" ]; then
         read -p "Do you want to install the OpenStack VIM-Driver Plugin? [Y/n]: " yn                                    
         if [ "${yn}" != "n" -a "${yn}" != "N" ]; then
-            deb_getOpenStackVIMPlugin
+            log_success_msg "[INFO] Installing the OpenStack VIM-Driver Plugin"
+            $_ex 'apt-get install -y openbaton-openstack-vimplugin'
         fi                                                                  
     else
-        echo " * [INFO] Installing the OpenStack VIM-Driver Plugin"
-        deb_getOpenStackVIMPlugin
+        log_success_msg "[INFO] Installing the OpenStack VIM-Driver Plugin"
+        $_ex 'apt-get install -y openbaton-openstack-vimplugin'
     fi                        
 }
 
