@@ -12,16 +12,8 @@ ENV OPENBATON_AUTOSTART false
 
 ENV RABBITMQ_BROKERIP=localhost
 
-# Adding Open Baton repository and installing NFVO and GVNFM
-RUN wget -O - http://get.openbaton.org/keys/public.gpg.key | apt-key add -
-RUN echo "deb http://get.openbaton.org/repos/apt/debian/ stable main" >> /etc/apt/sources.list
-RUN apt-get update
-RUN apt-get install -y --force-yes \
-    openbaton-nfvo \
-    openbaton-gvnfm
-
-# Installing the OpenStack VIM Driver Plugin
-RUN cd /usr/lib/openbaton/plugins/ && wget http://get.openbaton.org/plugins/1.0.2-liberty/openstack-plugin-1.0.2-liberty.jar
+# Installing NFVO and GVNFM through the bootstrap
+RUN wget http://get.openbaton.org/bootstrap && chmod +x bootstrap && ./bootstrap release
 
 # Supervisor installation (allow to run multiple services in a Docker container)
 RUN apt-get install -y supervisor
