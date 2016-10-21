@@ -226,9 +226,9 @@ main () {
     if [ "${DEBIAN_FRONTEND}" = "interactive" ]; then
         echo "Welcome to the Open Baton menu installation."
         echo "Available installation types are the following:"
-        echo "    1. develop: it will be downloaded the source code for all the components which will be executed in screens"
-        echo "    2. release: it will be installed the binary version of the latest stable version"
-        echo "    3. nightly: it will be installed the binary version of the latest nightly build (unstable version)"
+        echo "    1. develop (SOURCE): it will be downloaded the source code for all the components which will be executed in screens"
+        echo "    2. release (DEBIAN): it will be installed the binary version of the latest released version"
+        echo "    3. nightly (DEBIAN): it will be installed the binary version of the latest nightly build"
         read -p "Select the Open Baton installation type you prefer [2]: " install_type
         case ${install_type} in
             1 ) 
