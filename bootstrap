@@ -195,7 +195,7 @@ installMySQL () {
             if [ "${mysql}" = "y" -o "${mysql}" = "Y" -o "${mysql}" = "yes" ]; then
                 echo " * [INFO] Enabling MySQL Persistence"
                 $_ex 'apt-get update'
-                $_ex 'apt-get install -y mysql-server'
+                $_ex 'apt-get install -y mysql-server --force-yes'
                 configureMySQL
             fi
         else
@@ -246,7 +246,7 @@ main () {
 }
 
 prereq () {
-    $_ex 'apt-get install -y wget'
+    $_ex 'apt-get install -y wget --force-yes'
 }
 
 
