@@ -62,13 +62,13 @@ src_installMessageQueue () {
 src_configureMessageQueue () {
   read -p "Enter the rabbitmq broker ip [localhost]: " brokerIp
   export brokerIp=$brokerIp
-  if [[ $brokerIp != "" ]]; then
+  if [ "${brokerIp}" != "" ]; then
       $_ex 'sed -i "s/nfvo.rabbit.brokerIp = localhost/nfvo.rabbit.brokerIp = $brokerIp/g" /etc/openbaton/openbaton.properties'
   fi
 
   read -p "Enter the rabbitmq management port [15672]: " managementPort
   export managementPort=$managementPort
-  if [[ $managementPort != "" ]]; then
+  if [ "${managementPort}" != "" ]; then
     $_ex 'sed -i "s/nfvo.rabbit.management.port = 15672/nfvo.rabbit.management.port = $managementPort/g" /etc/openbaton/openbaton.properties'
   fi
 }
@@ -192,12 +192,12 @@ src_deployGenericVNFM () {
 src_setPassword () {
 	read -s -p "Provide the new password for admin user of Openbaton: " openbatonpswd
 	echo ""
-	if [[ $openbatonpswd != "" ]]; then
+	if [ "${openbatonpswd}" != "" ]; then
       		export openbatonpswd=$openbatonpswd
       		read -s -p "repeat the password: " openbatonpswd2
 		echo ""
       		export openbatonpswd2=$openbatonpswd2
-		if [[ $openbatonpswd = $openbatonpswd2 ]]; then
+		if [ "${openbatonpswd}" = $openbatonpswd2 ]; then
       			$_ex 'sed -i "s/# nfvo.security.admin.password\ =\ openbaton/nfvo.security.admin.password\ =\ $openbatonpswd/g" /etc/openbaton/openbaton.properties'
             		return
           	fi
