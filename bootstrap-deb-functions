@@ -161,6 +161,7 @@ deb_bootstrap () {
     #deb_install_additional_component ${1} fms "Fault Management System" false
     #deb_install_additional_component ${1} ass "Auto Scaling System" false
     #deb_install_additional_component ${1} nse "Network Slicing Engine" false
+    deb_install_additional_component ${1} cli "Command Line Interface (CLI)" false
     installMySQL
     fixJavaSecurity
     configureSecurity
