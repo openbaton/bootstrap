@@ -91,7 +91,7 @@ fi
 
 configureSecurity () {
     # In case of "noninteractive" FRONTEND the default value will remain valid (see in lines below)
-    if [ "${DEBIAN_FRONTEND}" = "interactive" ]; then
+    if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         read -p "Do you want to enable HTTPS? [N/y]: " https
         export https=${https}
         if [ "${https}" != "" ]; then
@@ -154,50 +154,49 @@ configureMySQL () {
     $_ex 'sed -i "s/# spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect/spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect/g" /etc/openbaton/openbaton.properties'
     
     # In case of "noninteractive" FRONTEND the default value will remain valid (sqluser: admin ; sqlpassword: changeme)
-    # Redundant check since the 'configureMySQL' function is executed only when 'DEBIAN_FRONTEND = interactive'
-    if [ "${DEBIAN_FRONTEND}" = "interactive" ]; then
+    # Redundant check since the 'configureMySQL' function is executed only when 'DEBIAN_FRONTEND != noninteractive'
+    if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         read -p "Please, type the name of the mysql user you would like Open Baton to use [admin]: " sqluser
         export dbuser=admin
-        export dbpassword=changeme                           
-        if [ "${sqluser}" != "" ]; then                                  
-            dbuser=${sqluser}                                       
-            $_ex 'sed -i "s/spring.datasource.username=admin/spring.datasource.username=${dbuser}/g" /etc/openbaton/openbaton.properties'                             
+        export dbpassword=changeme
+        if [ "${sqluser}" != "" ]; then
+            dbuser=${sqluser}
+            $_ex 'sed -i "s/spring.datasource.username=admin/spring.datasource.username=${dbuser}/g" /etc/openbaton/openbaton.properties'
         fi
-        # Turning echo on and off between password reading          
-        stty -echo                                                          
-        read -p "Please, provide the password for this user [changeme]: " sqlpassword ; echo                  
-        stty echo                                                                                            
-        if [ "${sqlpassword}" != "" ]; then                 
-            dbpassword=${sqlpassword}                                          
-            $_ex 'sed -i "s/spring.datasource.password=changeme/spring.datasource.password=${dbpassword}/g" /etc/openbaton/openbaton.properties'                                     
+        # Turning echo on and off between password reading
+        stty -echo
+        read -p "Please, provide the password for this user [changeme]: " sqlpassword ; echo
+        stty echo
+        if [ "${sqlpassword}" != "" ]; then
+            dbpassword=${sqlpassword}
+            $_ex 'sed -i "s/spring.datasource.password=changeme/spring.datasource.password=${dbpassword}/g" /etc/openbaton/openbaton.properties'
         fi                                                                                                                                                
         # Turning echo on and off between password reading          
-        stty -echo                                                          
-        read -p "Please, provide the password of the root user of mysql: " rootpasswd ; echo                  
-        stty echo                                                                                            
-        if [ "${rootpasswd}" = "" ]; then                 
-            rootpasswd=changeme                                         
-        fi                               
-        # Create the Database          
-        mysql -uroot -p${rootpasswd} -e "CREATE DATABASE openbaton /*\!40100 DEFAULT CHARACTER SET utf8 */;"                             
-        mysql -uroot -p${rootpasswd} -e "CREATE USER ${dbuser}@localhost IDENTIFIED BY '${dbpassword}';"                                                                             
-        mysql -uroot -p${rootpasswd} -e "GRANT ALL ON openbaton.* TO '${dbuser}'@'localhost';"        
-        mysql -uroot -p${rootpasswd} -e "FLUSH PRIVILEGES;"       
-        mysql -uroot -p${rootpasswd} -e "USE openbaton;"                                                           
-    fi      
+        stty -echo
+        read -p "Please, provide the password of the 'root' user of mysql: " rootpasswd ; echo
+        stty echo
+        if [ "${rootpasswd}" = "" ]; then
+            rootpasswd=root
+            log_warning_msg "Password inserted is empty, trying to guess the 'root' password for the Open Baton MYSQL configuration"
+        fi
+        # Create the Database
+        mysql -uroot -p${rootpasswd} -e "CREATE DATABASE openbaton /*\!40100 DEFAULT CHARACTER SET utf8 */;"
+        mysql -uroot -p${rootpasswd} -e "CREATE USER ${dbuser}@localhost IDENTIFIED BY '${dbpassword}';"
+        mysql -uroot -p${rootpasswd} -e "GRANT ALL ON openbaton.* TO '${dbuser}'@'localhost';"
+        mysql -uroot -p${rootpasswd} -e "FLUSH PRIVILEGES;"
+        mysql -uroot -p${rootpasswd} -e "USE openbaton;"
+    fi
 }
 
 installMySQL () {
     # In case of "noninteractive" FRONTEND the default value will remain valid (sqluser: admin ; sqlpassword: changeme)
-    if [ "${DEBIAN_FRONTEND}" = "interactive" ]; then
-        read -p "Do you want to enable the persistence through MySQL? [N/y]: " mysql
-        if [ "${mysql}" != "" ]; then
-            if [ "${mysql}" = "y" -o "${mysql}" = "Y" -o "${mysql}" = "yes" ]; then
-                echo " * [INFO] Enabling MySQL Persistence"
-                $_ex 'apt-get update'
-                $_ex 'apt-get install -y mysql-server --force-yes'
-                configureMySQL
-            fi
+    if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
+        read -p "Do you want to enable the persistence through MySQL? [Y/n]: " mysql
+        if [ "${mysql}" = "" -o "${mysql}" = "y" -o "${mysql}" = "Y" -o "${mysql}" = "yes" ]; then
+            echo " * [INFO] Enabling MySQL Persistence"
+            $_ex 'apt-get update'
+            $_ex 'apt-get install -y mysql-server'
+            configureMySQL
         else
             echo " * [WARN] NOT Enabling MySQL Persistence"
         fi
@@ -223,7 +222,7 @@ mainDeb () {
 
 main () {
     # In case of "noninteractive" FRONTEND the latest RELEASE package will be installed
-    if [ "${DEBIAN_FRONTEND}" = "interactive" ]; then
+    if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         echo "Welcome to the Open Baton menu installation."
         echo "Available installation types are the following:"
         echo "    1. develop (SOURCE): it will be downloaded the source code for all the components which will be executed in screens"
@@ -246,7 +245,7 @@ main () {
 }
 
 prereq () {
-    $_ex 'apt-get install -y wget --force-yes'
+    $_ex 'apt-get install -y wget'
 }
 
 

@@ -72,9 +72,9 @@ deb_installNFVO () {
 
     # Install the correct NFVO package according to the given input parameter
     if [ "${codename}" = "stable" ]; then
-        $_ex 'apt-get install -y openbaton-nfvo --force-yes'
+        $_ex 'apt-get install -y openbaton-nfvo'
     else
-        $_ex 'apt-get install -y openbaton-nfvo-nightly --force-yes'
+        $_ex 'apt-get install -y openbaton-nfvo-nightly'
     fi    
 }
 
@@ -98,7 +98,7 @@ deb_install_additional_component () {
     export component_name_fancy="${3}"
     export component_of_minimal_installation="${4}"
 
-    if [ "${DEBIAN_FRONTEND}" = "interactive" ]; then
+    if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         # Ask for the specified Additional Component installation
         read -p "Do you want to install also the ${component_name_fancy}? (if you do not, then you can still install it later with 'sudo apt-get install openbaton-${component_name}') (Y/n): " ac
 
@@ -107,27 +107,27 @@ deb_install_additional_component () {
             echo " * [WARN] Open Baton ${component_name_fancy} not installed"
             if [ "${codename}" = "stable" ]; then
                 echo " * To install the latest release package:"
-                echo " *     sudo apt-get install openbaton-${component_name} --force-yes"
+                echo " *     sudo apt-get install openbaton-${component_name}"
             else
                 echo " * To install the latest nightly-build package:"
-                echo " *     sudo apt-get install openbaton-${component_name}-nightly --force-yes"
+                echo " *     sudo apt-get install openbaton-${component_name}-nightly"
             fi
             return
         else
             # Install the correct Additional Component package according to the given input parameter
             if [ "${codename}" = "stable" ]; then
-                $_ex 'apt-get install -y openbaton-${component_name} --force-yes'
+                $_ex 'apt-get install -y openbaton-${component_name}'
             else
-                $_ex 'apt-get install -y openbaton-${component_name}-nightly --force-yes'
+                $_ex 'apt-get install -y openbaton-${component_name}-nightly'
             fi
         fi
     else
         if [ "${component_of_minimal_installation}" = "true" ]; then
             # Install the correct Additional Component package according to the given input parameter
             if [ "${codename}" = "stable" ]; then
-                $_ex 'apt-get install -y openbaton-${component_name} --force-yes'
+                $_ex 'apt-get install -y openbaton-${component_name}'
             else
-                $_ex 'apt-get install -y openbaton-${component_name}-nightly --force-yes'
+                $_ex 'apt-get install -y openbaton-${component_name}-nightly'
             fi
         fi
     fi
@@ -146,6 +146,16 @@ deb_restart_additional_component () {
     fi
 }
 
+deb_is_additional_component_installed () {
+    export component_name=${1}
+
+    installed=$(dpkg -l | grep -v grep | grep "openbaton-${component_name}" | wc -l)
+    if [ ${installed} -eq 0 ]; then
+        return 1 # not installed
+    else
+        return 0 # installed
+    fi
+}
 
 ###################
 #### Bootstrap ####
@@ -171,7 +181,10 @@ deb_bootstrap () {
     sleep 60
     #########
     deb_restartNFVO
-    deb_restart_additional_component gvnfm "Generic VNFM"
+    res=$(deb_is_additional_component_installed gvnfm)
+    if [ ${res} -eq 0 ]; then
+        deb_restart_additional_component gvnfm "Generic VNFM"
+    fi
     #deb_restart_additional_component fms "Fault Management System"
     #deb_restart_additional_component ass "Auto Scaling System"
     #deb_restart_additional_component nse "Network Slicing Engine"
