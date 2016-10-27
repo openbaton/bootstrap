@@ -151,9 +151,9 @@ deb_is_additional_component_installed () {
 
     installed=$(dpkg -l | grep -v grep | grep "openbaton-${component_name}" | wc -l)
     if [ ${installed} -eq 0 ]; then
-        return 1 # not installed
+        installed=1 # not installed
     else
-        return 0 # installed
+        installed=0 # installed
     fi
 }
 
@@ -168,25 +168,24 @@ deb_bootstrap () {
     deb_install_additional_component stable openstack-vimplugin "OpenStack VIM-Driver Plugin" true
     # Arguments of "deb_install_additional_component": ${1} component-name component-name-fancy component_of_a_minimal_installation
     deb_install_additional_component ${1} gvnfm "Generic VNFM" true
-    #deb_install_additional_component ${1} fms "Fault Management System" false
-    #deb_install_additional_component ${1} ass "Auto Scaling System" false
-    #deb_install_additional_component ${1} nse "Network Slicing Engine" false
+    deb_install_additional_component ${1} fms "Fault Management System" false
+    deb_install_additional_component ${1} ase "Auto Scaling Engine" false
+    deb_install_additional_component ${1} nse "Network Slicing Engine" false
     deb_install_additional_component ${1} cli "Command Line Interface (CLI)" false
     installMySQL
     fixJavaSecurity
     configureSecurity
+    
     #########
     # Temporary workaround to avoid the spawning of multiple 'Test VIM Driver Plugin' processes during installation
     log_success_msg "Finalising Open Baton installation .."
     sleep 60
     #########
+    
     deb_restartNFVO
-    res=$(deb_is_additional_component_installed gvnfm)
-    if [ ${res} -eq 0 ]; then
-        deb_restart_additional_component gvnfm "Generic VNFM"
-    fi
-    #deb_restart_additional_component fms "Fault Management System"
-    #deb_restart_additional_component ass "Auto Scaling System"
-    #deb_restart_additional_component nse "Network Slicing Engine"
+    deb_is_additional_component_installed gvnfm ; if [ "${installed}" = "0" ]; then deb_restart_additional_component gvnfm "Generic VNFM" ; fi
+    deb_is_additional_component_installed fms ; if [ "${installed}" = "0" ]; then deb_restart_additional_component fms "Fault Management System" ; fi
+    deb_is_additional_component_installed ase ; if [ "${installed}" = "0" ]; then deb_restart_additional_component ase "Auto Scaling Engine" ; fi
+    deb_is_additional_component_installed nse ; if [ "${installed}" = "0" ]; then deb_restart_additional_component nse "Network Slicing Engine" ; fi
 }
 

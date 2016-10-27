@@ -19,11 +19,14 @@ set -u
 #### Global Variables ####
 ##########################
 
-_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+#_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 _openbaton_base_repo="https://github.com/openbaton/NFVO.git"
-_openbaton_generic_vnfm_repo="https://github.com/openbaton/generic-vnfm.git"
 _openbaton_plugins="http://get.openbaton.org/plugins/stable/"
+_openbaton_generic_vnfm_repo="https://github.com/openbaton/generic-vnfm.git"
+_openbaton_fmsystem_repo="https://github.com/openbaton/fm-system.git"
+_openbaton_asengine_repo="https://github.com/openbaton/autoscaling-engine.git"
+_openbaton_nsengine_repo="https://github.com/openbaton/network-slicing-engine.git"
 
 _base=/opt
 _openbaton_base="${_base}/openbaton"
@@ -138,13 +141,6 @@ src_checkoutOpenBaton () {
     $_ex 'cp '"${_nfvo}/etc/keystore.p12 ${_openbaton_conf}/keystore.p12"
 }
 
-src_checkoutGenericVNFM () {
-    echo "Getting generic-vnfm..."
-    git clone --recursive "${_openbaton_generic_vnfm_repo}" "${_generic_vnfm}"
-    cd "${_generic_vnfm}"
-    git checkout ${_tag}
-}
-
 src_compileNFVO () {
     echo "compiling the NFVO"
     cd "${_nfvo}"
@@ -168,41 +164,59 @@ src_deployOpenBaton () {
     src_startNFVO
 }
 
-src_compileGenericVNFM () {
-    echo "compiling the generic VNFM"
-    cd "${_generic_vnfm}"
-    ./generic-vnfm.sh compile
+
+
+##############################
+#### Additional Component ####
+
+src_checkoutAdditionalComponent () {
+    component_repo_url=${1}
+    component_name=${2}                       # the directory on which the repo will be locally cloned
+    component_name_fancy="${3}"
+    #component_of_minimal_installation="${4}"
+
+    if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
+        # Ask for the specified Additional Component installation
+        read -p "Do you want to install also the ${component_name_fancy}? (if you do not, then you can still install it later with 'sudo apt-get install openbaton-${component_name}') (Y/n): " ac
+
+        if [ "${ac}" = "" -o "${ac}" = "y" -o "${ac}" = "Y" ]; then
+            cd "${_openbaton_base}"
+            echo "Getting ${component_name_fancy} .."
+            git clone --recursive "${component_repo_url}" "${component_name}"
+            cd "${component_name}"
+            git checkout ${_tag}
+            installed=0
+            return
+        fi
+    fi
+    installed=1
+}
+
+src_compileAdditionalComponent () {
+    component_name=${1}                       # the directory on which the repo has been cloned
+    component_name_fancy="${2}"
+
+    echo "Compiling the ${component_name_fancy} .."
+    cd "${_openbaton_base}/${component_name}"
+    ./${component_name}.sh compile
     if [ $? -ne 0 ]; then
         echo "ERROR: The compilation of the Generic VNFM failed"
         exit 1
     fi
 }
 
-src_startGenericVNFM () {
-    echo "starting the generic VNFM"
-    cd "${_generic_vnfm}"
-    ./generic-vnfm.sh start
+src_startAdditionalComponent () {
+    component_name=${1}                       # the directory on which the repo has been cloned
+    component_name_fancy="${2}"
+    
+    echo "Starting the ${component_name_fancy} .."
+    cd "${_openbaton_base}/${component_name}"
+    ./${component_name}.sh start
 }
 
-src_deployGenericVNFM () {
-    src_compileGenericVNFM
-    src_startGenericVNFM
-}
-
-src_setPassword () {
-	read -s -p "Provide the new password for admin user of Openbaton: " openbatonpswd
-	echo ""
-	if [ "${openbatonpswd}" != "" ]; then
-      		export openbatonpswd=$openbatonpswd
-      		read -s -p "repeat the password: " openbatonpswd2
-		echo ""
-      		export openbatonpswd2=$openbatonpswd2
-		if [ "${openbatonpswd}" = $openbatonpswd2 ]; then
-      			$_ex 'sed -i "s/# nfvo.security.admin.password\ =\ openbaton/nfvo.security.admin.password\ =\ $openbatonpswd/g" /etc/openbaton/openbaton.properties'
-            		return
-          	fi
-          	src_setPassword
-  	fi
+src_deployAdditionalComponent () {
+    src_compileAdditionalComponent ${1} ${2}
+    src_startAdditionalComponent ${1} ${2}
 }
 
 src_deleteAdminPassword () {
@@ -212,6 +226,7 @@ src_deleteAdminPassword () {
 src_bootstrap () {
     # install prerq
     src_prereq
+
     # checkout OpenBaton
     src_checkoutOpenBaton
     # moved message queue installation part
@@ -219,19 +234,34 @@ src_bootstrap () {
     # moved message queue installation and configuration part
     src_installMessageQueue
     src_configureMessageQueue
-    # moved security configuration part
-    configureSecurity
     # check if all the required libraries are available
     src_checkEnvironment
-    # checkout the generic VNFM code
-    src_checkoutGenericVNFM
     # configure the Open Baton security 
     configureSecurity
     # deploy and compile OpenBaton orchestrator
     src_deployOpenBaton
+
+    # checkout the generic VNFM code
+    src_checkoutAdditionalComponent "${_openbaton_generic_vnfm_repo}" "generic-vnfm" "Generic VNFM"
     # deploy and compile the Generic VNFM
-    src_deployGenericVNFM
-	echo " * [INFO] Waiting for Open Baton to be up..."
+    if [ "${installed}" = "0" ]; then src_deployAdditionalComponent "generic-vnfm" "Generic VNFM" ; fi
+
+    # checkout the Fault Management System
+    src_checkoutAdditionalComponent "${_openbaton_fmsystem_repo}" "fm-system" "Fault Management System (FMS)"
+    # deploy and compile the Fault Management System
+    if [ "${installed}" = "0" ]; then src_deployAdditionalComponent "fm-system" "Fault Management System (FMS)" ; fi
+
+    # checkout the Auto Scaling Engine
+    src_checkoutAdditionalComponent "${_openbaton_asengine_repo}" "autoscaling-engine" "Auto Scaling Engine (ASE)"
+    # deploy and compile the Auto Scaling Engine
+    if [ "${installed}" = "0" ]; then src_deployAdditionalComponent "autoscaling-engine" "Auto Scaling Engine (ASE)" ; fi
+
+    # checkout the Network Slicing Engine
+    src_checkoutAdditionalComponent "${_openbaton_nsengine_repo}" "network-slicing-engine" "Network Slicing Engine (NSE)"
+    # deploy and compile the Network Slicing Engine
+    if [ "${installed}" = "0" ]; then src_deployAdditionalComponent "network-slicing-engine" "Network Slicing Engine" ; fi
+
+    echo " * [INFO] Waiting for Open Baton to be up..."
 	while ! nc -z localhost 8080; do   
 	  	sleep 1 # wait for 1 second before check again
 	done
