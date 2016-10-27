@@ -177,7 +177,7 @@ src_checkoutAdditionalComponent () {
 
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         # Ask for the specified Additional Component installation
-        read -p "Do you want to install also the ${component_name_fancy}? (if you do not, then you can still install it later with 'sudo apt-get install openbaton-${component_name}') (Y/n): " ac
+        read -p "Do you want to install also the ${component_name_fancy}? (if you do not, then you can still install it later with 'cd ${_openbaton_base} && git clone ${component_repo_url}') (Y/n): " ac
 
         if [ "${ac}" = "" -o "${ac}" = "y" -o "${ac}" = "Y" ]; then
             cd "${_openbaton_base}"
