@@ -173,11 +173,10 @@ configureMySQL () {
         fi                                                                                                                                                
         # Turning echo on and off between password reading          
         stty -echo
-        read -p "Please, provide the password of the 'root' user of mysql: " rootpasswd ; echo
+        read -p "Please, provide the password of the 'root' user of mysql [root]: " rootpasswd ; echo
         stty echo
         if [ "${rootpasswd}" = "" ]; then
             rootpasswd=root
-            log_warning_msg "Password inserted is empty, trying to guess the 'root' password for the Open Baton MYSQL configuration"
         fi
         # Create the Database
         mysql -uroot -p${rootpasswd} -e "CREATE DATABASE openbaton /*\!40100 DEFAULT CHARACTER SET utf8 */;"

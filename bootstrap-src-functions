@@ -137,7 +137,7 @@ src_checkoutOpenBaton () {
     cd "${_nfvo}"
     git checkout ${_tag}
     $_ex 'rm -rf '"${_openbaton_conf}; mkdir -p ${_openbaton_conf}"
-    $_ex 'cp '"${_nfvo}/etc/openbaton.properties ${_openbaton_conf}/openbaton.properties"
+    $_ex 'cp '"${_nfvo}/etc/openbaton.properties ${_openbaton_conf}/openbaton-nfvo.properties"
     $_ex 'cp '"${_nfvo}/etc/keystore.p12 ${_openbaton_conf}/keystore.p12"
 }
 
@@ -173,7 +173,9 @@ src_checkoutAdditionalComponent () {
     component_repo_url=${1}
     component_name=${2}                       # the directory on which the repo will be locally cloned
     component_name_fancy="${3}"
-    #component_of_minimal_installation="${4}"
+    component_properties_file_src="${4}"
+    component_properties_file_dest="${5}"
+    component_of_minimal_installation="${6}"
 
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         # Ask for the specified Additional Component installation
@@ -185,6 +187,7 @@ src_checkoutAdditionalComponent () {
             git clone --recursive "${component_repo_url}" "${component_name}"
             cd "${component_name}"
             git checkout ${_tag}
+            $_ex 'cp '"${component_properties_file_src} ${_openbaton_conf}/${component_properties_file_dest}"
             installed=0
             return
         fi
@@ -242,22 +245,22 @@ src_bootstrap () {
     src_deployOpenBaton
 
     # checkout the generic VNFM code
-    src_checkoutAdditionalComponent "${_openbaton_generic_vnfm_repo}" "generic-vnfm" "Generic VNFM"
+    src_checkoutAdditionalComponent "${_openbaton_generic_vnfm_repo}" "generic-vnfm" "Generic VNFM" "src/main/resources/application.properties" "openbaton-vnfm-generic.properties" true
     # deploy and compile the Generic VNFM
     if [ "${installed}" = "0" ]; then src_deployAdditionalComponent "generic-vnfm" "Generic VNFM" ; fi
 
     # checkout the Fault Management System
-    src_checkoutAdditionalComponent "${_openbaton_fmsystem_repo}" "fm-system" "Fault Management System (FMS)"
+    src_checkoutAdditionalComponent "${_openbaton_fmsystem_repo}" "fm-system" "Fault Management System (FMS)" "etc/fms.properties" "openbaton-fms.properties" false
     # deploy and compile the Fault Management System
     if [ "${installed}" = "0" ]; then src_deployAdditionalComponent "fm-system" "Fault Management System (FMS)" ; fi
 
     # checkout the Auto Scaling Engine
-    src_checkoutAdditionalComponent "${_openbaton_asengine_repo}" "autoscaling-engine" "Auto Scaling Engine (ASE)"
+    src_checkoutAdditionalComponent "${_openbaton_asengine_repo}" "autoscaling-engine" "Auto Scaling Engine (ASE)" "etc/ase.properties" "openbaton-ase.properties" false
     # deploy and compile the Auto Scaling Engine
     if [ "${installed}" = "0" ]; then src_deployAdditionalComponent "autoscaling-engine" "Auto Scaling Engine (ASE)" ; fi
 
     # checkout the Network Slicing Engine
-    src_checkoutAdditionalComponent "${_openbaton_nsengine_repo}" "network-slicing-engine" "Network Slicing Engine (NSE)"
+    src_checkoutAdditionalComponent "${_openbaton_nsengine_repo}" "network-slicing-engine" "Network Slicing Engine (NSE)" "etc/nse.properties" "openbaton-nse.properties" false
     # deploy and compile the Network Slicing Engine
     if [ "${installed}" = "0" ]; then src_deployAdditionalComponent "network-slicing-engine" "Network Slicing Engine" ; fi
 
