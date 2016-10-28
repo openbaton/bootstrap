@@ -64,15 +64,15 @@ src_installMessageQueue () {
 
 src_configureMessageQueue () {
   read -p "Enter the rabbitmq broker ip [localhost]: " brokerIp
-  export brokerIp=$brokerIp
+  export brokerIp=${brokerIp}
   if [ "${brokerIp}" != "" ]; then
-      $_ex 'sed -i "s/nfvo.rabbit.brokerIp = localhost/nfvo.rabbit.brokerIp = $brokerIp/g" /etc/openbaton/openbaton.properties'
+      $_ex 'sed -i "s/nfvo.rabbit.brokerIp=localhost/nfvo.rabbit.brokerIp=${brokerIp}/g" /etc/openbaton/openbaton.properties'
   fi
 
   read -p "Enter the rabbitmq management port [15672]: " managementPort
-  export managementPort=$managementPort
+  export managementPort=${managementPort}
   if [ "${managementPort}" != "" ]; then
-    $_ex 'sed -i "s/nfvo.rabbit.management.port = 15672/nfvo.rabbit.management.port = $managementPort/g" /etc/openbaton/openbaton.properties'
+    $_ex 'sed -i "s/nfvo.rabbit.management.port=15672/nfvo.rabbit.management.port=${managementPort}/g" /etc/openbaton/openbaton.properties'
   fi
 }
 
