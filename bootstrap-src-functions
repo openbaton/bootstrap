@@ -47,7 +47,7 @@ _user="$(id -un 2>/dev/null || true)"
 #### RabbitMQ ####
 ##################
 
-src_installMessageQueue () {
+src_install_message_queue () {
     echo "installing message queue.."
     $_ex 'apt-get install -y rabbitmq-server'
     ulimit -S -n 4096
@@ -62,7 +62,7 @@ src_installMessageQueue () {
     fi
 }
 
-src_configureMessageQueue () {
+src_configure_message_queue () {
   read -p "Enter the rabbitmq broker ip [localhost]: " brokerIp
   export brokerIp=${brokerIp}
   if [ "${brokerIp}" != "" ]; then
@@ -81,7 +81,7 @@ src_configureMessageQueue () {
 #### VIM-Drivers Plugins ####
 #############################
 
-src_downloadPlugins () {
+src_download_plugins () {
     echo "Getting OpenBaton Plugins..."
     wget -nH --cut-dirs 2 -r --no-parent  --reject "index.html*" "${_openbaton_plugins}" -P "${_tmpfolder}"
     mkdir -p ${_nfvo_vim_drivers}
@@ -96,24 +96,24 @@ src_downloadPlugins () {
 src_prereq () {
     # TODO differentiate between fedora, OS X, ubuntu..
     $_ex 'apt-get update; apt-get -y install openjdk-7-jdk curl wget screen git'
-    #fixJavaSecurity
+    fix_java_security
 }
 
-src_checkEnvironment () {
+src_check_environment () {
   _error=0
   echo "Checking environment..."
-  checkBinary java; _error=$(($_error + $?))
-  checkBinary javac; _error=$(($_error + $?))
-  checkBinary curl; _error=$(($_error + $?))
-  checkBinary screen; _error=$(($_error + $?))
-  checkBinary wget; _error=$(($_error + $?))
+  check_binary java; _error=$(($_error + $?))
+  check_binary javac; _error=$(($_error + $?))
+  check_binary curl; _error=$(($_error + $?))
+  check_binary screen; _error=$(($_error + $?))
+  check_binary wget; _error=$(($_error + $?))
   if [ "0" != "$_error" ]; then
     echo >&2 "FAILED. Please install the above mentioned binaries."
     exit 1
   fi
 }
 
-src_createOpenBatonBase () {
+src_create_openbaton_base () {
     echo "Creating the OpenBaton base folder"
     # removing it if exists
     $_ex 'rm -rf '$_openbaton_base
@@ -121,7 +121,7 @@ src_createOpenBatonBase () {
     $_ex 'chown -R '"$_user $_openbaton_base"
 }
 
-src_createOpenBatonLog () {
+src_create_openbaton_log () {
     echo "Creating the OpenBaton log folder"
     # removing it if exists
     $_ex 'rm -rf '$_openbaton_log
@@ -129,19 +129,19 @@ src_createOpenBatonLog () {
     $_ex 'chown -R '"$_user $_openbaton_log"
 }
 
-src_checkoutOpenBaton () {
+src_checkout_nfvo () {
     echo "Getting OpenBaton..."
-    src_createOpenBatonBase
-    src_createOpenBatonLog
+    src_create_openbaton_base
+    src_create_openbaton_log
     git clone --recursive "${_openbaton_base_repo}" "${_nfvo}"
     cd "${_nfvo}"
     git checkout ${_tag}
     $_ex 'rm -rf '"${_openbaton_conf}; mkdir -p ${_openbaton_conf}"
-    $_ex 'cp '"${_nfvo}/etc/openbaton.properties ${_openbaton_conf}/openbaton-nfvo.properties"
+    $_ex 'cp '"${_nfvo}/etc/openbaton.properties ${_openbaton_conf}/openbaton.properties"
     $_ex 'cp '"${_nfvo}/etc/keystore.p12 ${_openbaton_conf}/keystore.p12"
 }
 
-src_compileNFVO () {
+src_compile_nfvo () {
     echo "compiling the NFVO"
     cd "${_nfvo}"
     ./openbaton.sh compile
@@ -151,25 +151,51 @@ src_compileNFVO () {
     fi
 }
 
-src_startNFVO () {
+src_start_nfvo () {
     echo "starting the NFVO"
     cd "${_nfvo}"
     ./openbaton.sh start
 }
 
-src_deployOpenBaton () {
-    src_compileNFVO
-    installMySQL
-    # setPassword
-    src_startNFVO
+src_deploy_nfvo () {
+    src_compile_nfvo
+    install_mysql "openbaton.properties"
+    src_set_openbaton_password
+    src_start_nfvo
 }
 
+src_delete_openbaton_password () {
+      $_ex 'sed -i "/^nfvo.security.admin.password =/d" /etc/openbaton/openbaton.properties'
+}
+
+src_set_openbaton_password () {
+    # In case of "noninteractive" FRONTEND the default value will remain valid (user: admin ; password: openbaton)
+    if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
+        # Turning echo on and off between password reading
+        stty -echo
+        read -p "Provide the new password for 'admin' user of Open Baton: " openbatonpswd ; echo
+        stty echo
+        if [ "${openbatonpswd}" != "" ]; then
+            export openbatonpswd=${openbatonpswd}
+            stty -echo
+            read -p "Repeat the password: " openbatonpswd2 ; echo
+            stty echo
+            export openbatonpswd2=${openbatonpswd2}
+            if [ "${openbatonpswd}" = "${openbatonpswd2}" ]; then
+                $_ex 'sed -i "s/# nfvo.security.admin.password\ =\ openbaton/nfvo.security.admin.password\ =\ ${openbatonpswd}/g" /etc/openbaton/openbaton.properties'
+                return
+            fi
+        else
+            src_set_openbaton_password
+        fi
+    fi
+}
 
 
 ##############################
 #### Additional Component ####
 
-src_checkoutAdditionalComponent () {
+src_checkout_additional_component () {
     component_repo_url=${1}
     component_name=${2}                       # the directory on which the repo will be locally cloned
     component_name_fancy="${3}"
@@ -195,7 +221,7 @@ src_checkoutAdditionalComponent () {
     installed=1
 }
 
-src_compileAdditionalComponent () {
+src_compile_additional_component () {
     component_name=${1}                       # the directory on which the repo has been cloned
     component_name_fancy="${2}"
 
@@ -208,7 +234,7 @@ src_compileAdditionalComponent () {
     fi
 }
 
-src_startAdditionalComponent () {
+src_start_additional_component () {
     component_name=${1}                       # the directory on which the repo has been cloned
     component_name_fancy="${2}"
     
@@ -217,58 +243,59 @@ src_startAdditionalComponent () {
     ./${component_name}.sh start
 }
 
-src_deployAdditionalComponent () {
-    src_compileAdditionalComponent ${1} ${2}
-    src_startAdditionalComponent ${1} ${2}
+src_deploy_additional_component () {
+    src_compile_additional_component ${1} ${2}
+    src_start_additional_component ${1} ${2}
 }
 
-src_deleteAdminPassword () {
-      $_ex 'sed -i "/^nfvo.security.admin.password =/d" /etc/openbaton/openbaton.properties'
-}
+
+##############
+#### Main ####
+##############
 
 src_bootstrap () {
     # install prerq
     src_prereq
 
     # checkout OpenBaton
-    src_checkoutOpenBaton
+    src_checkout_nfvo
     # moved message queue installation part
-    src_downloadPlugins
+    src_download_plugins
     # moved message queue installation and configuration part
-    src_installMessageQueue
-    src_configureMessageQueue
+    src_install_message_queue
+    src_configure_message_queue
     # check if all the required libraries are available
-    src_checkEnvironment
+    src_check_environment
     # configure the Open Baton security 
-    configureSecurity
+    configure_security "openbaton.properties"
     # deploy and compile OpenBaton orchestrator
-    src_deployOpenBaton
+    src_deploy_nfvo
+    #src_delete_openbaton_password
 
     # checkout the generic VNFM code
-    src_checkoutAdditionalComponent "${_openbaton_generic_vnfm_repo}" "generic-vnfm" "Generic VNFM" "src/main/resources/application.properties" "openbaton-vnfm-generic.properties" true
+    src_checkout_additional_component "${_openbaton_generic_vnfm_repo}" "generic-vnfm" "Generic VNFM" "src/main/resources/application.properties" "openbaton-vnfm-generic.properties" true
     # deploy and compile the Generic VNFM
-    if [ "${installed}" = "0" ]; then src_deployAdditionalComponent "generic-vnfm" "Generic VNFM" ; fi
+    if [ "${installed}" = "0" ]; then src_deploy_additional_component "generic-vnfm" "Generic VNFM" ; fi
 
     # checkout the Fault Management System
-    src_checkoutAdditionalComponent "${_openbaton_fmsystem_repo}" "fm-system" "Fault Management System (FMS)" "etc/fms.properties" "openbaton-fms.properties" false
+    src_checkout_additional_component "${_openbaton_fmsystem_repo}" "fm-system" "Fault Management System (FMS)" "etc/fms.properties" "openbaton-fms.properties" false
     # deploy and compile the Fault Management System
-    if [ "${installed}" = "0" ]; then src_deployAdditionalComponent "fm-system" "Fault Management System (FMS)" ; fi
+    if [ "${installed}" = "0" ]; then src_deploy_additional_component "fm-system" "Fault Management System (FMS)" ; fi
 
     # checkout the Auto Scaling Engine
-    src_checkoutAdditionalComponent "${_openbaton_asengine_repo}" "autoscaling-engine" "Auto Scaling Engine (ASE)" "etc/ase.properties" "openbaton-ase.properties" false
+    src_checkout_additional_component "${_openbaton_asengine_repo}" "autoscaling-engine" "Auto Scaling Engine (ASE)" "etc/ase.properties" "openbaton-ase.properties" false
     # deploy and compile the Auto Scaling Engine
-    if [ "${installed}" = "0" ]; then src_deployAdditionalComponent "autoscaling-engine" "Auto Scaling Engine (ASE)" ; fi
+    if [ "${installed}" = "0" ]; then src_deploy_additional_component "autoscaling-engine" "Auto Scaling Engine (ASE)" ; fi
 
     # checkout the Network Slicing Engine
-    src_checkoutAdditionalComponent "${_openbaton_nsengine_repo}" "network-slicing-engine" "Network Slicing Engine (NSE)" "etc/nse.properties" "openbaton-nse.properties" false
+    src_checkout_additional_component "${_openbaton_nsengine_repo}" "network-slicing-engine" "Network Slicing Engine (NSE)" "etc/nse.properties" "openbaton-nse.properties" false
     # deploy and compile the Network Slicing Engine
-    if [ "${installed}" = "0" ]; then src_deployAdditionalComponent "network-slicing-engine" "Network Slicing Engine" ; fi
+    if [ "${installed}" = "0" ]; then src_deploy_additional_component "network-slicing-engine" "Network Slicing Engine" ; fi
 
     echo " * [INFO] Waiting for Open Baton to be up..."
 	while ! nc -z localhost 8080; do   
 	  	sleep 1 # wait for 1 second before check again
 	done
     echo " * [INFO] Now open http://localhost:8080/"
-    src_deleteAdminPassword
 }
 

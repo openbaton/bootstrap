@@ -64,7 +64,7 @@ usage () {
 #### Execution privileges ####
 ##############################
 
-checkBinary () {
+check_binary () {
   echo -n " * Checking for '$1' ... "
   if command -v $1 >/dev/null 2>&1; then
      echo "OK"
@@ -77,9 +77,9 @@ checkBinary () {
 
 _ex='sh -c'
 if [ "${USER}" != "root" ]; then
-    if checkBinary sudo; then
+    if check_binary sudo; then
         _ex='sudo -E sh -c'
-    elif checkBinary su; then
+    elif check_binary su; then
         _ex='su -c'
     fi
 fi
@@ -89,7 +89,9 @@ fi
 #### Security ####
 ##################
 
-configureSecurity () {
+configure_security () {
+    export properties_file_name=${1}
+
     # In case of "noninteractive" FRONTEND the default value will remain valid (see in lines below)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         read -p "Do you want to enable HTTPS? [N/y]: " https
@@ -99,25 +101,25 @@ configureSecurity () {
                 log_success_msg "Enabling HTTPS .."
 
                 # server.port = 8443
-                $_ex 'sed -i "s/# server.port = 8443/server.port = 8443/g" /etc/openbaton/openbaton.properties'
+                $_ex 'sed -i "s/# server.port = 8443/server.port = 8443/g" /etc/openbaton/${properties_file_name}'
                 # server.ssl.enabled = true
-                $_ex 'sed -i "s/# server.ssl.enabled = true/server.ssl.enabled = true/g" /etc/openbaton/openbaton.properties'
+                $_ex 'sed -i "s/# server.ssl.enabled = true/server.ssl.enabled = true/g" /etc/openbaton/${properties_file_name}'
                 # server.ssl.key-store = /etc/openbaton/keystore.p12
-                $_ex 'sed -i -e "s@# server.ssl.key-store = \/etc\/openbaton\/keystore.p12@server.ssl.key-store = \/etc\/openbaton\/keystore.p12@g" /etc/openbaton/openbaton.properties'               
-                # server.ssl.key-store-password = password                                                                                                                         
-                $_ex 'sed -i "s/# server.ssl.key-store-password = password/server.ssl.key-store-password = password/g" /etc/openbaton/openbaton.properties'
-                # server.ssl.keyStoreType = PKCS12                                                 
-                $_ex 'sed -i "s/# server.ssl.keyStoreType = PKCS12/server.ssl.keyStoreType = PKCS12/g" /etc/openbaton/openbaton.properties'                
-                # server.ssl.keyAlias = tomcat                
-                $_ex 'sed -i "s/# server.ssl.keyAlias = tomcat/server.ssl.keyAlias = tomcat/g" /etc/openbaton/openbaton.properties'                                              
+                $_ex 'sed -i -e "s@# server.ssl.key-store = \/etc\/openbaton\/keystore.p12@server.ssl.key-store = \/etc\/openbaton\/keystore.p12@g" /etc/openbaton/${properties_file_name}'
+                # server.ssl.key-store-password = password
+                $_ex 'sed -i "s/# server.ssl.key-store-password = password/server.ssl.key-store-password = password/g" /etc/openbaton/${properties_file_name}'
+                # server.ssl.keyStoreType = PKCS12
+                $_ex 'sed -i "s/# server.ssl.keyStoreType = PKCS12/server.ssl.keyStoreType = PKCS12/g" /etc/openbaton/${properties_file_name}'
+                # server.ssl.keyAlias = tomcat
+                $_ex 'sed -i "s/# server.ssl.keyAlias = tomcat/server.ssl.keyAlias = tomcat/g" /etc/openbaton/${properties_file_name}'
                 # nfvo.https = false
-                $_ex 'sed -i "s/# nfvo.https = false/nfvo.https = true/g" /etc/openbaton/openbaton.properties'
+                #$_ex 'sed -i "s/# nfvo.https = false/nfvo.https = true/g" /etc/openbaton/${properties_file_name}'
             fi                                                                                                                                   
         fi        
     fi
 }
 
-fixJavaSecurity () {
+fix_java_security () {
     ostype=$(uname -a | awk -F ' ' '{ print $1 }')
     if [ "${ostype}" = "Linux" ]; then
         arch=$(uname -m)
@@ -139,29 +141,31 @@ fixJavaSecurity () {
 #### MySQL ####
 ###############
 
-configureMySQL () {
+configure_mysql () {
+    export properties_file_name=${1}
+
     log_success_msg "Configuring MySQL for Open Baton .."        
-    $_ex 'sed -i "s/spring.datasource.url=jdbc:hsqldb:file:\/tmp\/openbaton\/openbaton.hsdb/# spring.datasource.url=jdbc:hsqldb:file:\/tmp\/openbaton\/openbaton.hsdb/g" /etc/openbaton/openbaton.properties'        
-    $_ex 'sed -i "s/spring.datasource.driver-class-name=org.hsqldb.jdbc.JDBCDriver/# spring.datasource.driver-class-name=org.hsqldb.jdbc.JDBCDriver/g" /etc/openbaton/openbaton.properties'        
-    $_ex 'sed -i "s/spring.jpa.database-platform=org.hibernate.dialect.HSQLDialect/# spring.jpa.database-platform=org.hibernate.dialect.HSQLDialect/g" /etc/openbaton/openbaton.properties'
-    $_ex 'sed -i "s/spring.jpa.hibernate.ddl-auto=create-drop/# spring.jpa.hibernate.ddl-auto=create-drop/g" /etc/openbaton/openbaton.properties'        
-    $_ex 'sed -i "s/# spring.jpa.hibernate.ddl-auto=update/spring.jpa.hibernate.ddl-auto=update/g" /etc/openbaton/openbaton.properties'
-    $_ex 'sed -i "s/# spring.datasource.validationQuery=SELECT 1/spring.datasource.validationQuery=SELECT 1/g" /etc/openbaton/openbaton.properties'
-    $_ex 'sed -i "s/# spring.datasource.testOnBorrow=true/spring.datasource.testOnBorrow=true/g" /etc/openbaton/openbaton.properties'
+    $_ex 'sed -i "s/spring.datasource.url=jdbc:hsqldb:file:\/tmp\/openbaton\/openbaton.hsdb/# spring.datasource.url=jdbc:hsqldb:file:\/tmp\/openbaton\/openbaton.hsdb/g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s/spring.datasource.driver-class-name=org.hsqldb.jdbc.JDBCDriver/# spring.datasource.driver-class-name=org.hsqldb.jdbc.JDBCDriver/g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s/spring.jpa.database-platform=org.hibernate.dialect.HSQLDialect/# spring.jpa.database-platform=org.hibernate.dialect.HSQLDialect/g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s/spring.jpa.hibernate.ddl-auto=create-drop/# spring.jpa.hibernate.ddl-auto=create-drop/g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s/# spring.jpa.hibernate.ddl-auto=update/spring.jpa.hibernate.ddl-auto=update/g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s/# spring.datasource.validationQuery=SELECT 1/spring.datasource.validationQuery=SELECT 1/g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s/# spring.datasource.testOnBorrow=true/spring.datasource.testOnBorrow=true/g" /etc/openbaton/${properties_file_name}'
     # Enable MySQL
-    $_ex 'sed -i "s/# spring.datasource.url=jdbc:mysql:\/\/localhost:3306\/openbaton/spring.datasource.url=jdbc:mysql:\/\/localhost:3306\/openbaton/g" /etc/openbaton/openbaton.properties'                      
-    $_ex 'sed -i "s/# spring.datasource.driver-class-name=com.mysql.jdbc.Driver/spring.datasource.driver-class-name=com.mysql.jdbc.Driver/g" /etc/openbaton/openbaton.properties'
-    $_ex 'sed -i "s/# spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect/spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect/g" /etc/openbaton/openbaton.properties'
+    $_ex 'sed -i "s/# spring.datasource.url=jdbc:mysql:\/\/localhost:3306\/openbaton/spring.datasource.url=jdbc:mysql:\/\/localhost:3306\/openbaton/g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s/# spring.datasource.driver-class-name=com.mysql.jdbc.Driver/spring.datasource.driver-class-name=com.mysql.jdbc.Driver/g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s/# spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect/spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect/g" /etc/openbaton/${properties_file_name}'
     
     # In case of "noninteractive" FRONTEND the default value will remain valid (sqluser: admin ; sqlpassword: changeme)
-    # Redundant check since the 'configureMySQL' function is executed only when 'DEBIAN_FRONTEND != noninteractive'
+    # Redundant check since the 'configure_mysql' function is executed only when 'DEBIAN_FRONTEND != noninteractive'
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         read -p "Please, type the name of the mysql user you would like Open Baton to use [admin]: " sqluser
         export dbuser=admin
         export dbpassword=changeme
         if [ "${sqluser}" != "" ]; then
             dbuser=${sqluser}
-            $_ex 'sed -i "s/spring.datasource.username=admin/spring.datasource.username=${dbuser}/g" /etc/openbaton/openbaton.properties'
+            $_ex 'sed -i "s/spring.datasource.username=admin/spring.datasource.username=${dbuser}/g" /etc/openbaton/${properties_file_name}'
         fi
         # Turning echo on and off between password reading
         stty -echo
@@ -169,7 +173,7 @@ configureMySQL () {
         stty echo
         if [ "${sqlpassword}" != "" ]; then
             dbpassword=${sqlpassword}
-            $_ex 'sed -i "s/spring.datasource.password=changeme/spring.datasource.password=${dbpassword}/g" /etc/openbaton/openbaton.properties'
+            $_ex 'sed -i "s/spring.datasource.password=changeme/spring.datasource.password=${dbpassword}/g" /etc/openbaton/${properties_file_name}'
         fi                                                                                                                                                
         # Turning echo on and off between password reading          
         stty -echo
@@ -187,7 +191,9 @@ configureMySQL () {
     fi
 }
 
-installMySQL () {
+install_mysql () {
+    properties_file_name=${1}
+
     # In case of "noninteractive" FRONTEND the default value will remain valid (sqluser: admin ; sqlpassword: changeme)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         read -p "Do you want to enable the persistence through MySQL? [Y/n]: " mysql
@@ -195,7 +201,7 @@ installMySQL () {
             echo " * [INFO] Enabling MySQL Persistence"
             $_ex 'apt-get update'
             $_ex 'apt-get install -y mysql-server'
-            configureMySQL
+            configure_mysql ${properties_file_name}
         else
             echo " * [WARN] NOT Enabling MySQL Persistence"
         fi
@@ -207,13 +213,13 @@ installMySQL () {
 #### Main ####
 ##############
 
-mainSrc () {
+main_src () {
     wget "${OPENBATON_BOOTSTRAP_SRC_FUNCTIONS_URL}"
     . ./bootstrap-src-functions
     src_bootstrap
 }
 
-mainDeb () {
+main_deb () {
     wget "${OPENBATON_BOOTSTRAP_DEB_FUNCTIONS_URL}"
     . ./bootstrap-deb-functions
     deb_bootstrap ${1}
@@ -230,14 +236,14 @@ main () {
         read -p "Select the Open Baton installation type you prefer [2]: " install_type
         case ${install_type} in
             1 ) 
-                mainSrc ;;
+                main_src ;;
             3 ) 
-                mainDeb unstable;;
+                main_deb unstable;;
             * ) 
-                mainDeb stable ;;
+                main_deb stable ;;
         esac
     else
-        mainDeb stable
+        main_deb stable
     fi
 
     log_success_msg "Open Baton installation complete"
@@ -258,13 +264,13 @@ if [ -n "${1+1}" ]; then
     case ${1} in
         "release" )
             echo " * [INFO] Installing the latest RELEASE package"
-            mainDeb stable ;;
+            main_deb stable ;;
         "nightly" )
             echo " * [INFO] Installing the latest NIGHTLY-BUILD package"
-            mainDeb unstable ;;
+            main_deb unstable ;;
         "develop" )
             echo " * [INFO] Installing the latest source code"
-            mainSrc ;;
+            main_src ;;
         *)
             usage
             exit 1 ;;

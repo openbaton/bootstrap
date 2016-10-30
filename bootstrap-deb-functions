@@ -50,7 +50,7 @@ set -u
 #### Open Baton ####
 ####################
 
-deb_addRepoRefs () {
+deb_add_openbaton_repo_reference () {
     export codename=${1}
 
     # Add Open Baton Public Key to the APT keys
@@ -67,7 +67,7 @@ deb_addRepoRefs () {
 ##############
 #### NFVO ####
 
-deb_installNFVO () {
+deb_install_nfvo () {
     export codename=${1}
 
     # Install the correct NFVO package according to the given input parameter
@@ -78,7 +78,7 @@ deb_installNFVO () {
     fi    
 }
 
-deb_restartNFVO () {
+deb_restart_nfvo () {
     if $_ex 'systemctl restart openbaton-nfvo.service' >/dev/null 2>&1 ; then
         log_success_msg "Restarting the Open Baton NFVO .."
     elif $_ex 'restart openbaton-nfvo' >/dev/null 2>&1 ; then
@@ -87,7 +87,6 @@ deb_restartNFVO () {
         log_failure_msg "Restaring the Open Baton NFVO"
     fi
 }
-
 
 ###############################
 #### Additional Components ####
@@ -157,24 +156,25 @@ deb_is_additional_component_installed () {
     fi
 }
 
+
 ###################
 #### Bootstrap ####
 ###################
 
 deb_bootstrap () {
     prereq
-    deb_addRepoRefs ${1}
-    deb_installNFVO ${1}
-    deb_install_additional_component stable openstack-vimplugin "OpenStack VIM-Driver Plugin" true
+    deb_add_openbaton_repo_reference ${1}
+    deb_install_nfvo ${1}
+    install_mysql "openbaton-nfvo.properties"
+    deb_install_additional_component stable plugin-vimdriver-openstack "OpenStack VIM-Driver Plugin" true
     # Arguments of "deb_install_additional_component": ${1} component-name component-name-fancy component_of_a_minimal_installation
-    deb_install_additional_component ${1} gvnfm "Generic VNFM" true
+    deb_install_additional_component ${1} vnfm-generic "Generic VNFM" true
     deb_install_additional_component ${1} fms "Fault Management System" false
     deb_install_additional_component ${1} ase "Auto Scaling Engine" false
     deb_install_additional_component ${1} nse "Network Slicing Engine" false
     deb_install_additional_component ${1} cli "Command Line Interface (CLI)" false
-    installMySQL
-    fixJavaSecurity
-    configureSecurity
+    fix_java_security
+    configure_security "openbaton-nfvo.properties"
     
     #########
     # Temporary workaround to avoid the spawning of multiple 'Test VIM Driver Plugin' processes during installation
@@ -182,8 +182,8 @@ deb_bootstrap () {
     sleep 60
     #########
     
-    deb_restartNFVO
-    deb_is_additional_component_installed gvnfm ; if [ "${installed}" = "0" ]; then deb_restart_additional_component gvnfm "Generic VNFM" ; fi
+    deb_restart_nfvo
+    deb_is_additional_component_installed vnfm-generic ; if [ "${installed}" = "0" ]; then deb_restart_additional_component vnfm-generic "Generic VNFM" ; fi
     deb_is_additional_component_installed fms ; if [ "${installed}" = "0" ]; then deb_restart_additional_component fms "Fault Management System" ; fi
     deb_is_additional_component_installed ase ; if [ "${installed}" = "0" ]; then deb_restart_additional_component ase "Auto Scaling Engine" ; fi
     deb_is_additional_component_installed nse ; if [ "${installed}" = "0" ]; then deb_restart_additional_component nse "Network Slicing Engine" ; fi
