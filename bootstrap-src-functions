@@ -297,5 +297,7 @@ src_bootstrap () {
 	  	sleep 1 # wait for 1 second before check again
 	done
     echo " * [INFO] Now open http://localhost:8080/"
+
+    rm ./bootstrap-src-functions
 }
 
