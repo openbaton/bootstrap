@@ -298,6 +298,6 @@ src_bootstrap () {
 	done
     echo " * [INFO] Now open http://localhost:8080/"
 
-    rm ./bootstrap-src-functions
+    rm ${BOOTSTRAP_DIR}/bootstrap-src-functions
 }
 

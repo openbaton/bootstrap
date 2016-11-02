@@ -188,6 +188,6 @@ deb_bootstrap () {
     deb_is_additional_component_installed ase ; if [ "${installed}" = "0" ]; then deb_restart_additional_component ase "Auto Scaling Engine" ; fi
     deb_is_additional_component_installed nse ; if [ "${installed}" = "0" ]; then deb_restart_additional_component nse "Network Slicing Engine" ; fi
 
-    rm ./bootstrap-deb-functions
+    rm ${BOOTSTRAP_DIR}/bootstrap-deb-functions
 }
 

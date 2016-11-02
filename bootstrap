@@ -36,6 +36,7 @@ set -u
 #### Global Variables ####
 ##########################
 
+BOOTSTRAP_DIR=$(pwd)
 USER="$(id -un 2>/dev/null || true)"
 
 OPENBATON_BOOTSTRAP_SRC_FUNCTIONS_URL=http://get.openbaton.org/bootstrap-src-functions
