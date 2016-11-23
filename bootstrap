@@ -114,7 +114,7 @@ configure_security () {
                 # server.ssl.keyAlias = tomcat
                 $_ex 'sed -i "s/# server.ssl.keyAlias = tomcat/server.ssl.keyAlias = tomcat/g" /etc/openbaton/${properties_file_name}'
                 # nfvo.https = false
-                #$_ex 'sed -i "s/# nfvo.https = false/nfvo.https = true/g" /etc/openbaton/${properties_file_name}'
+                $_ex 'sed -i "s/# nfvo.https = false/nfvo.https = true/g" /etc/openbaton/${properties_file_name}'
             fi                                                                                                                                   
         fi        
     fi
