@@ -51,5 +51,13 @@ sudo docker stop cfc4a7fb23d02c47e25b447d30f6fe7c0464355a16ee1b02d84657f6fba88e0
 sudo docker rm cfc4a7fb23d02c47e25b447d30f6fe7c0464355a16ee1b02d84657f6fba88e07
 ```
 
+## Custom configuration files
+The NFVO and Generic VNFM configurations can be tweaked using Docker's builtin _volume bind_ feature, accessible
+while starting the container using the **-v** parameter. 
+This is expecially useful if you wish to control the logging verbosity of the NFVO.
+
+```bash
+sudo docker run -d -h openbaton-rabbitmq -p 8080:8080 -p 5672:5672 -p 15672:15672 -p 8443:8443 -e RABBITMQ_BROKERIP=<RabbitMQ IP> -v /path/to/openbaton-nfvo.properties:/etc/openbaton/openbaton-nfvo.properties openbaton/standalone:<Open Baton version>
+```
 
 [reference-to-op-repo-on-public-docker-hub]:https://hub.docker.com/r/openbaton/standalone/tags/
