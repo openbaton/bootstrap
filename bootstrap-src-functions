@@ -94,8 +94,17 @@ src_download_plugins () {
 ####################
 
 src_prereq () {
-    # TODO differentiate between fedora, OS X, ubuntu..
-    $_ex 'apt-get update; apt-get -y install openjdk-7-jdk curl wget screen git'
+    if [ "${OS_TYPE}" = "Linux" ]; then
+        if [ "${OS_DISTRIBUTION_RELEASE_MAJOR}" -ge "16" ]; then
+            $_ex 'apt-get update; apt-get -y install openjdk-8-jdk curl wget screen git'
+        else # Ubuntu 14
+            $_ex 'apt-get update; apt-get -y install openjdk-7-jdk curl wget screen git'
+        fi
+    elif [ "${ostype}" = "Darwin" ]; then
+        # TODO
+        echo "TODO"
+    fi
+
     fix_java_security
 }
 
