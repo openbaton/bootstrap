@@ -22,19 +22,6 @@ set -u
 #### VIM-Drivers Plugins ####
 #############################
 
-deb_installOpenStackVIMPlugin () {
-    if [ "${DEBIAN_FRONTEND}" = "interactive" ]; then
-        read -p "Do you want to install the OpenStack VIM-Driver Plugin? [Y/n]: " yn                                    
-        if [ "${yn}" != "n" -a "${yn}" != "N" ]; then
-            log_success_msg "[INFO] Installing the OpenStack VIM-Driver Plugin"
-            $_ex 'apt-get install -y openbaton-openstack-vimplugin'
-        fi                                                                  
-    else
-        log_success_msg "[INFO] Installing the OpenStack VIM-Driver Plugin"
-        $_ex 'apt-get install -y openbaton-openstack-vimplugin'
-    fi                        
-}
-
 #installVIMDriverPlugins () {
 #    read -p "Do you want to install any of the available VIM-Driver Plugins? [Y/n]: " yn
 #    if [ "${yn}" != "n" -a "${yn}" != "N" ]; then
@@ -59,12 +46,11 @@ deb_installOpenStackVIMPlugin () {
 #}
 
 
-
 ####################
 #### Open Baton ####
 ####################
 
-deb_addRepoRefs () {
+deb_add_openbaton_repo_reference () {
     export codename=${1}
 
     # Add Open Baton Public Key to the APT keys
@@ -78,7 +64,10 @@ deb_addRepoRefs () {
     $_ex 'apt-get update'
 }
 
-deb_installNFVO () {
+##############
+#### NFVO ####
+
+deb_install_nfvo () {
     export codename=${1}
 
     # Install the correct NFVO package according to the given input parameter
@@ -89,52 +78,81 @@ deb_installNFVO () {
     fi    
 }
 
-deb_installGVNFM () {
-    export codename=${1}
-
-    if [ "${DEBIAN_FRONTEND}" = "interactive" ]; then
-        # Ask for Generic VNFM installation 
-        read -p "Do you want to install also the Generic VNFM? (if you do not, then you can still install it later with 'sudo apt-get install openbaton-gvnfm') (Y/n): " gvnfm
-    
-        # Print correct warning message
-        if [ "${gvnfm}" = "n" -o "${gvnfm}" = "N" ]; then
-            echo " * [WARN] Open Baton Generic VNFM not installed"
-            if [ "${codename}" = "stable" ]; then
-                echo " * To install the latest release package:"
-                echo " *     sudo apt-get install openbaton-gvnfm"
-            else
-                echo " * To install the latest nightly-build package:"
-                echo " *     sudo apt-get install openbaton-gvnfm-nightly"
-            fi
-            return
-        fi
-    fi
-
-    # Install the correct Generic VNFM package according to the given input parameter
-    if [ "${codename}" = "stable" ]; then
-        $_ex 'apt-get install -y openbaton-gvnfm'
-    else
-        $_ex 'apt-get install -y openbaton-gvnfm-nightly'
-    fi
-}
-
-deb_restartNFVO () {
-    if $_ex 'systemctl restart openbaton-nfvo.service' >/dev/null 2>&1 ; then    
+deb_restart_nfvo () {
+    if $_ex 'systemctl restart openbaton-nfvo.service' >/dev/null 2>&1 ; then
         log_success_msg "Restarting the Open Baton NFVO .."
     elif $_ex 'restart openbaton-nfvo' >/dev/null 2>&1 ; then
         log_success_msg "Restarting the Open Baton NFVO .."
-    else                                                        
+    else
         log_failure_msg "Restaring the Open Baton NFVO"
     fi
 }
 
-deb_restartGVNFM () {
-    if $_ex 'systemctl restart openbaton-gvnfm.service' >/dev/null 2>&1 ; then    
-        log_success_msg "Restarting the Open Baton GVNFM .."        
-    elif $_ex 'restart openbaton-gvnfm' >/dev/null 2>&1 ; then
-        log_success_msg "Restarting the Open Baton GVNFM .."        
+###############################
+#### Additional Components ####
+
+deb_install_additional_component () {
+    export codename=${1}
+    export component_name=${2}
+    export component_name_fancy="${3}"
+    export component_of_minimal_installation="${4}"
+
+    if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
+        # Ask for the specified Additional Component installation
+        read -p "Do you want to install also the ${component_name_fancy}? (if you do not, then you can still install it later with 'sudo apt-get install openbaton-${component_name}') (Y/n): " ac
+
+        # Print correct warning message
+        if [ "${ac}" = "n" -o "${ac}" = "N" ]; then
+            echo " * [WARN] Open Baton ${component_name_fancy} not installed"
+            if [ "${codename}" = "stable" ]; then
+                echo " * To install the latest release package:"
+                echo " *     sudo apt-get install openbaton-${component_name}"
+            else
+                echo " * To install the latest nightly-build package:"
+                echo " *     sudo apt-get install openbaton-${component_name}-nightly"
+            fi
+            return
+        else
+            # Install the correct Additional Component package according to the given input parameter
+            if [ "${codename}" = "stable" ]; then
+                $_ex 'apt-get install -y openbaton-${component_name}'
+            else
+                $_ex 'apt-get install -y openbaton-${component_name}-nightly'
+            fi
+        fi
+    else
+        if [ "${component_of_minimal_installation}" = "true" ]; then
+            # Install the correct Additional Component package according to the given input parameter
+            if [ "${codename}" = "stable" ]; then
+                $_ex 'apt-get install -y openbaton-${component_name}'
+            else
+                $_ex 'apt-get install -y openbaton-${component_name}-nightly'
+            fi
+        fi
+    fi
+}
+
+deb_restart_additional_component () {
+    export component_name=${1}
+    export component_name_fancy="${2}"
+
+    if $_ex 'systemctl restart openbaton-${component_name}.service' >/dev/null 2>&1 ; then
+        log_success_msg "Restarting the Open Baton ${component_name_fancy} .."
+    elif $_ex 'restart openbaton-${component_name}' >/dev/null 2>&1 ; then
+        log_success_msg "Restarting the Open Baton ${component_name_fancy} .."
     else                                                        
-        log_failure_msg "Restarting the Open Baton GVNFM"
+        log_failure_msg "Restarting the Open Baton ${component_name_fancy}"
+    fi
+}
+
+deb_is_additional_component_installed () {
+    export component_name=${1}
+
+    installed=$(dpkg -l | grep -v grep | grep "openbaton-${component_name}" | wc -l)
+    if [ ${installed} -eq 0 ]; then
+        installed=1 # not installed
+    else
+        installed=0 # installed
     fi
 }
 
@@ -145,19 +163,31 @@ deb_restartGVNFM () {
 
 deb_bootstrap () {
     prereq
-    deb_addRepoRefs ${1}
-    deb_installNFVO ${1}
-    deb_installOpenStackVIMPlugin
-    deb_installGVNFM ${1}
-    installMySQL
-    fixJavaSecurity
-    configureSecurity
+    deb_add_openbaton_repo_reference ${1}
+    deb_install_nfvo ${1}
+    install_mysql "openbaton-nfvo.properties"
+    deb_install_additional_component stable plugin-vimdriver-openstack "OpenStack VIM-Driver Plugin" true
+    # Arguments of "deb_install_additional_component": ${1} component-name component-name-fancy component_of_a_minimal_installation
+    deb_install_additional_component ${1} vnfm-generic "Generic VNFM" true
+    deb_install_additional_component ${1} fms "Fault Management System" false
+    deb_install_additional_component ${1} ase "Auto Scaling Engine" false
+    deb_install_additional_component ${1} nse "Network Slicing Engine" false
+    deb_install_additional_component ${1} cli "Command Line Interface (CLI)" false
+    fix_java_security
+    configure_security "openbaton-nfvo.properties"
+    
     #########
     # Temporary workaround to avoid the spawning of multiple 'Test VIM Driver Plugin' processes during installation
     log_success_msg "Finalising Open Baton installation .."
     sleep 60
     #########
-    deb_restartNFVO
-    deb_restartGVNFM
+    
+    deb_restart_nfvo
+    deb_is_additional_component_installed vnfm-generic ; if [ "${installed}" = "0" ]; then deb_restart_additional_component vnfm-generic "Generic VNFM" ; fi
+    deb_is_additional_component_installed fms ; if [ "${installed}" = "0" ]; then deb_restart_additional_component fms "Fault Management System" ; fi
+    deb_is_additional_component_installed ase ; if [ "${installed}" = "0" ]; then deb_restart_additional_component ase "Auto Scaling Engine" ; fi
+    deb_is_additional_component_installed nse ; if [ "${installed}" = "0" ]; then deb_restart_additional_component nse "Network Slicing Engine" ; fi
+
+    rm ${BOOTSTRAP_DIR}/bootstrap-deb-functions
 }
 
