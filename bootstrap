@@ -2,22 +2,8 @@
 #
 # This script allows you to install openbaton. To execute it:
 #
-# sh <(curl -s http://get.openbaton.org/bootstrap) [release | nightly | develop]
+# sh <(curl -s http://get.openbaton.org/bootstrap) [release | nightly | develop] -configFile=<absolute path to configuration file>
 
-###############
-#### Usage ####
-###############
-
-usage () {
-    echo "Usage:"
-    echo "./bootstrap [release | nightly | develop]                                            (if the script is already locally available)"
-    echo "sh <(curl -s http://get.openbaton.org/bootstrap) [release | nightly | develop]       (otherwise)"
-}
-
-if [ ${#} -gt 1 ]; then
-    usage
-    exit 1
-fi
 
 
 ##########################
@@ -39,6 +25,8 @@ set -u
 BOOTSTRAP_DIR=$(pwd)
 OPENBATON_BOOTSTRAP_SRC_FUNCTIONS_URL=http://get.openbaton.org/bootstrap-src-functions
 OPENBATON_BOOTSTRAP_DEB_FUNCTIONS_URL=http://get.openbaton.org/bootstrap-deb-functions
+
+OPENBATON_INSTALLATION_TYPE_DEFAULT=release
 
 USER="$(id -un 2>/dev/null || true)"
 
@@ -75,15 +63,34 @@ OPENJDK_7_OSX_SECURITYFILE="/Library/Java/JavaVirtualMachines/jdk1.7.*.jdk/Conte
 DEBIAN_FRONTEND_DEFAULT=interactive
 DEBIAN_FRONTEND=${DEBIAN_FRONTEND:-$DEBIAN_FRONTEND_DEFAULT}
 
+HTTPS_DEFAULT=no
+MYSQL_DEFAULT=yes
+MYSQL_USER_DEFAULT=admin
+MYSQL_USER_PASSWORD_DEFAULT=changeme
+MYSQL_ROOT_PASSWORD_DEFAULT=root
+
+OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_DEFAULT=yes
+OPENBATON_VNFM_GENERIC_DEFAULT=yes
+OPENBATON_FMS_DEFAULT=no
+OPENBATON_ASE_DEFAULT=no
+OPENBATON_NSE_DEFAULT=no
+OPENBATON_CLI_DEFAULT=no
+
 
 ###############
 #### Usage ####
 ###############
 
+echo " * [INFO] System Details:"
+echo "     OS Architecture: ${OS_ARCHITECTURE}"
+echo "     OS Type: ${OS_TYPE}"
+echo "     OS Distribution ID: ${OS_DISTRIBUTION_ID}"
+echo "     OS Distribution Release: ${OS_DISTRIBUTION_RELEASE}"
+
 usage () {
-    echo "Usage:"
-    echo "./bootstrap                                                 (if the script is already locally available)"
-    echo "sh <(curl -s http://get.openbaton.org/bootstrap)            (otherwise)"
+    echo "Usage: (The RELEASE installation is the DEFAULT)"
+    echo "./bootstrap [release | nightly | develop] -configFile=<absolute path to configuration file>                                             (if the script is already locally available)"
+    echo "sh <(curl -s http://get.openbaton.org/bootstrap) [release | nightly | develop] -configFile=<absolute path to configuration file>        (otherwise)"
 }
 
 
@@ -92,8 +99,8 @@ usage () {
 ##############################
 
 check_binary () {
-  echo -n " * Checking for '$1' ... "
-  if command -v $1 >/dev/null 2>&1; then
+  echo -n " * [info] Checking for '${1}' ... "
+  if command -v ${1} >/dev/null 2>&1; then
      echo "OK"
      return 0
   else
@@ -116,37 +123,37 @@ fi
 #### Security ####
 ##################
 
-configure_security () {
+enable_https () {
     export properties_file_name=${1}
 
     # In case of "noninteractive" FRONTEND the default value will remain valid (see in lines below)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         read -p "Do you want to enable HTTPS? [N/y]: " https
-        export https=${https}
-        if [ "${https}" != "" ]; then
-            if [ "${https}" = "y" -o "${https}" = "Y" -o "${https}" = "yes" ]; then
-                log_success_msg "Enabling HTTPS .."
+    fi    
+    
+    https=${https:-$HTTPS_DEFAULT}
 
-                # server.port = 8443
-                $_ex 'sed -i "s/# server.port = 8443/server.port = 8443/g" /etc/openbaton/${properties_file_name}'
-                # server.ssl.enabled = true
-                $_ex 'sed -i "s/# server.ssl.enabled = true/server.ssl.enabled = true/g" /etc/openbaton/${properties_file_name}'
-                # server.ssl.key-store = /etc/openbaton/keystore.p12
-                $_ex 'sed -i -e "s@# server.ssl.key-store = \/etc\/openbaton\/keystore.p12@server.ssl.key-store = \/etc\/openbaton\/keystore.p12@g" /etc/openbaton/${properties_file_name}'
-                # server.ssl.key-store-password = password
-                $_ex 'sed -i "s/# server.ssl.key-store-password = password/server.ssl.key-store-password = password/g" /etc/openbaton/${properties_file_name}'
-                # server.ssl.keyStoreType = PKCS12
-                $_ex 'sed -i "s/# server.ssl.keyStoreType = PKCS12/server.ssl.keyStoreType = PKCS12/g" /etc/openbaton/${properties_file_name}'
-                # server.ssl.keyAlias = tomcat
-                $_ex 'sed -i "s/# server.ssl.keyAlias = tomcat/server.ssl.keyAlias = tomcat/g" /etc/openbaton/${properties_file_name}'
-                # nfvo.https = false
-                $_ex 'sed -i "s/# nfvo.https = false/nfvo.https = true/g" /etc/openbaton/${properties_file_name}'
-            fi                                                                                                                                   
-        fi        
+    if [ "${https}" = "y" -o "${https}" = "Y" -o "${https}" = "yes" ]; then
+        log_success_msg "Enabling HTTPS .."
+
+        # server.port = 8443
+        $_ex 'sed -i "s|#\s*server.port\s*=\s*8443|server.port = 8443|g" /etc/openbaton/${properties_file_name}'
+        # server.ssl.enabled = true
+        $_ex 'sed -i "s|#\s*server.ssl.enabled\s*=\s*true|server.ssl.enabled = true|g" /etc/openbaton/${properties_file_name}'
+        # server.ssl.key-store = /etc/openbaton/keystore.p12
+        $_ex 'sed -i "s|#\s*server.ssl.key-store\s*=\s*\/etc\/openbaton\/keystore.p12|server.ssl.key-store = \/etc\/openbaton\/keystore.p12|g" /etc/openbaton/${properties_file_name}'
+        # server.ssl.key-store-password = password
+        $_ex 'sed -i "s|#\s*server.ssl.key-store-password\s*=\s*password|server.ssl.key-store-password = password|g" /etc/openbaton/${properties_file_name}'
+        # server.ssl.keyStoreType = PKCS12
+        $_ex 'sed -i "s|#\s*server.ssl.keyStoreType\s*=\s*PKCS12|server.ssl.keyStoreType = PKCS12|g" /etc/openbaton/${properties_file_name}'
+        # server.ssl.keyAlias = tomcat
+        $_ex 'sed -i "s|#\s*server.ssl.keyAlias\s*=\s*tomcat|server.ssl.keyAlias = tomcat|g" /etc/openbaton/${properties_file_name}'
+        # nfvo.https = false
+        $_ex 'sed -i "s|#\s*nfvo.https\s*=\s*false|nfvo.https = true|g" /etc/openbaton/${properties_file_name}'
     fi
 }
 
-fix_java_security () {
+fix_jvm_delay_for_random_number_generation () {
     if [ "${OS_TYPE}" = "Linux" ]; then
         if [ "${OS_ARCHITECTURE}" = "x86_64" ]; then
             if [ "${OS_DISTRIBUTION_RELEASE_MAJOR}" -ge "16" ]; then # Ubuntu 16
@@ -167,7 +174,7 @@ fix_java_security () {
         fi
     elif [ "${ostype}" = "Darwin" ]; then
         export OPENJDK_7_OSX_SECURITYFILE=${OPENJDK_7_OSX_SECURITYFILE}
-        $_ex 'sed -i "" "s_securerandom.source=file:/dev/urandom_securerandom.source=file:/dev/./urandom_g" ${OPENJDK_7_OSX_SECURITYFILE}'
+        $_ex 'sed -i "" "s|securerandom.source=file:/dev/urandom|securerandom.source=file:/dev/./urandom|g" ${OPENJDK_7_OSX_SECURITYFILE}'
     fi
 }
 
@@ -180,66 +187,80 @@ configure_mysql () {
     export properties_file_name=${1}
 
     log_success_msg "Configuring MySQL for Open Baton .."        
-    $_ex 'sed -i "s/spring.datasource.url=jdbc:hsqldb:file:\/tmp\/openbaton\/openbaton.hsdb/# spring.datasource.url=jdbc:hsqldb:file:\/tmp\/openbaton\/openbaton.hsdb/g" /etc/openbaton/${properties_file_name}'
-    $_ex 'sed -i "s/spring.datasource.driver-class-name=org.hsqldb.jdbc.JDBCDriver/# spring.datasource.driver-class-name=org.hsqldb.jdbc.JDBCDriver/g" /etc/openbaton/${properties_file_name}'
-    $_ex 'sed -i "s/spring.jpa.database-platform=org.hibernate.dialect.HSQLDialect/# spring.jpa.database-platform=org.hibernate.dialect.HSQLDialect/g" /etc/openbaton/${properties_file_name}'
-    $_ex 'sed -i "s/spring.jpa.hibernate.ddl-auto=create-drop/# spring.jpa.hibernate.ddl-auto=create-drop/g" /etc/openbaton/${properties_file_name}'
-    $_ex 'sed -i "s/# spring.jpa.hibernate.ddl-auto=update/spring.jpa.hibernate.ddl-auto=update/g" /etc/openbaton/${properties_file_name}'
-    $_ex 'sed -i "s/# spring.datasource.validationQuery=SELECT 1/spring.datasource.validationQuery=SELECT 1/g" /etc/openbaton/${properties_file_name}'
-    $_ex 'sed -i "s/# spring.datasource.testOnBorrow=true/spring.datasource.testOnBorrow=true/g" /etc/openbaton/${properties_file_name}'
-    # Enable MySQL
-    $_ex 'sed -i "s/# spring.datasource.url=jdbc:mysql:\/\/localhost:3306\/openbaton/spring.datasource.url=jdbc:mysql:\/\/localhost:3306\/openbaton/g" /etc/openbaton/${properties_file_name}'
-    $_ex 'sed -i "s/# spring.datasource.driver-class-name=com.mysql.jdbc.Driver/spring.datasource.driver-class-name=com.mysql.jdbc.Driver/g" /etc/openbaton/${properties_file_name}'
-    $_ex 'sed -i "s/# spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect/spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect/g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s|spring.datasource.url\s*=\s*jdbc:hsqldb:file:\/tmp\/openbaton\/openbaton.hsdb|# spring.datasource.url=jdbc:hsqldb:file:\/tmp\/openbaton\/openbaton.hsdb|g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s|spring.datasource.driver-class-name\s*=\s*org.hsqldb.jdbc.JDBCDriver|# spring.datasource.driver-class-name=org.hsqldb.jdbc.JDBCDriver|g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s|spring.jpa.database-platform\s*=\s*org.hibernate.dialect.HSQLDialect|# spring.jpa.database-platform=org.hibernate.dialect.HSQLDialect|g" /etc/openbaton/${properties_file_name}'
+
+    $_ex 'sed -i "s|spring.jpa.hibernate.ddl-auto\s*=\s*create-drop|# spring.jpa.hibernate.ddl-auto=create-drop|g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s|#\s*spring.jpa.hibernate.ddl-auto\s*=\s*update|spring.jpa.hibernate.ddl-auto=update|g" /etc/openbaton/${properties_file_name}'
     
-    # In case of "noninteractive" FRONTEND the default value will remain valid (sqluser: admin ; sqlpassword: changeme)
-    # Redundant check since the 'configure_mysql' function is executed only when 'DEBIAN_FRONTEND != noninteractive'
+    $_ex 'sed -i "s|#\s*spring.datasource.validationQuery\s*=\s*SELECT 1|spring.datasource.validationQuery=SELECT 1|g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s|#\s*spring.datasource.testOnBorrow\s*=\s*true|spring.datasource.testOnBorrow=true|g" /etc/openbaton/${properties_file_name}'
+
+    # Enable MySQL
+    $_ex 'sed -i "s|#\s*spring.datasource.url\s*=\s*jdbc:mysql:\/\/localhost:3306\/openbaton|spring.datasource.url=jdbc:mysql:\/\/localhost:3306\/openbaton|g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s|#\s*spring.datasource.driver-class-name\s*=\s*com.mysql.jdbc.Driver|spring.datasource.driver-class-name=com.mysql.jdbc.Driver|g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s|#\s*spring.jpa.database-platform\s*=\s*org.hibernate.dialect.MySQLDialect|spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect|g" /etc/openbaton/${properties_file_name}'
+
+    # In case of "noninteractive" FRONTEND the default value will remain valid (mysql_user: admin ; mysql_user_password: changeme)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-        read -p "Please, type the name of the mysql user you would like Open Baton to use [admin]: " sqluser
-        export dbuser=admin
-        export dbpassword=changeme
-        if [ "${sqluser}" != "" ]; then
-            dbuser=${sqluser}
-            $_ex 'sed -i "s/spring.datasource.username=admin/spring.datasource.username=${dbuser}/g" /etc/openbaton/${properties_file_name}'
-        fi
-        # Turning echo on and off between password reading
+        read -p "Please, type the name of the mysql user you would like Open Baton to use [admin]: " mysql_user
+
+        # Turning echo ON and OFF between password reading
         stty -echo
-        read -p "Please, provide the password for this user [changeme]: " sqlpassword ; echo
+        read -p "Please, provide the password for this user [changeme]: " mysql_user_password ; echo
         stty echo
-        if [ "${sqlpassword}" != "" ]; then
-            dbpassword=${sqlpassword}
-            $_ex 'sed -i "s/spring.datasource.password=changeme/spring.datasource.password=${dbpassword}/g" /etc/openbaton/${properties_file_name}'
-        fi                                                                                                                                                
-        # Turning echo on and off between password reading          
+
+        # Turning echo ON and OFF batween password reading
         stty -echo
-        read -p "Please, provide the password of the 'root' user of mysql [root]: " rootpasswd ; echo
+        read -p "Please, provide the password of the 'root' user of mysql [root]: " mysql_root_password ; echo
         stty echo
-        if [ "${rootpasswd}" = "" ]; then
-            rootpasswd=root
-        fi
-        # Create the Database
-        mysql -uroot -p${rootpasswd} -e "CREATE DATABASE openbaton /*\!40100 DEFAULT CHARACTER SET utf8 */;"
-        mysql -uroot -p${rootpasswd} -e "CREATE USER ${dbuser}@localhost IDENTIFIED BY '${dbpassword}';"
-        mysql -uroot -p${rootpasswd} -e "GRANT ALL ON openbaton.* TO '${dbuser}'@'localhost';"
-        mysql -uroot -p${rootpasswd} -e "FLUSH PRIVILEGES;"
-        mysql -uroot -p${rootpasswd} -e "USE openbaton;"
     fi
+
+    # Set the mysql user
+    export mysql_user=${mysql_user:-$MYSQL_USER_DEFAULT}
+    $_ex 'sed -i "s|spring.datasource.username\s*=\s*admin|spring.datasource.username = ${mysql_user}|g" /etc/openbaton/${properties_file_name}'
+
+    # Set the mysql user's password
+    export mysql_user_password=${mysql_user_password:-$MYSQL_USER_PASSWORD_DEFAULT}
+    $_ex 'sed -i "s|spring.datasource.password\s*=\s*changeme|spring.datasource.password = ${mysql_user_password}|g" /etc/openbaton/${properties_file_name}'
+
+    mysql_root_password=${mysql_root_password:-$MYSQL_ROOT_PASSWORD_DEFAULT}
+    # Create the Database
+    mysql -uroot -p${mysql_root_password} -e "CREATE DATABASE openbaton /*\!40100 DEFAULT CHARACTER SET utf8 */;"
+    mysql -uroot -p${mysql_root_password} -e "CREATE USER ${mysql_user}@localhost IDENTIFIED BY '${mysql_user_password}';"
+    mysql -uroot -p${mysql_root_password} -e "GRANT ALL ON openbaton.* TO '${mysql_user}'@'localhost';"
+    mysql -uroot -p${mysql_root_password} -e "FLUSH PRIVILEGES;"
+    mysql -uroot -p${mysql_root_password} -e "USE openbaton;"
 }
 
 install_mysql () {
     properties_file_name=${1}
 
-    # In case of "noninteractive" FRONTEND the default value will remain valid (sqluser: admin ; sqlpassword: changeme)
+    mysql=${mysql:-$MYSQL_DEFAULT}
+
+    # In case of "noninteractive" FRONTEND the default value will remain valid (mysql_user: admin ; mysql_user_password: changeme)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         read -p "Do you want to enable the persistence through MySQL? [Y/n]: " mysql
-        if [ "${mysql}" = "" -o "${mysql}" = "y" -o "${mysql}" = "Y" -o "${mysql}" = "yes" ]; then
-            echo " * [INFO] Enabling MySQL Persistence"
-            $_ex 'apt-get update'
-            $_ex 'apt-get install -y mysql-server'
-            configure_mysql ${properties_file_name}
-        else
-            echo " * [WARN] NOT Enabling MySQL Persistence"
+    else
+        if [ "${mysql}" = "" -o "${mysql}" = "y" -o "${mysql}" = "Y" -o "${mysql}" = "yes" ]; then 
+            export mysql_root_password=${mysql_root_password:-$MYSQL_ROOT_PASSWORD_DEFAULT}
+            log_warning_msg "The root password used for the installation is: '${mysql_root_password}'"
+
+            # TODO OSX support for non interactive installation
+            $_ex 'apt-get install -y debconf-utils'
+            $_ex 'echo mysql-server mysql-server/root_password password ${mysql_root_password} | debconf-set-selections'
+            $_ex 'echo mysql-server mysql-server/root_password_again password ${mysql_root_password} | debconf-set-selections'
         fi
+    fi
+
+    if [ "${mysql}" = "" -o "${mysql}" = "y" -o "${mysql}" = "Y" -o "${mysql}" = "yes" ]; then
+        echo " * [INFO] Enabling MySQL Persistence"
+        $_ex 'apt-get update'
+        $_ex 'apt-get install -y mysql-server'
+        configure_mysql ${properties_file_name}
+    else
+        echo " * [WARN] NOT Enabling MySQL Persistence"
     fi
 }
 
@@ -249,15 +270,15 @@ install_mysql () {
 ##############
 
 main_src () {
-    wget "${OPENBATON_BOOTSTRAP_SRC_FUNCTIONS_URL}"
+    wget -O bootstrap-src-functions "${OPENBATON_BOOTSTRAP_SRC_FUNCTIONS_URL}"
     . ./bootstrap-src-functions
     src_bootstrap
 }
 
 main_deb () {
-    wget "${OPENBATON_BOOTSTRAP_DEB_FUNCTIONS_URL}"
+    wget -O bootstrap-deb-functions "${OPENBATON_BOOTSTRAP_DEB_FUNCTIONS_URL}"
     . ./bootstrap-deb-functions
-    deb_bootstrap ${1}
+    deb_bootstrap "${1}"            # ${1} = debian codename
 }
 
 main () {
@@ -278,6 +299,7 @@ main () {
                 main_deb stable ;;
         esac
     else
+        # Non interactive debian release installation with the default values (when non interactive installation and no config file has been passed)
         main_deb stable
     fi
 
@@ -293,24 +315,80 @@ prereq () {
 #### Entry Point ####
 #####################
 
+if [ ${#} -gt 2 ]; then
+    usage
+    exit 1
+fi
+
 prereq
 
 if [ -n "${1+1}" ]; then
-    case ${1} in
+    for arg in $@ ; do
+        arg_id=$(echo $arg | cut -c1-1)
+        arg_key=
+        arg_value=
+        if [ ${arg_id} = "-" ]; then
+            arg_key=$( echo ${arg} | awk -F'-' '{ print $2}' | awk -F'=' '{ print $1}' )
+            arg_value=$( echo ${arg} | awk -F'-' '{ print $2}' | awk -F'=' '{ print $2}' )
+        else
+            openbaton_installation_type=${arg}
+            continue
+        fi
+
+        if [ "${arg_key}" = "configFile" ]; then
+            if [ -f ${arg_value} ]; then
+                openbaton_bootstrap_configuration_file=${arg_value}
+                echo " * [INFO] Installing Open Baton using the following configuration file:"
+                echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+                cat ${openbaton_bootstrap_configuration_file}
+                echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+                export DEBIAN_FRONTEND=noninteractive
+                set -a # Mark the variable set in the configuration file for export to the environment of subsequent commands
+                . ${openbaton_bootstrap_configuration_file}
+    
+            fi
+        else
+            usage
+            exit 1
+        fi
+    done
+
+    openbaton_installation_type=${openbaton_installation_type:-$OPENBATON_INSTALLATION_TYPE_DEFAULT}
+
+    openbaton_plugin_vimdriver_openstack=${openbaton_plugin_vimdriver_openstack:-$OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_DEFAULT}
+    openbaton_vnfm_generic=${openbaton_vnfm_generic:-$OPENBATON_VNFM_GENERIC_DEFAULT}
+    openbaton_fms=${openbaton_fms:-$OPENBATON_FMS_DEFAULT}
+    openbaton_ase=${openbaton_ase:-$OPENBATON_ASE_DEFAULT}
+    openbaton_nse=${openbaton_nse:-$OPENBATON_NSE_DEFAULT}
+    openbaton_cli=${openbaton_cli:-$OPENBATON_CLI_DEFAULT}
+
+    case ${openbaton_installation_type} in
         "release" )
             echo " * [INFO] Installing the latest RELEASE package"
-            main_deb stable ;;
+            main_deb stable
+            ;;
         "nightly" )
             echo " * [INFO] Installing the latest NIGHTLY-BUILD package"
-            main_deb unstable ;;
+            main_deb unstable
+            ;;
         "develop" )
             echo " * [INFO] Installing the latest source code"
-            main_src ;;
+            main_src
+            ;;
         *)
             usage
-            exit 1 ;;
+            exit 1 
+            ;;
     esac
-else
+else # When invoked with 0 arguments: 'sh <(curl -s http://get.openbaton.org/bootstrap)'
+
+    openbaton_plugin_vimdriver_openstack=${openbaton_plugin_vimdriver_openstack:-$OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_DEFAULT}
+    openbaton_vnfm_generic=${openbaton_vnfm_generic:-$OPENBATON_VNFM_GENERIC_DEFAULT}
+    openbaton_fms=${openbaton_fms:-$OPENBATON_FMS_DEFAULT}
+    openbaton_ase=${openbaton_ase:-$OPENBATON_ASE_DEFAULT}
+    openbaton_nse=${openbaton_nse:-$OPENBATON_NSE_DEFAULT}
+    openbaton_cli=${openbaton_cli:-$OPENBATON_CLI_DEFAULT}
+
     main
 fi
 
