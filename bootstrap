@@ -2,7 +2,7 @@
 #
 # This script allows you to install openbaton. To execute it:
 #
-# sh <(curl -s http://get.openbaton.org/bootstrap) [release | nightly | develop] -configFile=<absolute path to configuration file>
+# sh <(curl -s http://get.openbaton.org/bootstrap) [release | nightly | develop] [-configFile=<absolute path to configuration file>]
 
 
 
@@ -89,8 +89,8 @@ echo "     OS Distribution Release: ${OS_DISTRIBUTION_RELEASE}"
 
 usage () {
     echo "Usage: (The RELEASE installation is the DEFAULT)"
-    echo "./bootstrap [release | nightly | develop] -configFile=<absolute path to configuration file>                                             (if the script is already locally available)"
-    echo "sh <(curl -s http://get.openbaton.org/bootstrap) [release | nightly | develop] -configFile=<absolute path to configuration file>        (otherwise)"
+    echo "./bootstrap [release | nightly | develop] [-configFile=<absolute path to configuration file>]                                             (if the script is already locally available)"
+    echo "sh <(curl -s http://get.openbaton.org/bootstrap) [release | nightly | develop] [-configFile=<absolute path to configuration file>]        (otherwise)"
 }
 
 
