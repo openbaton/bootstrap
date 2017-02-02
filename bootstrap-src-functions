@@ -62,7 +62,7 @@ src_configure_rabbitmq () {
             $_ex 'rabbitmq-plugins enable rabbitmq_management'
             $_ex 'service rabbitmq-server restart'
             if [ "$?" != "0" ]; then
-                echo " * [ERROR] RabbitMQ is not running properly (check the problem in /var/log/rabbitmq)"
+                echo " * ERROR: RabbitMQ is NOT running properly (check the problem in /var/log/rabbitmq)"
                 exit 1
             fi
         fi
@@ -79,12 +79,12 @@ src_configure_rabbitmq () {
     # Set the rabbitmq broker ip
     export rabbitmq_broker_ip=${rabbitmq_broker_ip:-$RABBITMQ_BROKER_IP_DEFAULT}
     echo " * Setting new broker IP: ${rabbitmq_broker_ip}"
-    $_ex 'sed -i "s|nfvo.rabbit.brokerIp\s*=\s*localhost|nfvo.rabbit.brokerIp = ${rabbitmq_broker_ip}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
+    $_ex 'sed -i "s|nfvo.rabbit.brokerIp\s*=\s*localhost|nfvo.rabbit.brokerIp=${rabbitmq_broker_ip}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
 
     # Set the rabbitmq management port
     export rabbitmq_management_port=${rabbitmq_management_port:-$RABBITMQ_MANAGEMENT_PORT_DEFAULT}
-    echo "* Setting new management port: ${rabbitmq_management_port}"
-    $_ex 'sed -i "s|nfvo.rabbit.management.port\s*=\s*15672|nfvo.rabbit.management.port = ${rabbitmq_management_port}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
+    echo " * Setting new management port: ${rabbitmq_management_port}"
+    $_ex 'sed -i "s|nfvo.rabbit.management.port\s*=\s*15672|nfvo.rabbit.management.port=${rabbitmq_management_port}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
 }
 
 
@@ -189,10 +189,6 @@ src_deploy_nfvo () {
     src_start_nfvo
 }
 
-src_delete_nfvo_admin_credentials () {
-      $_ex 'sed -i "/^nfvo.security.admin.password =/d" "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}"'
-}
-
 src_set_nfvo_admin_credentials () {
     # In case of "noninteractive" FRONTEND the default value will remain valid (user: admin ; password: openbaton)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
@@ -214,7 +210,7 @@ src_set_nfvo_admin_credentials () {
 
     # Set the openbaton admin password
     export openbaton_admin_password=${openbaton_admin_password:-$OPENBATON_ADMIN_PASSWORD_DEFAULT}
-    $_ex 'sed -i "s|#\s*nfvo.security.admin.password\s*=\s*openbaton|nfvo.security.admin.password = ${openbaton_admin_password}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
+    $_ex 'sed -i "s|#\s*nfvo.security.admin.password\s*=\s*openbaton|nfvo.security.admin.password=${openbaton_admin_password}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
 }
 
 
@@ -308,7 +304,7 @@ src_ase_configure_rabbitmq () {
     if [ ! -z ${ase_rabbitmq_broker_ip+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting RabbitMQ IP into Auto Scaling Engine: ${ase_rabbitmq_broker_ip}"
         export ase_rabbitmq_broker_ip=${ase_rabbitmq_broker_ip}
-        $_ex 'sed -i "s|autoscaling.rabbitmq.brokerIp\s*=\s*localhost|autoscaling.rabbitmq.brokerIp = ${ase_rabbitmq_broker_ip}|g" ${OPENBATON_BASE_CONFIG_DIR}/ase.properties'
+        $_ex 'sed -i "s|autoscaling.rabbitmq.brokerIp\s*=\s*localhost|autoscaling.rabbitmq.brokerIp=${ase_rabbitmq_broker_ip}|g" ${OPENBATON_BASE_CONFIG_DIR}/ase.properties'
     fi
 
     # Set the RabbitMQ Management port
@@ -316,7 +312,7 @@ src_ase_configure_rabbitmq () {
     if [ ! -z ${ase_rabbitmq_management_port+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting RabbitMQ Management port into Auto Scaling Engine: ${ase_rabbitmq_management_port}"
         export ase_rabbitmq_management_port=${ase_rabbitmq_management_port}
-        $_ex 'sed -i "s|autoscaling.rabbitmq.management.port\s*=\s*15672|autoscaling.rabbitmq.management.port = ${ase_rabbitmq_management_port}|g" ${OPENBATON_BASE_CONFIG_DIR}/ase.properties'
+        $_ex 'sed -i "s|autoscaling.rabbitmq.management.port\s*=\s*15672|autoscaling.rabbitmq.management.port=${ase_rabbitmq_management_port}|g" ${OPENBATON_BASE_CONFIG_DIR}/ase.properties'
     fi
 }
 
@@ -326,7 +322,7 @@ src_ase_configure_nfvo_admin_credentials () {
     if [ ! -z ${ase_nfvo_admin_password+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting NFVO admin's password into Auto Scaling Engine: ${ase_nfvo_admin_password}"
         export ase_nfvo_admin_password=${ase_nfvo_admin_password}
-        $_ex 'sed -i "s|nfvo.password\s*=\s*openbaton|nfvo.password = ${ase_nfvo_admin_password}|g" ${OPENBATON_BASE_CONFIG_DIR}/ase.properties'
+        $_ex 'sed -i "s|nfvo.password\s*=\s*openbaton|nfvo.password=${ase_nfvo_admin_password}|g" ${OPENBATON_BASE_CONFIG_DIR}/ase.properties'
     fi
 }
 

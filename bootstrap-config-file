@@ -3,6 +3,7 @@
 #
 # Usage: sh <(curl -s http://get.openbaton.org/bootstrap) [release | nightly | develop] [-configFile=<absolute path to configuration file>]
 #
+# IMPORTANT NOTE: Avoid spaces before and after the '=': i.e. a parameter needs to be specified as 'parameter=value'
 
 
 ##############
@@ -30,6 +31,7 @@ openbaton_ase=no                                # Default is 'NO' therefore if l
 openbaton_nse=no                                # Default is 'NO' therefore if left empty ('openbaton_nse=') or commented the 'openbaton_nse' debian package will NOT be installed
 openbaton_cli=no                                # Default is 'NO' therefore if left empty ('openbaton_cli=') or commented the 'openbaton_cli' debian package will NOT be installed
 
+# NOTE: The TAG configuration parameters are valid only for the DEVELOP installation
 openbaton_vnfm_generic_tag=3.1.1                # Default is 'develop' therefore if left empty ('openbaton_vnfm_generic=') or commented the 'develop' TAG will be deployed. NOTE: Check the list of available tags at: https://github.com/openbaton/generic-vnfm/tags
 openbaton_fms_tag=3.0.0                         # Default is 'develop' therefore if left empty ('openbaton_fms=') or commented the 'develop' TAG will be deployed. NOTE: Check the list of available tags at: https://github.com/openbaton/fm-system/tags
 openbaton_ase_tag=3.0.0                         # Default is 'develop' therefore if left empty ('openbaton_ase=') or commented the 'develop' TAG will be deployed. NOTE: Check the list of available tags at: https://github.com/openbaton/autoscaling-engine/tags
@@ -39,6 +41,8 @@ openbaton_nse_tag=3.0.0                         # Default is 'develop' therefore
 ######################################################
 #### Zabbix Plugin (required by FMS, ASE and NSE) ####
 ######################################################
+
+# NOTE: Currently the ZABBIX configuration parameters are supported only for the RELEASE installation 
 zabbix_server_ip=                               # Default is 'localhost' therefore if left empty ('zabbix_server_ip=') or commented the 'admin' value will be used
 zabbix_user=                                    # Default is 'admin' therefore if left empty ('zabbix_user=') or commented the 'admin' value will be used
 zabbix_user_password=                           # Default is 'zabbix' therefore if left empty ('zabbix_user_password=') or commented the 'zabbix' value will be used
