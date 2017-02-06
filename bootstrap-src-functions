@@ -194,7 +194,7 @@ src_set_nfvo_admin_credentials () {
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         # Turning echo ON and OFF between password reading
         stty -echo
-        read -p " * Provide the new password for 'admin' user of Open Baton: " openbaton_admin_password ; echo
+        read -p " * Provide the new password for 'admin' user of Open Baton [openbaton]: " openbaton_admin_password ; echo
         stty echo
 
         if [ "${openbaton_admin_password}" != "" ]; then
@@ -300,7 +300,7 @@ src_deploy_additional_component () {
 
 src_ase_configure_rabbitmq () {
     # Set the RabbitMQ IP
-    ase_rabbitmq_broker_ip=$( awk '$0 ~ "nfvo.rabbit.brokerIp ="' "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | awk -F'= ' '{print $2}' )
+    ase_rabbitmq_broker_ip=$( awk '$0 ~ "nfvo.rabbit.brokerIp[[:space:]]*="' "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${ase_rabbitmq_broker_ip+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting RabbitMQ IP into Auto Scaling Engine: ${ase_rabbitmq_broker_ip}"
         export ase_rabbitmq_broker_ip=${ase_rabbitmq_broker_ip}
@@ -308,7 +308,7 @@ src_ase_configure_rabbitmq () {
     fi
 
     # Set the RabbitMQ Management port
-    ase_rabbitmq_management_port=$( awk '$0 ~ "nfvo.rabbit.management.port ="' "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | awk -F'= ' '{print $2}' )
+    ase_rabbitmq_management_port=$( awk '$0 ~ "nfvo.rabbit.management.port[[:space:]]*="' "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${ase_rabbitmq_management_port+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting RabbitMQ Management port into Auto Scaling Engine: ${ase_rabbitmq_management_port}"
         export ase_rabbitmq_management_port=${ase_rabbitmq_management_port}
@@ -318,7 +318,7 @@ src_ase_configure_rabbitmq () {
 
 src_ase_configure_nfvo_admin_credentials () {
     # Set the NFVO admin's password
-    ase_nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password ="' "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | awk -F'= ' '{print $2}' )
+    ase_nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password[[:space:]]*="' "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${ase_nfvo_admin_password+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting NFVO admin's password into Auto Scaling Engine: ${ase_nfvo_admin_password}"
         export ase_nfvo_admin_password=${ase_nfvo_admin_password}
