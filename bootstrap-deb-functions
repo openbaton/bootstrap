@@ -77,6 +77,8 @@ deb_install_nfvo () {
 deb_restart_nfvo () {
     if $_ex 'systemctl restart openbaton-nfvo.service' >/dev/null 2>&1 ; then
         log_success_msg "Restarting the Open Baton NFVO .."
+    elif $_ex 'service openbaton-nfvo restart' >/dev/null 2>&1 ; then
+        log_success_msg "Restarting the Open Baton NFVO .."
     elif $_ex 'restart openbaton-nfvo' >/dev/null 2>&1 ; then
         log_success_msg "Restarting the Open Baton NFVO .."
     else
@@ -133,6 +135,8 @@ deb_restart_additional_component () {
     export component_name_fancy="${2}"
 
     if $_ex 'systemctl restart openbaton-${component_name}.service' >/dev/null 2>&1 ; then
+        log_success_msg "Restarting the Open Baton ${component_name_fancy} .."
+    elif $_ex 'service openbaton-${component_name} restart' >/dev/null 2>&1 ; then
         log_success_msg "Restarting the Open Baton ${component_name_fancy} .."
     elif $_ex 'restart openbaton-${component_name}' >/dev/null 2>&1 ; then
         log_success_msg "Restarting the Open Baton ${component_name_fancy} .."
