@@ -26,8 +26,6 @@ BOOTSTRAP_DIR=$(pwd)
 OPENBATON_BOOTSTRAP_SRC_FUNCTIONS_URL=http://get.openbaton.org/bootstrap-src-functions
 OPENBATON_BOOTSTRAP_DEB_FUNCTIONS_URL=http://get.openbaton.org/bootstrap-deb-functions
 
-OPENBATON_INSTALLATION_TYPE_DEFAULT=release
-
 USER="$(id -un 2>/dev/null || true)"
 
 OS_ARCHITECTURE=$(uname -m)
@@ -76,6 +74,15 @@ OPENBATON_ASE_DEFAULT=no
 OPENBATON_NSE_DEFAULT=no
 OPENBATON_CLI_DEFAULT=no
 
+OPENBATON_INSTALLATION_TYPE_DEFAULT=release
+
+
+
+#OPENBATON_INSTALLATION_BASE_DIR=/opt
+#OPENBATON_BASE_DIR="${OPENBATON_INSTALLATION_BASE_DIR}/openbaton"
+OPENBATON_BASE_CONFIG_DIR="/etc/openbaton"
+OPENBATON_SOURCE_INSTALLATION_BASE_DIR=/opt/openbaton
+
 
 ###############
 #### Usage ####
@@ -99,7 +106,7 @@ usage () {
 ##############################
 
 check_binary () {
-  echo -n " * [info] Checking for '${1}' ... "
+  echo -n " * Checking for '${1}' ... "
   if command -v ${1} >/dev/null 2>&1; then
      echo "OK"
      return 0
@@ -266,6 +273,49 @@ install_mysql () {
 #### Main ####
 ##############
 
+clean () {
+    # TODO: fix properties files' names in DEBIAN and SOURCE installation
+    # Retrieve mysql credentials and rabbitmq ip
+    if [ -f "/etc/openbaton/openbaton-nfvo.properties" ]; then
+        mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
+        mysql_user_password=$( awk -F'=' '{ if($0 ~ "spring.datasource.password") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
+        rabbitmq_ip=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.brokerIp") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
+        rabbitmq_management_port=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.management.port") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
+    elif [ -f "/etc/openbaton/openbaton.properties" ]; then
+        mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username") { print $2 }}' /etc/openbaton/openbaton.properties )
+        mysql_user_password=$( awk -F'=' '{ if($0 ~ "spring.datasource.password") { print $2 }}' /etc/openbaton/openbaton.properties )
+        rabbitmq_ip=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.brokerIp") { print $2 }}' /etc/openbaton/openbaton.properties )
+        rabbitmq_management_port=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.management.port") { print $2 }}' /etc/openbaton/openbaton.properties )
+    fi
+
+    # Clean Open Baton binaries, source and properties files
+    debian_packages_num=$( dpkg -l | grep openbaton | wc -l )
+    for i in $( seq 1 ${debian_packages_num}); do
+        package=$( dpkg -l | grep openbaton | head -1 | awk '{print $2}' )
+        $_ex "apt-get purge -y ${package}"
+    done
+
+    if [ -d ${OPENBATON_SOURCE_INSTALLATION_BASE_DIR} ]; then
+        $_ex "rm -r ${OPENBATON_SOURCE_INSTALLATION_BASE_DIR}"
+        if [ -d ${OPENBATON_BASE_CONFIG_DIR} ]; then
+            $_ex "rm -r ${OPENBATON_BASE_CONFIG_DIR}"
+            #echo " * Cleaning Open Baton CONFIGURATION files"
+        fi
+        #echo " * Cleaning Open Baton SOURCE files"
+        is_source_installation=true
+    fi
+
+    # Clean DB 'openbaton'
+    mysql -u${mysql_user} -p${mysql_user_password} -e "DROP DATABASE openbaton;"
+
+    # TODO Clean Rabbitmq
+    #wget -O rabbitmqadmin http://${rabbitmq_ip}:${rabbitmq_management_port}/cli/rabbitmqadmin
+    #$_ex chmod + x ./rabbitmqadmin
+    #./rabbitmqadmin delete vhost name="openbaton"
+
+    echo " * Cleaning Open Baton installation"
+}
+
 main_src () {
     wget -O bootstrap-src-functions "${OPENBATON_BOOTSTRAP_SRC_FUNCTIONS_URL}"
     . ./bootstrap-src-functions
@@ -317,39 +367,59 @@ if [ ${#} -gt 2 ]; then
     exit 1
 fi
 
-prereq
 
 if [ -n "${1+1}" ]; then
     for arg in $@ ; do
         arg_id=$(echo $arg | cut -c1-1)
-        arg_key=
+        arg_key=${arg}
         arg_value=
-        if [ ${arg_id} = "-" ]; then
+
+        if [ ${arg_id} != "-" ]; then
+            case ${arg} in
+                "clean" )
+                    if [ $# -gt 1 ]; then
+                        usage
+                        exit 1
+                    fi
+
+                    clean
+                    exit 0
+                    ;;
+                "release" | "nightly" | "develop" )
+                    openbaton_installation_type=${arg}
+                    ;;
+                * )
+                    usage
+                    exit 1
+                    ;;
+            esac
+
+        else
             arg_key=$( echo ${arg} | cut -c2-  | awk -F'=' '{ print $1}' )
             arg_value=$( echo ${arg} | cut -c2- | awk -F'=' '{ print $2}' )
-        else
-            openbaton_installation_type=${arg}
-            continue
-        fi
 
-        if [ "${arg_key}" = "configFile" ]; then
-            if [ -f ${arg_value} ]; then
-                openbaton_bootstrap_configuration_file=${arg_value}
-                echo " * Installing Open Baton using the following configuration file:"
-                echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-                cat ${openbaton_bootstrap_configuration_file}
-                echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-                export DEBIAN_FRONTEND=noninteractive
-                set -a # Mark the variable set in the configuration file for export to the environment of subsequent commands
-                . ${openbaton_bootstrap_configuration_file}
+            if [ "${arg_key}" = "configFile" ]; then
+                if [ -f ${arg_value} ]; then
+                    openbaton_bootstrap_configuration_file=${arg_value}
+                    echo " * Installing Open Baton using the following configuration file:"
+                    echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+                    cat ${openbaton_bootstrap_configuration_file}
+                    echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+                    export DEBIAN_FRONTEND=noninteractive
+                    set -a # Mark the variable set in the configuration file for export to the environment of subsequent commands
+                    . ${openbaton_bootstrap_configuration_file}
+                else
+                    echo " * Configuration file '${arg_value}' does not exist."
+                fi
             else
-                echo " * Configuration file '${arg_value}' does not exist."
+                usage
+                exit 1
             fi
-        else
-            usage
-            exit 1
         fi
     done
+
+
+    prereq
 
     openbaton_installation_type=${openbaton_installation_type:-$OPENBATON_INSTALLATION_TYPE_DEFAULT}
 
@@ -379,6 +449,7 @@ if [ -n "${1+1}" ]; then
             ;;
     esac
 else # When invoked with 0 arguments: 'sh <(curl -s http://get.openbaton.org/bootstrap)'
+    prereq
 
     openbaton_plugin_vimdriver_openstack=${openbaton_plugin_vimdriver_openstack:-$OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_DEFAULT}
     openbaton_vnfm_generic=${openbaton_vnfm_generic:-$OPENBATON_VNFM_GENERIC_DEFAULT}
