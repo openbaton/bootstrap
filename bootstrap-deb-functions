@@ -168,7 +168,7 @@ deb_bootstrap () {
     #
 
     # OpenStack VIM Driver Plugin
-    deb_install_additional_component stable plugin-vimdriver-openstack "OpenStack VIM-Driver Plugin" ${openbaton_plugin_vimdriver_openstack}
+    deb_install_additional_component stable plugin-vimdriver-openstack-4j "OpenStack VIM-Driver Plugin" ${openbaton_plugin_vimdriver_openstack}
 
     # Generic VNFM
     deb_install_additional_component ${1} vnfm-generic "Generic VNFM" ${openbaton_vnfm_generic}
