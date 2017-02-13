@@ -229,7 +229,11 @@ configure_mysql () {
     export mysql_user_password=${mysql_user_password:-$MYSQL_USER_PASSWORD_DEFAULT}
     $_ex 'sed -i "s|spring.datasource.password\s*=\s*changeme|spring.datasource.password=${mysql_user_password}|g" /etc/openbaton/${properties_file_name}'
 
-    mysql_root_password=${mysql_root_password:-$MYSQL_ROOT_PASSWORD_DEFAULT}
+    result=$(ps aux | grep -v 'grep' | grep 'mysql' | wc -l)
+    if [ ${result} -le 0 ]; then
+        $_ex 'service mysql start'
+    fi
+    export mysql_root_password=${mysql_root_password:-$MYSQL_ROOT_PASSWORD_DEFAULT}
     # Create the Database
     mysql -uroot -p${mysql_root_password} -e "CREATE DATABASE openbaton /*\!40100 DEFAULT CHARACTER SET utf8 */;"
     mysql -uroot -p${mysql_root_password} -e "CREATE USER ${mysql_user}@localhost IDENTIFIED BY '${mysql_user_password}';"
