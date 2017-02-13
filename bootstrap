@@ -263,7 +263,7 @@ install_mysql () {
     fi
 
     if [ "${mysql}" = "" -o "${mysql}" = "y" -o "${mysql}" = "Y" -o "${mysql}" = "yes" ]; then
-        echo " *  Enabling MySQL Persistence"
+        echo " * Enabling MySQL Persistence"
         $_ex 'apt-get update'
         $_ex 'apt-get install -y mysql-server'
         configure_mysql ${properties_file_name}
@@ -281,42 +281,57 @@ clean () {
     # TODO: fix properties files' names in DEBIAN and SOURCE installation
     # Retrieve mysql credentials and rabbitmq ip
     if [ -f "/etc/openbaton/openbaton-nfvo.properties" ]; then
-        mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
-        mysql_user_password=$( awk -F'=' '{ if($0 ~ "spring.datasource.password") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
-        rabbitmq_ip=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.brokerIp") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
-        rabbitmq_management_port=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.management.port") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
+        mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username=") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
+        rabbitmq_ip=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.brokerIp=") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
+        rabbitmq_management_port=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.management.port=") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
     elif [ -f "/etc/openbaton/openbaton.properties" ]; then
-        mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username") { print $2 }}' /etc/openbaton/openbaton.properties )
-        mysql_user_password=$( awk -F'=' '{ if($0 ~ "spring.datasource.password") { print $2 }}' /etc/openbaton/openbaton.properties )
-        rabbitmq_ip=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.brokerIp") { print $2 }}' /etc/openbaton/openbaton.properties )
-        rabbitmq_management_port=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.management.port") { print $2 }}' /etc/openbaton/openbaton.properties )
+        mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username=") { print $2 }}' /etc/openbaton/openbaton.properties )
+        rabbitmq_ip=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.brokerIp=") { print $2 }}' /etc/openbaton/openbaton.properties )
+        rabbitmq_management_port=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.management.port=") { print $2 }}' /etc/openbaton/openbaton.properties )
     fi
 
-    # Clean Open Baton binaries, source and properties files
+    # Retrieve rabbitmqadmin cli
+    wget -O rabbitmqadmin http://${rabbitmq_ip}:${rabbitmq_management_port}/cli/rabbitmqadmin
+    $_ex "chmod +x ./rabbitmqadmin"
+
+    # Clean Open Baton binaries and properties files
     debian_packages_num=$( dpkg -l | grep openbaton | wc -l )
     for i in $( seq 1 ${debian_packages_num}); do
         package=$( dpkg -l | grep openbaton | head -1 | awk '{print $2}' )
         $_ex "apt-get purge -y ${package}"
     done
 
+    # Clean Open Baton source code and properties files
     if [ -d ${OPENBATON_SOURCE_INSTALLATION_BASE_DIR} ]; then
         $_ex "rm -r ${OPENBATON_SOURCE_INSTALLATION_BASE_DIR}"
         if [ -d ${OPENBATON_BASE_CONFIG_DIR} ]; then
             $_ex "rm -r ${OPENBATON_BASE_CONFIG_DIR}"
-            #echo " * Cleaning Open Baton CONFIGURATION files"
         fi
-        #echo " * Cleaning Open Baton SOURCE files"
-        is_source_installation=true
     fi
 
-    # Clean DB 'openbaton'
-    mysql -u${mysql_user} -p${mysql_user_password} -e "DROP DATABASE openbaton;"
+    # Clean MySQL
+    mysql_user=${mysql_user:-"undefined"}
+    if [ "${mysql_user}" != "undefined" ]; then
+        read -p " * Do you want to delete the Open Baton database: 'openbaton' (this will also delete the associated user: '${mysql_user}')? (if you skip this step then you won't be able, later on, to delete the Open Baton database and user using this script) [Y/n]: " mysql
+        if [ "${mysql}" = "" -o "${mysql}" = "y" -o "${mysql}" = "Y" -o "${mysql}" = "yes" ]; then
+            stty -echo
+            read -p " * Please, provide the password of the 'root' user of mysql [root]: " mysql_root_password ; echo
+            stty echo
 
-    # TODO Clean Rabbitmq
-    #wget -O rabbitmqadmin http://${rabbitmq_ip}:${rabbitmq_management_port}/cli/rabbitmqadmin
-    #$_ex chmod + x ./rabbitmqadmin
-    #./rabbitmqadmin delete vhost name="openbaton"
+            mysql_root_password=${mysql_root_password:-$MYSQL_ROOT_PASSWORD_DEFAULT}
+            mysql -uroot -p${mysql_root_password} -e "DROP DATABASE openbaton;"
+            mysql -uroot -p${mysql_root_password} -e "DROP USER ${mysql_user}@localhost;"
+        else
+            echo " * NOT deleting Open Baton database and its associated user."
+        fi
+    fi
 
+    # Clean RabbitMQ
+    #./rabbitmqadmin delete vhost name="openbaton" #TODO
+    ./rabbitmqadmin delete exchange name="openbaton-exchange" >/dev/null 2>&1
+    ./rabbitmqadmin delete exchange name="plugin-exchange" >/dev/null 2>&1
+
+    1>$(tty)
     echo " * Cleaning Open Baton installation"
 }
 
