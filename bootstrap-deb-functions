@@ -73,7 +73,7 @@ deb_add_openbaton_repo_reference () {
 #### NFVO ####
 
 deb_install_nfvo () {
-    export codename="${1}"
+    export release_nightly="${1}"
     export oldest_nfvo_version_supported="${2}"
     export nfvo_version="${3}"
 
@@ -102,7 +102,7 @@ deb_install_nfvo () {
     fi
 
     # Install the correct NFVO package according to the given input parameter
-    if [ "${codename}" = "stable" ]; then
+    if [ "${release_nightly}" = "release" ]; then
         $_ex 'apt-get install -y openbaton-nfvo${nfvo_version}'
     else
         $_ex 'apt-get install -y openbaton-nfvo-nightly${nfvo_version}'
@@ -131,7 +131,7 @@ deb_install_additional_component_versioned () {
         component_version="-${component_version}"
     fi
 
-    if [ "${codename}" = "stable" ]; then
+    if [ "${release_nightly}" = "release" ]; then
         $_ex 'apt-get install -y openbaton-${component_name}${component_version}'
     else
         $_ex 'apt-get install -y openbaton-${component_name}-nightly${component_version}'
@@ -140,7 +140,7 @@ deb_install_additional_component_versioned () {
 
 
 deb_install_additional_component () {
-    export codename="${1}"
+    export release_nightly="${1}"
     export component_name="${2}"
     export component_name_fancy="${3}"
     export install_during_noninteractive_installation="${4}"
@@ -238,7 +238,7 @@ deb_bootstrap () {
 
 
     deb_add_openbaton_repo_reference "${1}" "${2}"
-    deb_install_nfvo "${1}" "3.2.0" "${OPENBATON_NFVO_REPO_URL}" "${openbaton_nfvo_version}"
+    deb_install_nfvo "${1}" "3.2.0" "${openbaton_nfvo_version}"
     install_mysql "openbaton-nfvo.properties"
 
     #
