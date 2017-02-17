@@ -13,6 +13,13 @@ set -u
 #### Global Variables ####
 ##########################
 
+OPENBATON_NFVO_VERSION_DEFAULT="latest"
+OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_VERSION_DEFAULT="latest"
+OPENBATON_VNFM_GENERIC_VERSION_DEFAULT="latest"
+OPENBATON_FMS_VERSION_DEFAULT="latest"
+OPENBATON_ASE_VERSION_DEFAULT="latest"
+OPENBATON_NSE_VERSION_DEFAULT="latest"
+
 
 #############################
 #### VIM-Drivers Plugins ####
@@ -47,15 +54,17 @@ set -u
 ####################
 
 deb_add_openbaton_repo_reference () {
-    export codename=${1}
+    export release_nightly="${1}"
+    export codename="${2}"
 
     # Add Open Baton Public Key to the APT keys
-    $_ex 'wget -O - http://get.openbaton.org/keys/public.gpg.key | apt-key add -'
+    $_ex 'wget -O - http://get.openbaton.org/keys/openbaton.public.key | apt-key add -'
 
     # Add Open Baton Repo to sources.list file
-    result=$(grep /etc/apt/sources.list -e "deb http://get.openbaton.org/repos/apt/debian/ ${codename} main" | wc -l)
+    result=$(grep /etc/apt/sources.list -e "deb http://get.openbaton.org/repos/openbaton/${codename}/${release_nightly} ${codename} main" | wc -l)
     if [ ${result} -eq 0 ]; then
-        $_ex 'echo "\ndeb http://get.openbaton.org/repos/apt/debian/ ${codename} main" >> /etc/apt/sources.list'
+        $_ex 'echo "\n## Open Baton repository" >> /etc/apt/sources.list'
+        $_ex 'echo "deb http://get.openbaton.org/repos/openbaton/${codename}/${release_nightly} ${codename} main" >> /etc/apt/sources.list'
     fi
     $_ex 'apt-get update'
 }
@@ -64,13 +73,39 @@ deb_add_openbaton_repo_reference () {
 #### NFVO ####
 
 deb_install_nfvo () {
-    export codename=${1}
+    export codename="${1}"
+    export oldest_nfvo_version_supported="${2}"
+    export nfvo_version="${3}"
+
+    if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
+        valid_version=false
+        while [ "${valid_version}" = "false" ]; do
+            # Ask for the NFVO version to be installed
+            read -p " * Which VERSION of the Open Baton NFVO do you want to install (Version Format is X.Y.Z - ** ${oldest_nfvo_version_supported} is the oldest version supported ** - Check the list of available VERSIONs at: ${OPENBATON_NFVO_REPO_URL}/tags )? (latest): " nfvo_version
+
+            if [ "${nfvo_version}" = "" -o "${nfvo_version}" = "latest" ]; then
+                valid_version=true
+                continue
+            else
+                result=$( echo ${nfvo_version} | grep "^[0-9]\{1,\}\.[0-9]\{1,\}\.[0-9]\{1,\}$" | wc -l )
+                if [ "${result}" != "0" ]; then
+                    valid_version=true
+                    continue
+                fi
+            fi
+        done
+    fi
+    if [ "${nfvo_version}" = "" -o "${nfvo_version}" = "latest" ]; then
+        nfvo_version=""
+    else
+        nfvo_version="-${nfvo_version}"
+    fi
 
     # Install the correct NFVO package according to the given input parameter
     if [ "${codename}" = "stable" ]; then
-        $_ex 'apt-get install -y openbaton-nfvo'
+        $_ex 'apt-get install -y openbaton-nfvo${nfvo_version}'
     else
-        $_ex 'apt-get install -y openbaton-nfvo-nightly'
+        $_ex 'apt-get install -y openbaton-nfvo-nightly${nfvo_version}'
     fi    
 }
 
@@ -89,18 +124,37 @@ deb_restart_nfvo () {
 ###############################
 #### Additional Components ####
 
+deb_install_additional_component_versioned () {
+    if [ "${component_version}" = "" -o "${component_version}" = "latest" ]; then
+        component_version=""
+    else
+        component_version="-${component_version}"
+    fi
+
+    if [ "${codename}" = "stable" ]; then
+        $_ex 'apt-get install -y openbaton-${component_name}${component_version}'
+    else
+        $_ex 'apt-get install -y openbaton-${component_name}-nightly${component_version}'
+    fi
+}
+
+
 deb_install_additional_component () {
-    export codename=${1}
-    export component_name=${2}
+    export codename="${1}"
+    export component_name="${2}"
     export component_name_fancy="${3}"
     export install_during_noninteractive_installation="${4}"
+    export force_component_version="${5}"
+    export oldest_component_version_supported="${6}"
+    export component_repo_url="${7}"
+    export component_version="${8}"
 
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         # Ask for the specified Additional Component installation
-        read -p " * Do you want to install also the ${component_name_fancy}? ( if you do not, then you can still install it later with: sudo apt-get install openbaton-${component_name} ) (Y/n): " ac
+        read -p " * Do you want to install also the Open Baton ${component_name_fancy}? ( if you do not, then you can still install it later with: sudo apt-get install openbaton-${component_name} ) (Y/n): " ac
 
         # Print correct warning message
-        if [ "${ac}" = "n" -o "${ac}" = "N" ]; then
+        if [ "${ac}" = "n" -o "${ac}" = "N" -o "${ac}" = "no" -o "${ac}" = "NO" ]; then
             echo " * Open Baton ${component_name_fancy} not installed"
             if [ "${codename}" = "stable" ]; then
                 echo " * To install the latest release package:"
@@ -112,20 +166,31 @@ deb_install_additional_component () {
             return
         else
             # Install the correct Additional Component package according to the given input parameter
-            if [ "${codename}" = "stable" ]; then
-                $_ex 'apt-get install -y openbaton-${component_name}'
-            else
-                $_ex 'apt-get install -y openbaton-${component_name}-nightly'
+            if [ ${force_component_version} != "true" ]; then 
+                valid_version=false
+                while [ "${valid_version}" = "false" ]; do
+                    # Ask for the Additional Component version to be installed
+                    read -p " * Which VERSION of the Open Baton ${component_name_fancy} do you want to install (Version Format is X.Y.Z - *** ${oldest_component_version_supported} is the oldest version supported ** - Check the list of available VERSIONs at: ${component_repo_url}/tags )? (latest): " component_version
+
+                    if [ "${component_version}" = "" -o "${component_version}" = "latest" ]; then
+                        valid_version=true
+                        continue
+                    else
+                        result=$( echo ${component_version} | grep "^[0-9]\{1,\}\.[0-9]\{1,\}\.[0-9]\{1,\}$" | wc -l )
+                        if [ "${result}" != "0" ]; then
+                            valid_version=true
+                            continue
+                        fi
+                    fi
+                done
             fi
+
+            deb_install_additional_component_versioned
         fi
     else
         if [ "${install_during_noninteractive_installation}" = "y" -o "${install_during_noninteractive_installation}" = "Y" -o "${install_during_noninteractive_installation}" = "yes" ]; then
             # Install the correct Additional Component package according to the given input parameter
-            if [ "${codename}" = "stable" ]; then
-                $_ex 'apt-get install -y openbaton-${component_name}'
-            else
-                $_ex 'apt-get install -y openbaton-${component_name}-nightly'
-            fi
+            deb_install_additional_component_versioned
         fi
     fi
 }
@@ -163,31 +228,41 @@ deb_is_additional_component_installed () {
 
 deb_bootstrap () {
     prereq
-    deb_add_openbaton_repo_reference ${1}
-    deb_install_nfvo ${1}
+
+    openbaton_nfvo_version=${openbaton_nfvo_version:-$OPENBATON_NFVO_VERSION_DEFAULT}
+    openbaton_plugin_vimdriver_openstack_version=${openbaton_plugin_vimdriver_openstack_version:-$OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_VERSION_DEFAULT}
+    openbaton_vnfm_generic_version=${openbaton_vnfm_generic_version:-$OPENBATON_VNFM_GENERIC_VERSION_DEFAULT}
+    openbaton_fms_version=${openbaton_fms_version:-$OPENBATON_FMS_VERSION_DEFAULT}
+    openbaton_ase_version=${openbaton_ase_version:-$OPENBATON_ASE_VERSION_DEFAULT}
+    openbaton_nse_version=${openbaton_nse_version:-$OPENBATON_NSE_VERSION_DEFAULT}
+
+
+    deb_add_openbaton_repo_reference "${1}" "${2}"
+    deb_install_nfvo "${1}" "3.2.0" "${OPENBATON_NFVO_REPO_URL}" "${openbaton_nfvo_version}"
     install_mysql "openbaton-nfvo.properties"
 
     #
-    # Arguments of "deb_install_additional_component": ${1} component-name component-name-fancy install_during_noninteractive_installation
+    # Arguments of "deb_install_additional_component": ${1} component-name component-name-fancy install_during_noninteractive_installation force_component_version oldest_component_version_supported component_version
     #
 
     # OpenStack VIM Driver Plugin
-    deb_install_additional_component stable plugin-vimdriver-openstack-4j "OpenStack VIM-Driver Plugin" ${openbaton_plugin_vimdriver_openstack}
+    deb_install_additional_component stable plugin-vimdriver-openstack-4j "OpenStack VIM-Driver Plugin" ${openbaton_plugin_vimdriver_openstack} false "3.2.0" "${OPENBATON_PLUGINS_VIMDRIVERS_OPENSTACK_4J_REPO_URL}" ${openbaton_plugin_vimdriver_openstack_version}
 
     # Generic VNFM
-    deb_install_additional_component ${1} vnfm-generic "Generic VNFM" ${openbaton_vnfm_generic}
+    deb_install_additional_component ${1} vnfm-generic "Generic VNFM" ${openbaton_vnfm_generic} false "3.2.0" "${OPENBATON_VNFM_GENERIC_REPO_URL}" ${openbaton_vnfm_generic_version}
     
     # Fault Management System
-    deb_install_additional_component ${1} fms "Fault Management System" ${openbaton_fms}
+    deb_install_additional_component ${1} fms "Fault Management System" ${openbaton_fms} false "1.2.2" "${OPENBATON_FMS_REPO_URL}" ${openbaton_fms_version}
     
     # Auto Scaling Engine
-    deb_install_additional_component ${1} ase "Auto Scaling Engine" ${openbaton_ase}
+    deb_install_additional_component ${1} ase "Auto Scaling Engine" ${openbaton_ase} false "1.2.2" "${OPENBATON_ASE_REPO_URL}" ${openbaton_ase_version}
     
     # Network Slicing Engine
-    deb_install_additional_component ${1} nse "Network Slicing Engine" ${openbaton_nse}
-    
+    deb_install_additional_component ${1} nse "Network Slicing Engine" ${openbaton_nse} false "1.1.2" "${OPENBATON_NSE_REPO_URL}" ${openbaton_nse_version}
+
     # Command Line Interface
-    deb_install_additional_component ${1} cli "Command Line Interface (CLI)" ${openbaton_cli}
+    openbaton_cli_version=$( echo "${openbaton_nfvo_version}" | sed 's/-//g' )
+    deb_install_additional_component ${1} cli "Command Line Interface (CLI)" ${openbaton_cli} true "ignored" "ignored" "${openbaton_cli_version}"
 
     fix_jvm_delay_for_random_number_generation
     enable_https "openbaton-nfvo.properties"

@@ -26,6 +26,13 @@ BOOTSTRAP_DIR=$(pwd)
 OPENBATON_BOOTSTRAP_SRC_FUNCTIONS_URL=http://get.openbaton.org/bootstrap-src-functions
 OPENBATON_BOOTSTRAP_DEB_FUNCTIONS_URL=http://get.openbaton.org/bootstrap-deb-functions
 
+OPENBATON_NFVO_REPO_URL="https://github.com/openbaton/NFVO"
+OPENBATON_PLUGINS_VIMDRIVERS_OPENSTACK_4J_REPO_URL="https://github.com/openbaton/openstack4j-plugin"
+OPENBATON_VNFM_GENERIC_REPO_URL="https://github.com/openbaton/generic-vnfm"
+OPENBATON_FMS_REPO_URL="https://github.com/openbaton/fm-system"
+OPENBATON_ASE_REPO_URL="https://github.com/openbaton/autoscaling-engine"
+OPENBATON_NSE_REPO_URL="https://github.com/openbaton/network-slicing-engine"
+
 USER="$(id -un 2>/dev/null || true)"
 
 OS_ARCHITECTURE=$(uname -m)
@@ -35,6 +42,7 @@ case "${OS_TYPE}" in
     'Linux')
         OS_DISTRIBUTION_ID=$( cat /etc/lsb-release | grep DISTRIB_ID | awk -F'=' '{ print $2 }' )
         OS_DISTRIBUTION_RELEASE=$( cat /etc/lsb-release | grep DISTRIB_RELEASE | awk -F'=' '{ print $2 }' )
+        OS_DISTRIBUTION_CODENAME=$( cat /etc/lsb-release | grep DISTRIB_CODENAME | awk -F'=' '{ print $2 }' )
         ;;
     'Darwin')
         OS_DISTRIBUTION_ID=$( sw_vers -productName )
@@ -87,12 +95,6 @@ OPENBATON_SOURCE_INSTALLATION_BASE_DIR=/opt/openbaton
 ###############
 #### Usage ####
 ###############
-
-echo " * System Details:"
-echo "     OS Architecture: ${OS_ARCHITECTURE}"
-echo "     OS Type: ${OS_TYPE}"
-echo "     OS Distribution ID: ${OS_DISTRIBUTION_ID}"
-echo "     OS Distribution Release: ${OS_DISTRIBUTION_RELEASE}"
 
 usage () {
     echo " * Usage: (The RELEASE installation is the DEFAULT)"
@@ -344,7 +346,7 @@ main_src () {
 main_deb () {
     wget -O bootstrap-deb-functions "${OPENBATON_BOOTSTRAP_DEB_FUNCTIONS_URL}"
     . ./bootstrap-deb-functions
-    deb_bootstrap "${1}"            # ${1} = debian codename
+    deb_bootstrap "${1}" "${2}"           # ${1} = release/nightly ; ${2} = debian codename
 }
 
 main () {
@@ -358,15 +360,18 @@ main () {
         read -p " * Select the Open Baton installation type you prefer [2]: " install_type
         case ${install_type} in
             1 ) 
-                main_src ;;
+                main_src 
+                ;;
             3 ) 
-                main_deb unstable;;
+                main_deb nightly "${OS_DISTRIBUTION_CODENAME}"
+                ;;
             * ) 
-                main_deb stable ;;
+                main_deb release "${OS_DISTRIBUTION_CODENAME}"
+                ;;
         esac
     else
         # Non interactive debian release installation with the default values (when non interactive installation and no config file has been passed)
-        main_deb stable
+        main_deb release "${OS_DISTRIBUTION_CODENAME}"
     fi
 
     log_success_msg "Open Baton installation complete"
@@ -437,6 +442,11 @@ if [ -n "${1+1}" ]; then
         fi
     done
 
+    echo " * System Details:"
+    echo "     OS Architecture: ${OS_ARCHITECTURE}"
+    echo "     OS Type: ${OS_TYPE}"
+    echo "     OS Distribution ID: ${OS_DISTRIBUTION_ID}"
+    echo "     OS Distribution Release: ${OS_DISTRIBUTION_RELEASE}"
 
     prereq
 
@@ -452,11 +462,11 @@ if [ -n "${1+1}" ]; then
     case ${openbaton_installation_type} in
         "release" )
             echo " * Installing the latest RELEASE package"
-            main_deb stable
+            main_deb release "${OS_DISTRIBUTION_CODENAME}"
             ;;
         "nightly" )
             echo " * Installing the latest NIGHTLY-BUILD package"
-            main_deb unstable
+            main_deb nightly "${OS_DISTRIBUTION_CODENAME}"
             ;;
         "develop" )
             echo " * Installing the latest source code"
@@ -468,6 +478,13 @@ if [ -n "${1+1}" ]; then
             ;;
     esac
 else # When invoked with 0 arguments: 'sh <(curl -s http://get.openbaton.org/bootstrap)'
+
+    echo " * System Details:"
+    echo "     OS Architecture: ${OS_ARCHITECTURE}"
+    echo "     OS Type: ${OS_TYPE}"
+    echo "     OS Distribution ID: ${OS_DISTRIBUTION_ID}"
+    echo "     OS Distribution Release: ${OS_DISTRIBUTION_RELEASE}"
+
     prereq
 
     openbaton_plugin_vimdriver_openstack=${openbaton_plugin_vimdriver_openstack:-$OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_DEFAULT}
