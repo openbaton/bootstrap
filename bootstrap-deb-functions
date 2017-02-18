@@ -246,7 +246,7 @@ deb_bootstrap () {
     #
 
     # OpenStack VIM Driver Plugin
-    deb_install_additional_component stable plugin-vimdriver-openstack-4j "OpenStack VIM-Driver Plugin" ${openbaton_plugin_vimdriver_openstack} false "3.2.0" "${OPENBATON_PLUGINS_VIMDRIVERS_OPENSTACK_4J_REPO_URL}" ${openbaton_plugin_vimdriver_openstack_version}
+    deb_install_additional_component ${1} plugin-vimdriver-openstack-4j "OpenStack VIM-Driver Plugin" ${openbaton_plugin_vimdriver_openstack} false "3.2.0" "${OPENBATON_PLUGINS_VIMDRIVERS_OPENSTACK_4J_REPO_URL}" ${openbaton_plugin_vimdriver_openstack_version}
 
     # Generic VNFM
     deb_install_additional_component ${1} vnfm-generic "Generic VNFM" ${openbaton_vnfm_generic} false "3.2.0" "${OPENBATON_VNFM_GENERIC_REPO_URL}" ${openbaton_vnfm_generic_version}
