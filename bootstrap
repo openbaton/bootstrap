@@ -319,6 +319,8 @@ clean_db () {
 }
 
 clean () {
+    mysql=$( dpkg -l | grep "mysql-client" | wc -l)
+
     # TODO: fix properties files' names in DEBIAN and SOURCE installation
     # Retrieve mysql credentials and rabbitmq user, ip, and management port
     if [ -f "/etc/openbaton/openbaton-nfvo.properties" ]; then
@@ -360,15 +362,17 @@ clean () {
         fi
     fi
 
-    # Clean MySQL for NFVO
-    nfvo_mysql_user=${nfvo_mysql_user:-"undefined"}
-    if [ "${nfvo_mysql_user}" != "undefined" ]; then
-        clean_db "NFVO" "openbaton" "${nfvo_mysql_user}"
-    fi
-    # Clean MySQL for FMS
-    fms_mysql_user=${fms_mysql_user:-"undefined"}
-    if [ "${fms_mysql_user}" != "undefined" ]; then
-        clean_db "FMS" "faultmanagement" "${fms_mysql_user}"
+    if [ ${mysql} -gt 0 ]; then
+        # Clean MySQL for NFVO
+        nfvo_mysql_user=${nfvo_mysql_user:-"undefined"}
+        if [ "${nfvo_mysql_user}" != "undefined" ]; then
+            clean_db "NFVO" "openbaton" "${nfvo_mysql_user}"
+        fi
+        # Clean MySQL for FMS
+        fms_mysql_user=${fms_mysql_user:-"undefined"}
+        if [ "${fms_mysql_user}" != "undefined" ]; then
+            clean_db "FMS" "faultmanagement" "${fms_mysql_user}"
+        fi
     fi
 
     # Clean RabbitMQ
