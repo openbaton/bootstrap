@@ -292,15 +292,51 @@ wait_for_nfvo_up () {
     done
 }
 
+clean_db () {
+    component_name_fancy="${1}"
+    component_db_name="${2}"
+    component_mysql_user="${3}"
+
+    # Clean MySQL for Components
+    component_mysql_user=${component_mysql_user:-"undefined"}
+    if [ "${component_mysql_user}" != "undefined" ]; then
+        read -p " * Do you want to delete the Open Baton ${component_name_fancy} database: '${component_db_name}' (this will also delete the associated user: '${component_mysql_user}')? (if you skip this step then you won't be able, later on, to delete this database and its user using this script) [Y/n]: " mysql
+        if [ "${mysql}" = "" -o "${mysql}" = "y" -o "${mysql}" = "Y" -o "${mysql}" = "yes" ]; then
+            stty -echo
+            read -p " * Please, provide the password of the 'root' user of mysql [root]: " mysql_root_password ; echo
+            stty echo
+
+            echo " * Deleting Open Baton ${component_name_fancy} database and its associated user."
+            mysql_root_password=${mysql_root_password:-$MYSQL_ROOT_PASSWORD_DEFAULT}
+            mysql -uroot -p${mysql_root_password} -e "DROP DATABASE IF EXISTS ${component_db_name};" >/dev/null 2>&1
+            mysql -uroot -p${mysql_root_password} -e "DROP USER ${component_mysql_user}@localhost;" >/dev/null 2>&1
+
+            1>$(tty)
+        else
+            echo " * NOT deleting Open Baton ${component_name_fancy} database and its associated user."
+        fi
+    fi
+}
+
 clean () {
     # TODO: fix properties files' names in DEBIAN and SOURCE installation
-    # Retrieve mysql credentials and rabbitmq ip
+    # Retrieve mysql credentials and rabbitmq user, ip, and management port
     if [ -f "/etc/openbaton/openbaton-nfvo.properties" ]; then
-        mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username=") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
+        nfvo_mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username=") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
+        if [ -f "/etc/openbaton/openbaton-fms.properties" ]; then
+            fms_mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username=") { print $2 }}' /etc/openbaton/openbaton-fms.properties )
+        fi
+
+        rabbitmq_user=$( awk -F'=' '{ if($0 ~ "spring.rabbitmq.username=") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
         rabbitmq_ip=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.brokerIp=") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
         rabbitmq_management_port=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.management.port=") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
     elif [ -f "/etc/openbaton/openbaton.properties" ]; then
-        mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username=") { print $2 }}' /etc/openbaton/openbaton.properties )
+        nfvo_mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username=") { print $2 }}' /etc/openbaton/openbaton.properties )
+        if [ -f "/etc/openbaton/openbaton-fms.properties" ]; then
+            fms_mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username=") { print $2 }}' /etc/openbaton/openbaton-fms.properties )
+        fi
+
+        rabbitmq_user=$( awk -F'=' '{ if($0 ~ "spring.rabbitmq.username=") { print $2 }}' /etc/openbaton/openbaton.properties )
         rabbitmq_ip=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.brokerIp=") { print $2 }}' /etc/openbaton/openbaton.properties )
         rabbitmq_management_port=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.management.port=") { print $2 }}' /etc/openbaton/openbaton.properties )
     fi
@@ -324,27 +360,25 @@ clean () {
         fi
     fi
 
-    # Clean MySQL
-    mysql_user=${mysql_user:-"undefined"}
-    if [ "${mysql_user}" != "undefined" ]; then
-        read -p " * Do you want to delete the Open Baton database: 'openbaton' (this will also delete the associated user: '${mysql_user}')? (if you skip this step then you won't be able, later on, to delete the Open Baton database and user using this script) [Y/n]: " mysql
-        if [ "${mysql}" = "" -o "${mysql}" = "y" -o "${mysql}" = "Y" -o "${mysql}" = "yes" ]; then
-            stty -echo
-            read -p " * Please, provide the password of the 'root' user of mysql [root]: " mysql_root_password ; echo
-            stty echo
-
-            mysql_root_password=${mysql_root_password:-$MYSQL_ROOT_PASSWORD_DEFAULT}
-            mysql -uroot -p${mysql_root_password} -e "DROP DATABASE openbaton;"
-            mysql -uroot -p${mysql_root_password} -e "DROP USER ${mysql_user}@localhost;"
-        else
-            echo " * NOT deleting Open Baton database and its associated user."
-        fi
+    # Clean MySQL for NFVO
+    nfvo_mysql_user=${nfvo_mysql_user:-"undefined"}
+    if [ "${nfvo_mysql_user}" != "undefined" ]; then
+        clean_db "NFVO" "openbaton" "${nfvo_mysql_user}"
+    fi
+    # Clean MySQL for FMS
+    fms_mysql_user=${fms_mysql_user:-"undefined"}
+    if [ "${fms_mysql_user}" != "undefined" ]; then
+        clean_db "FMS" "faultmanagement" "${fms_mysql_user}"
     fi
 
     # Clean RabbitMQ
     #./rabbitmqadmin delete vhost name="openbaton" #TODO
+    ./rabbitmqadmin delete user name="${rabbitmq_user}" >/dev/null 2>&1
     ./rabbitmqadmin delete exchange name="openbaton-exchange" >/dev/null 2>&1
     ./rabbitmqadmin delete exchange name="plugin-exchange" >/dev/null 2>&1
+
+    # Delete rabbitmqadmin cli
+    rm ./rabbitmqadmin
 
     1>$(tty)
     echo " * Cleaning Open Baton installation"
