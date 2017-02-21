@@ -346,7 +346,7 @@ main_src () {
 main_deb () {
     wget -O bootstrap-deb-functions "${OPENBATON_BOOTSTRAP_DEB_FUNCTIONS_URL}"
     . ./bootstrap-deb-functions
-    deb_bootstrap "${1}" "${2}"           # ${1} = release/nightly ; ${2} = debian codename
+    deb_bootstrap "${1}" "${2}"           # ${1} = release/nightly ; ${2} = distribution codename
 }
 
 main () {

@@ -55,16 +55,16 @@ OPENBATON_NSE_VERSION_DEFAULT="latest"
 
 deb_add_openbaton_repo_reference () {
     export release_nightly="${1}"
-    export codename="${2}"
+    export distribution_codename="${2}"
 
     # Add Open Baton Public Key to the APT keys
     $_ex 'wget -O - http://get.openbaton.org/keys/openbaton.public.key | apt-key add -'
 
     # Add Open Baton Repo to sources.list file
-    result=$(grep /etc/apt/sources.list -e "deb http://get.openbaton.org/repos/openbaton/${codename}/${release_nightly} ${codename} main" | wc -l)
+    result=$(grep /etc/apt/sources.list -e "deb http://get.openbaton.org/repos/openbaton/${distribution_codename}/${release_nightly} ${distribution_codename} main" | wc -l)
     if [ ${result} -eq 0 ]; then
         $_ex 'echo "\n## Open Baton repository" >> /etc/apt/sources.list'
-        $_ex 'echo "deb http://get.openbaton.org/repos/openbaton/${codename}/${release_nightly} ${codename} main" >> /etc/apt/sources.list'
+        $_ex 'echo "deb http://get.openbaton.org/repos/openbaton/${distribution_codename}/${release_nightly} ${distribution_codename} main" >> /etc/apt/sources.list'
     fi
     $_ex 'apt-get update'
 }
@@ -156,7 +156,7 @@ deb_install_additional_component () {
         # Print correct warning message
         if [ "${ac}" = "n" -o "${ac}" = "N" -o "${ac}" = "no" -o "${ac}" = "NO" ]; then
             echo " * Open Baton ${component_name_fancy} not installed"
-            if [ "${codename}" = "stable" ]; then
+            if [ "${release_nightly}" = "release" ]; then
                 echo " * To install the latest release package:"
                 echo " *     sudo apt-get install openbaton-${component_name}"
             else
