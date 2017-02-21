@@ -60,7 +60,7 @@ src_install_rabbitmq () {
 src_configure_rabbitmq () {
     result=$(ps aux | grep -v 'grep' | grep 'rabbitmq' | wc -l)
     if [ ${result} -gt 0 ]; then
-        result=$(rabbitmqctl list_users | grep '^admin' | wc -l)
+        result=$($_ex 'rabbitmqctl list_users' | grep '^admin' | wc -l)
         if [ ${result} -eq 0 ]; then
             $_ex 'rabbitmqctl add_user admin openbaton'
             $_ex 'rabbitmqctl set_user_tags admin administrator'
