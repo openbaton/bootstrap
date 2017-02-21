@@ -10,16 +10,16 @@
 #### NFVO ####
 ##############
 
-openbaton_nfvo_ip=localhost                                 # Default is 'localhost' therefore if left empty ('openbaton_nfvo_ip=') or commented the 'localhost' value will be used
 rabbitmq_broker_ip=localhost                                # Default is 'localhost' therefore if left empty ('rabbitmq_broker_ip=') or commented the 'localhost' value will be used
 rabbitmq_management_port=15672                              # Default is '15672' therefore if left empty ('rabbitmq_management_port=') or commented the '15672' value will be used
+openbaton_nfvo_ip=localhost                                 # Default is 'localhost' therefore if left empty ('openbaton_nfvo_ip=') or commented the 'localhost' value will be used
 openbaton_admin_password=openbaton                          # Default is 'openbaton' therefore if left empty ('openbaton_admin_password=') or commented the 'openbaton' value will be used
 
 https=no                                                    # Default is 'NO' therefore if left empty ('https=') or commented the HTTPS will NOT be enabled
 mysql=yes                                                   # Default is 'YES' therefore if left empty ('mysql=') or commented the MYSQL DB will be installed and the Open Baton persistence will be enabled
+mysql_root_password=root                                    # Default is 'root' therefore if left empty ('mysql_root_password=') or commented the 'root' value will be used (NOTE: you should insert here the actual mysql root password if mysql is already installed in the system)
 openbaton_nfvo_mysql_user=admin                             # Default is 'admin' therefore if left empty ('openbaton_nfvo_mysql_user=') or commented the 'admin' value will be used
 openbaton_nfvo_mysql_user_password=changeme                 # Default is 'changeme' therefore if left empty ('openbaton_nfvo_mysql_user_password=') or commented the 'changeme' value will be used
-mysql_root_password=root                                    # Default is 'root' therefore if left empty ('mysql_root_password=') or commented the 'root' value will be used (NOTE: you should insert here the actual mysql root password if mysql is already installed in the system)
 
 
 ##########################################
@@ -56,6 +56,7 @@ openbaton_fms_mysql_user_password=changeme                  # Default is 'change
 ######################################################
 
 # NOTE: Currently the ZABBIX configuration parameters are supported only for the RELEASE installation 
+zabbix_plugin_ip=                                           # Default is 'localhost' therefore if left empty ('zabbix_plugin_ip=') or commented the 'admin' value will be used
 zabbix_server_ip=                                           # Default is 'localhost' therefore if left empty ('zabbix_server_ip=') or commented the 'admin' value will be used
-zabbix_user=                                                # Default is 'admin' therefore if left empty ('zabbix_user=') or commented the 'admin' value will be used
+zabbix_user=                                                # Default is 'Admin' therefore if left empty ('zabbix_user=') or commented the 'Admin' value will be used
 zabbix_user_password=                                       # Default is 'zabbix' therefore if left empty ('zabbix_user_password=') or commented the 'zabbix' value will be used
