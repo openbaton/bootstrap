@@ -32,6 +32,12 @@ RABBITMQ_BROKER_IP_DEFAULT=localhost
 RABBITMQ_MANAGEMENT_PORT_DEFAULT=15672
 OPENBATON_ADMIN_PASSWORD_DEFAULT=openbaton
 
+OPENBATON_NFVO_IP_DEFAULT=localhost
+
+OPENBATON_FMS_MYSQL_USER_DEFAULT=fmsuser
+OPENBATON_FMS_MYSQL_USER_PASSWORD_DEFAULT=changeme
+OPENBATON_MYSQL_ROOT_PASSWORD_DEFAULT=root
+
 OPENBATON_NFVO_TAG_DEFAULT="develop"
 OPENBATON_PLUGIN_VIMDRIVER_ALL_TAG_DEFAULT="stable"
 OPENBATON_VNFM_GENERIC_TAG_DEFAULT="develop"
@@ -374,6 +380,93 @@ src_configure_ase () {
 }
 
 
+#############
+#### FMS ####
+#############
+
+src_fms_configure_rabbitmq () {
+    # Set the RabbitMQ IP
+    rabbitmq_broker_ip=$( awk '$0 ~ "nfvo.rabbit.brokerIp[[:space:]]*="' "${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_NFVO_CONFIG_FILE}" | awk -F'=' '{print $2}' )
+    if [ ! -z ${rabbitmq_broker_ip+x} ] ; then # The empty string is considered as unset
+        log_success_msg "Setting RabbitMQ IP into Fault Management System: ${rabbitmq_broker_ip}"
+        export rabbitmq_broker_ip=${rabbitmq_broker_ip}
+        sed -i "s|spring.rabbitmq.host\s*=.*|spring.rabbitmq.host=${rabbitmq_broker_ip}|g" ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_COMPONENT_CONFIG_FILE}
+    fi
+
+    # Set the RabbitMQ Management port
+    rabbitmq_management_port=$( awk '$0 ~ "nfvo.rabbit.management.port[[:space:]]*="' "${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_NFVO_CONFIG_FILE}" | awk -F'=' '{print $2}' )
+    if [ ! -z ${rabbitmq_management_port+x} ] ; then # The empty string is considered as unset
+        log_success_msg "Setting RabbitMQ Management port into Fault Management System: ${rabbitmq_management_port}"
+        export rabbitmq_management_port=${rabbitmq_management_port}
+        sed -i "s|spring.rabbitmq.port\s*=\s*15672|spring.rabbitmq.port=${rabbitmq_management_port}|g" ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_COMPONENT_CONFIG_FILE}
+    fi
+}
+
+src_fms_configure_nfvo () {
+    # In case of "noninteractive" FRONTEND the default value will remain valid (openbaton_nfvo_ip: localhost)
+    if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
+       read -p " * Please, provide the IP of the NFVO [localhost]: " openbaton_nfvo_ip
+    fi
+    # Set the NFVO IP
+    export openbaton_nfvo_ip=${openbaton_nfvo_ip:-$OPENBATON_NFVO_IP_DEFAULT}
+    sed -i "s|nfvo.ip\s*=*|nfvo.ip=${openbaton_nfvo_ip}|g" ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_COMPONENT_CONFIG_FILE}
+
+    # Set the NFVO credentials
+    export nfvo_admin_user="admin"
+    sed -i "s|nfvo-usr\s*=*|nfvo-usr=${nfvo_admin_user}|g" ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_COMPONENT_CONFIG_FILE}
+
+    nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password[[:space:]]*="' "${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_NFVO_CONFIG_FILE}" | awk -F'=' '{print $2}' )
+    if [ ! -z ${nfvo_admin_password+x} ] ; then # The empty string is considered as unset
+        log_success_msg "Setting NFVO admin's password into Fault Management System: ${nfvo_admin_password}"
+        export nfvo_admin_password=${nfvo_admin_password}
+        sed -i "s|nfvo-pwd\s*=.*|nfvo-pwd=${nfvo_admin_password}|g" ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_COMPONENT_CONFIG_FILE}
+    fi
+}
+
+src_fms_configure_mysql () {
+    # In case of "noninteractive" FRONTEND the default value will remain valid (openbaton_fms_mysql_user: fmsuser ; openbaton_fms_mysql_user_password: changeme)
+    if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
+        read -p " * Please, type the name of the MySQL user you would like the Open Baton FMS to use [fmsuser]: " openbaton_fms_mysql_user
+
+        # Turning echo ON and OFF between password reading
+        stty -echo
+        read -p " * Please, provide the password for this user [changeme]: " openbaton_fms_mysql_user_password ; echo
+        stty echo
+
+        # Turning echo ON and OFF batween password reading
+        stty -echo
+        read -p " * Please, provide the password of the 'root' user of MySQL [root]: " mysql_root_password ; echo
+        stty echo
+    fi
+
+    # Set the MySQL user
+    export openbaton_fms_mysql_user=${openbaton_fms_mysql_user:-$OPENBATON_FMS_MYSQL_USER_DEFAULT}
+    sed -i "s|spring.datasource.username\s*=.*|spring.datasource.username=${openbaton_fms_mysql_user}|g" ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_COMPONENT_CONFIG_FILE}
+
+    # Set the MySQL user's password
+    export openbaton_fms_mysql_user_password=${openbaton_fms_mysql_user_password:-$OPENBATON_FMS_MYSQL_USER_PASSWORD_DEFAULT}
+    sed -i "s|spring.datasource.password\s*=.*|spring.datasource.password=${openbaton_fms_mysql_user_password}|g" ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_COMPONENT_CONFIG_FILE}
+
+    result=$(ps aux | grep -v 'grep' | grep 'mysql' | wc -l)
+    if [ ${result} -le 0 ]; then
+        $_ex 'service mysql start'
+    fi
+
+    export mysql_root_password=${mysql_root_password:-$OPENBATON_MYSQL_ROOT_PASSWORD_DEFAULT}
+    # Create the Database
+    mysql -uroot -p${mysql_root_password} -e "CREATE DATABASE faultmanagement /*\!40100 DEFAULT CHARACTER SET utf8 */;"
+    mysql -uroot -p${mysql_root_password} -e "CREATE USER ${openbaton_fms_mysql_user}@localhost IDENTIFIED BY '${openbaton_fms_mysql_user_password}';"
+    mysql -uroot -p${mysql_root_password} -e "GRANT ALL ON faultmanagement.* TO '${openbaton_fms_mysql_user}'@'localhost';"
+    mysql -uroot -p${mysql_root_password} -e "FLUSH PRIVILEGES;"
+}
+
+src_configure_fms () {
+    src_fms_configure_mysql
+    src_fms_configure_rabbitmq
+    src_fms_configure_nfvo
+}
+
+
 ##############
 #### Main ####
 ##############
@@ -410,14 +503,15 @@ src_bootstrap () {
     # Fault Management System
     src_checkout_additional_component "${OPENBATON_FMS_REPO_URL}" "fm-system" "Fault Management System (FMS)" "etc/fms.properties" "openbaton-fms.properties" "${openbaton_fms}" "1.2.2" "${openbaton_fms_version}"
     if [ "${installed}" = "0" ]; then
+        src_configure_fms
         src_deploy_additional_component "fm-system" "Fault Management System (FMS)"
     fi
 
     # Auto Scaling Engine
     src_checkout_additional_component "${OPENBATON_ASE_REPO_URL}" "autoscaling-engine" "Auto Scaling Engine (ASE)" "etc/ase.properties" "ase.properties" "${openbaton_ase}" "1.2.2" "${openbaton_ase_version}"
     if [ "${installed}" = "0" ]; then
-        src_deploy_additional_component "autoscaling-engine" "Auto Scaling Engine (ASE)"
         src_configure_ase
+        src_deploy_additional_component "autoscaling-engine" "Auto Scaling Engine (ASE)"
     fi
 
     # Network Slicing Engine

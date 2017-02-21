@@ -71,8 +71,8 @@ DEBIAN_FRONTEND=${DEBIAN_FRONTEND:-$DEBIAN_FRONTEND_DEFAULT}
 
 HTTPS_DEFAULT=no
 MYSQL_DEFAULT=yes
-MYSQL_USER_DEFAULT=admin
-MYSQL_USER_PASSWORD_DEFAULT=changeme
+OPENBATON_NFVO_MYSQL_USER_DEFAULT=admin
+OPENBATON_NFVO_MYSQL_USER_PASSWORD_DEFAULT=changeme
 MYSQL_ROOT_PASSWORD_DEFAULT=root
 
 OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_DEFAULT=yes
@@ -208,28 +208,28 @@ configure_mysql () {
 
     # Enable MySQL
 
-    # In case of "noninteractive" FRONTEND the default value will remain valid (mysql_user: admin ; mysql_user_password: changeme)
+    # In case of "noninteractive" FRONTEND the default value will remain valid (openbaton_nfvo_mysql_user: admin ; openbaton_nfvo_mysql_user_password: changeme)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-        read -p " * Please, type the name of the mysql user you would like Open Baton to use [admin]: " mysql_user
+        read -p " * Please, type the name of the MySQL user you would like the Open Baton NFVO to use [admin]: " openbaton_nfvo_mysql_user
 
         # Turning echo ON and OFF between password reading
         stty -echo
-        read -p " * Please, provide the password for this user [changeme]: " mysql_user_password ; echo
+        read -p " * Please, provide the password for this user [changeme]: " openbaton_nfvo_mysql_user_password ; echo
         stty echo
 
         # Turning echo ON and OFF batween password reading
         stty -echo
-        read -p " * Please, provide the password of the 'root' user of mysql [root]: " mysql_root_password ; echo
+        read -p " * Please, provide the password of the 'root' user of MySQL [root]: " mysql_root_password ; echo
         stty echo
     fi
 
     # Set the mysql user
-    export mysql_user=${mysql_user:-$MYSQL_USER_DEFAULT}
-    $_ex 'sed -i "s|spring.datasource.username\s*=\s*admin|spring.datasource.username=${mysql_user}|g" /etc/openbaton/${properties_file_name}'
+    export openbaton_nfvo_mysql_user=${openbaton_nfvo_mysql_user:-$OPENBATON_NFVO_MYSQL_USER_DEFAULT}
+    $_ex 'sed -i "s|spring.datasource.username\s*=\s*admin|spring.datasource.username=${openbaton_nfvo_mysql_user}|g" /etc/openbaton/${properties_file_name}'
 
     # Set the mysql user's password
-    export mysql_user_password=${mysql_user_password:-$MYSQL_USER_PASSWORD_DEFAULT}
-    $_ex 'sed -i "s|spring.datasource.password\s*=\s*changeme|spring.datasource.password=${mysql_user_password}|g" /etc/openbaton/${properties_file_name}'
+    export openbaton_nfvo_mysql_user_password=${openbaton_nfvo_mysql_user_password:-$OPENBATON_NFVO_MYSQL_USER_PASSWORD_DEFAULT}
+    $_ex 'sed -i "s|spring.datasource.password\s*=\s*changeme|spring.datasource.password=${openbaton_nfvo_mysql_user_password}|g" /etc/openbaton/${properties_file_name}'
 
     result=$(ps aux | grep -v 'grep' | grep 'mysql' | wc -l)
     if [ ${result} -le 0 ]; then
@@ -238,8 +238,8 @@ configure_mysql () {
     export mysql_root_password=${mysql_root_password:-$MYSQL_ROOT_PASSWORD_DEFAULT}
     # Create the Database
     mysql -uroot -p${mysql_root_password} -e "CREATE DATABASE openbaton /*\!40100 DEFAULT CHARACTER SET utf8 */;"
-    mysql -uroot -p${mysql_root_password} -e "CREATE USER ${mysql_user}@localhost IDENTIFIED BY '${mysql_user_password}';"
-    mysql -uroot -p${mysql_root_password} -e "GRANT ALL ON openbaton.* TO '${mysql_user}'@'localhost';"
+    mysql -uroot -p${mysql_root_password} -e "CREATE USER ${openbaton_nfvo_mysql_user}@localhost IDENTIFIED BY '${openbaton_nfvo_mysql_user_password}';"
+    mysql -uroot -p${mysql_root_password} -e "GRANT ALL ON openbaton.* TO '${openbaton_nfvo_mysql_user}'@'localhost';"
     mysql -uroot -p${mysql_root_password} -e "FLUSH PRIVILEGES;"
     mysql -uroot -p${mysql_root_password} -e "USE openbaton;"
 }
@@ -249,7 +249,7 @@ install_mysql () {
 
     mysql=${mysql:-$MYSQL_DEFAULT}
 
-    # In case of "noninteractive" FRONTEND the default value will remain valid (mysql_user: admin ; mysql_user_password: changeme)
+    # In case of "noninteractive" FRONTEND the default value will remain valid (mysql: yes)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         read -p " * Do you want to enable the persistence through MySQL? [Y/n]: " mysql
     else
