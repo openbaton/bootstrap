@@ -270,10 +270,11 @@ deb_bootstrap () {
     #########
     # Temporary workaround to avoid the spawning of multiple 'Test VIM Driver Plugin' processes during installation
     log_success_msg "Finalising Open Baton installation .."
-    sleep 60
+    wait_for_nfvo_up
     #########
 
     deb_restart_nfvo
+    wait_for_nfvo_up # Some components needs the NFVO to be up in order to start correctly
     deb_is_additional_component_installed vnfm-generic ; if [ "${installed}" = "0" ]; then deb_restart_additional_component vnfm-generic "Generic VNFM" ; fi
     deb_is_additional_component_installed fms ; if [ "${installed}" = "0" ]; then deb_restart_additional_component fms "Fault Management System" ; fi
     deb_is_additional_component_installed ase ; if [ "${installed}" = "0" ]; then deb_restart_additional_component ase "Auto Scaling Engine" ; fi

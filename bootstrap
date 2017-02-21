@@ -279,6 +279,19 @@ install_mysql () {
 #### Main ####
 ##############
 
+wait_for_nfvo_up () {
+    max_wait=300
+
+    while ! nc -z localhost 8080; do
+        sleep 1 # wait for 1 second before check again
+        max_wait=$((${max_wait}-1))
+        if [ ${max_wait} -eq 0 ]; then
+            echo " * The NFVO is not up after ${max_wait} seconds. Please, check the problem into the log file."
+            exit 1
+        fi
+    done
+}
+
 clean () {
     # TODO: fix properties files' names in DEBIAN and SOURCE installation
     # Retrieve mysql credentials and rabbitmq ip

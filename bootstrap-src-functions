@@ -521,9 +521,7 @@ src_bootstrap () {
     fi
 
     echo " * Waiting for Open Baton to be up..."
-	while ! nc -z localhost 8080; do   
-	  	sleep 1 # wait for 1 second before check again
-	done
+    wait_for_nfvo_up
     echo " * Now open http://localhost:8080/"
 
     if [ -f "${BOOTSTRAP_DIR}/bootstrap-src-functions" ]; then
