@@ -270,7 +270,9 @@ deb_bootstrap () {
     #########
     # Temporary workaround to avoid the spawning of multiple 'Test VIM Driver Plugin' processes during installation
     log_success_msg "Finalising Open Baton installation .."
-    wait_for_nfvo_up
+    if [ "${OPENBATON_COMPONENT_AUTOSTART}" = "true" ]; then
+        wait_for_nfvo_up
+    fi
     #########
 
     deb_restart_nfvo
