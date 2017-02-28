@@ -163,9 +163,15 @@ enable_https () {
 }
 
 fix_jvm_delay_for_random_number_generation () {
+    java7_installed="false"
+    result=$( dpkg -l | grep "openjdk-7-jre" | wc -l)
+    if [ result -gt 0 ]; then
+        java7_installed="true"
+    fi
+
     if [ "${OS_TYPE}" = "Linux" ]; then
-        if [ "${OS_ARCHITECTURE}" = "x86_64" ]; then
-            if [ "${OS_DISTRIBUTION_RELEASE_MAJOR}" -ge "16" ]; then # Ubuntu 16
+        if [ "${OS_ARCHITECTURE}" = "x86_64" ]; then 
+            if [ "${OS_DISTRIBUTION_RELEASE_MAJOR}" -ge "16" -a "${java7_installed}" != "true" ]; then # Ubuntu 16
                 export OPENJDK_8_LINUX_X86_64_SECURITYFILE=${OPENJDK_8_LINUX_X86_64_SECURITYFILE}
                 $_ex 'sed -i "s|securerandom.source=file:/dev/random|securerandom.source=file:/dev/./urandom|g" ${OPENJDK_8_LINUX_X86_64_SECURITYFILE}'
             else # Ubuntu 14
@@ -173,7 +179,7 @@ fix_jvm_delay_for_random_number_generation () {
                 $_ex 'sed -i "s|securerandom.source=file:/dev/urandom|securerandom.source=file:/dev/./urandom|g" ${OPENJDK_7_LINUX_X86_64_SECURITYFILE}'
             fi
         else # i386
-            if [ "${OS_DISTRIBUTION_RELEASE_MAJOR}" -ge "16" ]; then # Ubuntu 16
+            if [ "${OS_DISTRIBUTION_RELEASE_MAJOR}" -ge "16" -a "${java7_installed}" != "true" ]; then # Ubuntu 16
                 export OPENJDK_8_LINUX_I386_SECURITYFILE=${OPENJDK_8_LINUX_I386_SECURITYFILE}
                 $_ex 'sed -i "s|securerandom.source=file:/dev/random|securerandom.source=file:/dev/./urandom|g" ${OPENJDK_8_LINUX_I386_SECURITYFILE}'
             else # Ubuntu 14
