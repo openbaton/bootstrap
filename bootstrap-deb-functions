@@ -267,20 +267,21 @@ deb_bootstrap () {
     fix_jvm_delay_for_random_number_generation
     enable_https "openbaton-nfvo.properties"
 
-    #########
-    # Temporary workaround to avoid the spawning of multiple 'Test VIM Driver Plugin' processes during installation
     log_success_msg "Finalising Open Baton installation .."
     if [ "${OPENBATON_COMPONENT_AUTOSTART}" = "true" ]; then
-        wait_for_nfvo_up
-    fi
-    #########
+        #########
+        # Temporary workaround to avoid the spawning of multiple 'Test VIM Driver Plugin' processes during installation
+        #wait_for_nfvo_up
+        sleep 60
+        #########
 
-    deb_restart_nfvo
-    wait_for_nfvo_up # Some components needs the NFVO to be up in order to start correctly
-    deb_is_additional_component_installed vnfm-generic ; if [ "${installed}" = "0" ]; then deb_restart_additional_component vnfm-generic "Generic VNFM" ; fi
-    deb_is_additional_component_installed fms ; if [ "${installed}" = "0" ]; then deb_restart_additional_component fms "Fault Management System" ; fi
-    deb_is_additional_component_installed ase ; if [ "${installed}" = "0" ]; then deb_restart_additional_component ase "Auto Scaling Engine" ; fi
-    deb_is_additional_component_installed nse ; if [ "${installed}" = "0" ]; then deb_restart_additional_component nse "Network Slicing Engine" ; fi
+        deb_restart_nfvo
+        wait_for_nfvo_up # Some components needs the NFVO to be up in order to start correctly
+        deb_is_additional_component_installed vnfm-generic ; if [ "${installed}" = "0" ]; then deb_restart_additional_component vnfm-generic "Generic VNFM" ; fi
+        deb_is_additional_component_installed fms ; if [ "${installed}" = "0" ]; then deb_restart_additional_component fms "Fault Management System" ; fi
+        deb_is_additional_component_installed ase ; if [ "${installed}" = "0" ]; then deb_restart_additional_component ase "Auto Scaling Engine" ; fi
+        deb_is_additional_component_installed nse ; if [ "${installed}" = "0" ]; then deb_restart_additional_component nse "Network Slicing Engine" ; fi
+    fi
 
     if [ -f "${BOOTSTRAP_DIR}/bootstrap-deb-functions" ]; then
         rm ${BOOTSTRAP_DIR}/bootstrap-deb-functions
