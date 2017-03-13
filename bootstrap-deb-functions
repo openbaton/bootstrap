@@ -277,6 +277,7 @@ deb_bootstrap () {
         sleep 60
         #########
 
+        log_success_msg "Restarting Open Baton components .."
         deb_restart_nfvo
         wait_for_nfvo_up # Some components needs the NFVO to be up in order to start correctly
         deb_is_additional_component_installed vnfm-generic ; if [ "${installed}" = "0" ]; then deb_restart_additional_component vnfm-generic "Generic VNFM" ; fi
