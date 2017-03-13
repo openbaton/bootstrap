@@ -383,12 +383,19 @@ clean () {
 
     # Clean RabbitMQ
     #./rabbitmqadmin delete vhost name="openbaton" #TODO
-    ./rabbitmqadmin delete user name="${rabbitmq_user}" >/dev/null 2>&1
-    ./rabbitmqadmin delete exchange name="openbaton-exchange" >/dev/null 2>&1
-    ./rabbitmqadmin delete exchange name="plugin-exchange" >/dev/null 2>&1
+    echo " * Deleting Open Baton RabbitMQ user and its associated exchanges (if any)."
+    ./rabbitmqadmin delete user name="${rabbitmq_user}"
+    result=$(./rabbitmqadmin list exchanges | grep "openbaton-exchange" | wc -l)
+    if [ ${result} -gt 0 ]; then
+        ./rabbitmqadmin delete exchange name="openbaton-exchange"
+    fi
+    result=$(./rabbitmqadmin list exchanges | grep "plugin-exchange" | wc -l)
+    if [ ${result} -gt 0 ]; then
+        ./rabbitmqadmin delete exchange name="plugin-exchange"
+    fi
 
     # Delete rabbitmqadmin cli
-    rm ./rabbitmqadmin
+    $_ex "rm ./rabbitmqadmin"
 
     1>$(tty)
     echo " * Cleaning Open Baton installation"
