@@ -165,7 +165,7 @@ enable_https () {
 fix_jvm_delay_for_random_number_generation () {
     java7_installed="false"
     result=$( dpkg -l | grep "openjdk-7-jre" | wc -l)
-    if [ result -gt 0 ]; then
+    if [ ${result} -gt 0 ]; then
         java7_installed="true"
     fi
 
