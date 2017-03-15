@@ -40,9 +40,9 @@ OS_TYPE=$(uname -a | awk -F' ' '{ print $1 }')
 
 case "${OS_TYPE}" in
     'Linux')
-        OS_DISTRIBUTION_ID=$( cat /etc/lsb-release | grep DISTRIB_ID | awk -F'=' '{ print $2 }' )
-        OS_DISTRIBUTION_RELEASE=$( cat /etc/lsb-release | grep DISTRIB_RELEASE | awk -F'=' '{ print $2 }' )
-        OS_DISTRIBUTION_CODENAME=$( cat /etc/lsb-release | grep DISTRIB_CODENAME | awk -F'=' '{ print $2 }' )
+        OS_DISTRIBUTION_ID=$( lsb_release -a | grep "Distributor ID" | sed "s/[ \t]*//g" | awk -F':' '{ print $2 }' )
+        OS_DISTRIBUTION_RELEASE=$( lsb_release -a | grep "Release" | sed "s/[ \t]*//g" | awk -F':' '{ print $2 }' )
+        OS_DISTRIBUTION_CODENAME=$( lsb_release -a | grep "Codename" | sed "s/[ \t]*//g" | awk -F':' '{ print $2 }' )
         ;;
     'Darwin')
         OS_DISTRIBUTION_ID=$( sw_vers -productName )
@@ -510,6 +510,7 @@ if [ -n "${1+1}" ]; then
     echo "     OS Architecture: ${OS_ARCHITECTURE}"
     echo "     OS Type: ${OS_TYPE}"
     echo "     OS Distribution ID: ${OS_DISTRIBUTION_ID}"
+    echo "     OS Distribution Codename: ${OS_DISTRIBUTION_CODENAME}"
     echo "     OS Distribution Release: ${OS_DISTRIBUTION_RELEASE}"
 
     prereq
@@ -547,6 +548,7 @@ else # When invoked with 0 arguments: 'sh <(curl -s http://get.openbaton.org/boo
     echo "     OS Architecture: ${OS_ARCHITECTURE}"
     echo "     OS Type: ${OS_TYPE}"
     echo "     OS Distribution ID: ${OS_DISTRIBUTION_ID}"
+    echo "     OS Distribution Codename: ${OS_DISTRIBUTION_CODENAME}"
     echo "     OS Distribution Release: ${OS_DISTRIBUTION_RELEASE}"
 
     prereq
