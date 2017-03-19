@@ -287,11 +287,12 @@ install_mysql () {
 
 wait_for_nfvo_up () {
     max_wait=300
+    i_wait=${max_wait}
 
     while ! nc -z localhost 8080; do
         sleep 1 # wait for 1 second before check again
-        max_wait=$((${max_wait}-1))
-        if [ ${max_wait} -eq 0 ]; then
+        i_wait=$((${i_wait}-1))
+        if [ ${i_wait} -eq 0 ]; then
             echo " * The NFVO is not up after ${max_wait} seconds. Please, check the problem into the log file."
             exit 1
         fi
