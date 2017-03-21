@@ -237,7 +237,7 @@ deb_bootstrap () {
     openbaton_ase_version=${openbaton_ase_version:-$OPENBATON_ASE_VERSION_DEFAULT}
     openbaton_nse_version=${openbaton_nse_version:-$OPENBATON_NSE_VERSION_DEFAULT}
 
-    export OPENBATON_COMPONENT_AUTOSTART=${openbaton_component_autostart:-$OPENBATON_COMPONENT_AUTOSTART_DEFAULT}
+    export OPENBATON_COMPONENT_AUTOSTART="${openbaton_component_autostart:-$OPENBATON_COMPONENT_AUTOSTART_DEFAULT}"
 
     deb_add_openbaton_repo_reference "${1}" "${2}"
     deb_install_nfvo "${1}" "3.2.0" "${openbaton_nfvo_version}"
