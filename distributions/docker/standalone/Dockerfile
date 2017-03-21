@@ -8,7 +8,7 @@ MAINTAINER Open Baton <dev@openbaton.org>
 #  - the "OS-based service starting" (the starting of the NFVO and the GVNFM is managed in this Docker file)
 ENV DEBIAN_FRONTEND noninteractive
 ENV CONFIGURE_RABBITMQ_FOR_OPENBATON false
-ENV OPENBATON_AUTOSTART false
+ENV openbaton_component_autostart false # needs to be lower case to not be overwritten by the bootstrap
 
 ENV RABBITMQ_BROKERIP=localhost
 
