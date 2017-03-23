@@ -6,6 +6,14 @@
 # IMPORTANT NOTE: Avoid spaces before and after the '=': i.e. a parameter needs to be specified as 'parameter=value'
 
 
+#################
+#### General ####
+#################
+
+openbaton_interactive_installation=true                     # Deafult is 'true' therefore if left empty ('openbaton_interactive_installation=') or commented the installation will be interactive
+openbaton_component_autostart=true                          # Deafult is 'true' therefore if left empty ('openbaton_component_autostart=') or commented the debian component will start automatically at the end of the installation
+
+
 ##############
 #### NFVO ####
 ##############
@@ -36,13 +44,12 @@ openbaton_cli=yes                                           # Default is 'NO' th
 # NOTE: The VERSION is to be interptreted as "debian package version" or "source TAG" respectively for RELEASE / DEVELOP installation
 # Possible values are: 'latest' (only for RELEASE), 'develop' (only for DEVELOP), 'X.Y.Z' (for both types of installation)
 openbaton_nfvo_version=3.2.0                                # Default is 'latest' / 'develop' therefore if left empty ('openbaton_nfvo_version=') or commented the 'latest' debian version / the 'develop' TAG will be installed. NOTE: Check the list of available tags at: https://github.com/openbaton/generic-vnfm/tags - The oldest VERSION installable is 3.2.0
-openbaton_plugin_vimdriver_openstack_version=3.2.0          # Default is 'latest' / 'develop' therefore if left empty ('openbaton_nfvo_version=') or commented the 'latest' debian version / the 'develop' TAG will be installed. NOTE: Check the list of available tags at: https://github.com/openbaton/openstack4j-plugin/tags - The oldest VERSION installable is 3.2.0
+openbaton_plugin_vimdriver_openstack_version=3.2.2          # Default is 'latest' / 'develop' therefore if left empty ('openbaton_nfvo_version=') or commented the 'latest' debian version / the 'develop' TAG will be installed. NOTE: Check the list of available tags at: https://github.com/openbaton/openstack4j-plugin/tags - The oldest VERSION installable is 3.2.0
 openbaton_vnfm_generic_version=3.2.0                        # Default is 'latest' / 'develop' therefore if left empty ('openbaton_vnfm_generic_version=') or commented the 'latest' debian version / the 'develop' TAG will be deployed. NOTE: Check the list of available tags at: https://github.com/openbaton/generic-vnfm/tags - The oldest VERSION installable is 3.2.0
-openbaton_fms_version=1.2.2                                 # Default is 'latest' / 'develop' therefore if left empty ('openbaton_fms_version=') or commented the 'latest' debian version / the 'develop' TAG will be deployed. NOTE: Check the list of available tags at: https://github.com/openbaton/fm-system/tags - The oldest VERSION installable is 1.2.1
+openbaton_fms_version=1.2.4                                 # Default is 'latest' / 'develop' therefore if left empty ('openbaton_fms_version=') or commented the 'latest' debian version / the 'develop' TAG will be deployed. NOTE: Check the list of available tags at: https://github.com/openbaton/fm-system/tags - The oldest VERSION installable is 1.2.1
 openbaton_ase_version=1.2.2                                 # Default is 'latest' / 'develop' therefore if left empty ('openbaton_ase_version=') or commented the 'latest' debian version / the 'develop' TAG will be deployed. NOTE: Check the list of available tags at: https://github.com/openbaton/autoscaling-engine/tags - The oldest VERSION installable is 1.2.2
 openbaton_nse_version=1.1.2                                 # Default is 'latest' / 'develop' therefore if left empty ('openbaton_nse_version=') or commented the 'latest' debian version / the 'develop' TAG will be deployed. NOTE: Check the list of available tags at: https://github.com/openbaton/network-slicing-engine/tags - The oldest VERSION installable is 1.1.2
 
-openbaton_component_autostart=true                          # Deafult is 'true' therefore if left empty ('openbaton_component_autostart=') or commented the debian component will start automatically at the end of the installation
 
 #############
 #### FMS ####

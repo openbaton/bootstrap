@@ -13,41 +13,14 @@ set -u
 #### Global Variables ####
 ##########################
 
-OPENBATON_NFVO_VERSION_DEFAULT="latest"
-OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_VERSION_DEFAULT="latest"
-OPENBATON_VNFM_GENERIC_VERSION_DEFAULT="latest"
-OPENBATON_FMS_VERSION_DEFAULT="latest"
-OPENBATON_ASE_VERSION_DEFAULT="latest"
-OPENBATON_NSE_VERSION_DEFAULT="latest"
+#OPENBATON_NFVO_VERSION_DEFAULT="3.2.0"
+#OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_VERSION_DEFAULT="3.2.2"
+#OPENBATON_VNFM_GENERIC_VERSION_DEFAULT="3.2.0"
+#OPENBATON_FMS_VERSION_DEFAULT="1.2.4"
+#OPENBATON_ASE_VERSION_DEFAULT="1.2.2"
+#OPENBATON_NSE_VERSION_DEFAULT="1.1.2"
 
 OPENBATON_COMPONENT_AUTOSTART_DEFAULT="true"
-
-#############################
-#### VIM-Drivers Plugins ####
-#############################
-
-#installVIMDriverPlugins () {
-#    read -p "Do you want to install any of the available VIM-Driver Plugins? [Y/n]: " yn
-#    if [ "${yn}" != "n" -a "${yn}" != "N" ]; then
-#        echo "Options available are: "
-#        echo "    1. Download 'OpenStack' VIM-Driver Plugin"
-#        echo "    2. Download 'XYZ' VIM-Driver Plugin"
-#        read -p "Insert the number(s) of the plugin(s) you want to install (in case of multiple plugins insert the numbers separated by a space - e.g. 1 2) [no default]: " plugins
-#        if [ "${plugins}" = "" ]; then
-#            installVIMDriverPlugins
-#        else
-#            set -- ${plugins} # Create the array for the cycle for
-#            for plug in ${@}
-#            do
-#                case ${plug} in
-#                    1 ) installOpenStackVIMPlugin ;;
-#                    2 ) installXYZVIMPlugin ;;
-#                    * ) installVIMDriverPlugins ;;
-#                esac
-#            done
-#        fi
-#    fi
-#}
 
 
 ####################
@@ -230,12 +203,12 @@ deb_is_additional_component_installed () {
 deb_bootstrap () {
     prereq
 
-    openbaton_nfvo_version=${openbaton_nfvo_version:-$OPENBATON_NFVO_VERSION_DEFAULT}
-    openbaton_plugin_vimdriver_openstack_version=${openbaton_plugin_vimdriver_openstack_version:-$OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_VERSION_DEFAULT}
-    openbaton_vnfm_generic_version=${openbaton_vnfm_generic_version:-$OPENBATON_VNFM_GENERIC_VERSION_DEFAULT}
-    openbaton_fms_version=${openbaton_fms_version:-$OPENBATON_FMS_VERSION_DEFAULT}
-    openbaton_ase_version=${openbaton_ase_version:-$OPENBATON_ASE_VERSION_DEFAULT}
-    openbaton_nse_version=${openbaton_nse_version:-$OPENBATON_NSE_VERSION_DEFAULT}
+    #openbaton_nfvo_version=${openbaton_nfvo_version:-$OPENBATON_NFVO_VERSION_DEFAULT}
+    #openbaton_plugin_vimdriver_openstack_version=${openbaton_plugin_vimdriver_openstack_version:-$OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_VERSION_DEFAULT}
+    #openbaton_vnfm_generic_version=${openbaton_vnfm_generic_version:-$OPENBATON_VNFM_GENERIC_VERSION_DEFAULT}
+    #openbaton_fms_version=${openbaton_fms_version:-$OPENBATON_FMS_VERSION_DEFAULT}
+    #openbaton_ase_version=${openbaton_ase_version:-$OPENBATON_ASE_VERSION_DEFAULT}
+    #openbaton_nse_version=${openbaton_nse_version:-$OPENBATON_NSE_VERSION_DEFAULT}
 
     export OPENBATON_COMPONENT_AUTOSTART="${openbaton_component_autostart:-$OPENBATON_COMPONENT_AUTOSTART_DEFAULT}"
 
