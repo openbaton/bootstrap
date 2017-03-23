@@ -57,7 +57,7 @@ fi
 DEBIAN_FRONTEND_DEFAULT=interactive
 DEBIAN_FRONTEND=${DEBIAN_FRONTEND:-$DEBIAN_FRONTEND_DEFAULT}
 
-OPENBATON_INSTALLATION_TYPE_DEFAULT=release
+OPENBATON_BOOTSTRAP_SUBCOMMAND_DEFAULT=release
 
 
 ###############
@@ -176,25 +176,14 @@ if [ -n "${1+1}" ]; then
 
         if [ ${arg_id} != "--" ]; then
             case ${arg} in
-                "clean" )
-                    if [ $# -gt 1 ]; then
-                        usage
-                        exit 1
-                    fi
-
-                    prereq
-                    clean
-                    exit 0
-                    ;;
-                "release" | "nightly" | "develop" )
-                    openbaton_installation_type=${arg}
+                "release" | "nightly" | "develop" | "clean" )
+                    bootstrap_subcommand=${arg}
                     ;;
                 * )
                     usage
                     exit 1
                     ;;
             esac
-
         else
             arg_key=$( echo ${arg} | cut -c3-  | awk -F'=' '{ print $1}' )
             arg_value=$( echo ${arg} | cut -c3- | awk -F'=' '{ print $2}' )
@@ -229,9 +218,8 @@ if [ -n "${1+1}" ]; then
     echo "     OS Distribution Codename: ${OS_DISTRIBUTION_CODENAME}"
     echo "     OS Distribution Release: ${OS_DISTRIBUTION_RELEASE}"
 
-    openbaton_installation_type=${openbaton_installation_type:-$OPENBATON_INSTALLATION_TYPE_DEFAULT}
-
-    case ${openbaton_installation_type} in
+    bootstrap_subcommand=${bootstrap_subcommand:-$OPENBATON_BOOTSTRAP_SUBCOMMAND_DEFAULT}
+    case ${bootstrap_subcommand} in
         "release" )
             echo " * Installing the latest RELEASE package"
             main_deb release "${OS_DISTRIBUTION_CODENAME}"
@@ -243,6 +231,12 @@ if [ -n "${1+1}" ]; then
         "develop" )
             echo " * Installing the latest source code"
             main_src
+            ;;
+        "clean" )
+            echo " * Cleaning the Open Baton installation"
+            prereq
+            clean
+            exit 0
             ;;
         *)
             usage

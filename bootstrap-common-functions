@@ -335,6 +335,6 @@ clean () {
     $_ex "rm ./rabbitmqadmin"
 
     1>$(tty)
-    echo " * Cleaning Open Baton installation"
+    echo " * Cleaning of Open Baton installation completed"
 }
 
