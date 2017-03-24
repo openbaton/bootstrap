@@ -219,8 +219,10 @@ if [ -n "${1+1}" ]; then
         fi
     done
 
-    set -a # Mark the arguments passed by command line for export to the environment of subsequent commands
-    . ${OPENBATON_BOOTSTRAP_ENV_FILE}
+    if [ -f ${OPENBATON_BOOTSTRAP_ENV_FILE} ]; then
+        set -a # Mark the arguments passed by command line for export to the environment of subsequent commands
+        . ${OPENBATON_BOOTSTRAP_ENV_FILE}
+    fi
 
     echo " * System Details:"
     echo "     OS Architecture: ${OS_ARCHITECTURE}"
