@@ -171,6 +171,26 @@ if [ -n "${1+1}" ]; then
                     bootstrap_subcommand=${arg}
                     ;;
                 * )
+                    # TODO: temporary fix
+                    #########################################################################################################################################
+                    arg_key=$( echo ${arg} | cut -c2-  | awk -F'=' '{ print $1}' )
+                    if [ "${arg_key}" = "configFile" ]; then
+                        log_failure_msg "The argument '-configFile' will be not supported anymore from the next version. Please use '--config-file' instead."
+                        arg_value=$( echo ${arg} | cut -c2- | awk -F'=' '{ print $2}' )
+                        if [ -f ${arg_value} ]; then
+                            echo " * Installing Open Baton using the following configuration file:"
+                            echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+                            cat ${arg_value}
+                            echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+                            export DEBIAN_FRONTEND=noninteractive
+                            set -a # Mark the variables set in the configuration file for export to the environment of subsequent commands
+                            . ${arg_value}
+                        else
+                            log_failure_msg "Configuration file '${arg_value}' does not exist."                                                                                                                                                                                                         fi
+                        continue
+                    fi
+                    #########################################################################################################################################
+
                     usage
                     exit 1
                     ;;
