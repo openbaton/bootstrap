@@ -13,13 +13,6 @@ set -u
 #### Global Variables ####
 ##########################
 
-#OPENBATON_NFVO_VERSION_DEFAULT="3.2.0"
-#OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_VERSION_DEFAULT="3.2.2"
-#OPENBATON_VNFM_GENERIC_VERSION_DEFAULT="3.2.0"
-#OPENBATON_FMS_VERSION_DEFAULT="1.2.4"
-#OPENBATON_ASE_VERSION_DEFAULT="1.2.2"
-#OPENBATON_NSE_VERSION_DEFAULT="1.1.2"
-
 OPENBATON_COMPONENT_AUTOSTART_DEFAULT="true"
 
 
@@ -201,15 +194,6 @@ deb_is_additional_component_installed () {
 ###################
 
 deb_bootstrap () {
-    prereq
-
-    #openbaton_nfvo_version=${openbaton_nfvo_version:-$OPENBATON_NFVO_VERSION_DEFAULT}
-    #openbaton_plugin_vimdriver_openstack_version=${openbaton_plugin_vimdriver_openstack_version:-$OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_VERSION_DEFAULT}
-    #openbaton_vnfm_generic_version=${openbaton_vnfm_generic_version:-$OPENBATON_VNFM_GENERIC_VERSION_DEFAULT}
-    #openbaton_fms_version=${openbaton_fms_version:-$OPENBATON_FMS_VERSION_DEFAULT}
-    #openbaton_ase_version=${openbaton_ase_version:-$OPENBATON_ASE_VERSION_DEFAULT}
-    #openbaton_nse_version=${openbaton_nse_version:-$OPENBATON_NSE_VERSION_DEFAULT}
-
     export OPENBATON_COMPONENT_AUTOSTART="${openbaton_component_autostart:-$OPENBATON_COMPONENT_AUTOSTART_DEFAULT}"
 
     deb_add_openbaton_repo_reference "${1}" "${2}"

@@ -13,6 +13,9 @@ set -u
 #### Global Variables ####
 ##########################
 
+DEBIAN_FRONTEND_DEFAULT=interactive
+DEBIAN_FRONTEND=${openbaton_installation_manner:-$DEBIAN_FRONTEND_DEFAULT}
+
 BOOTSTRAP_DIR=$(pwd)
 
 OPENBATON_NFVO_REPO_URL="https://github.com/openbaton/NFVO"

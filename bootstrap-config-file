@@ -10,7 +10,7 @@
 #### General ####
 #################
 
-openbaton_interactive_installation=true                     # Deafult is 'true' therefore if left empty ('openbaton_interactive_installation=') or commented the installation will be interactive
+openbaton_installation_manner=noninteractive                # Deafult is 'interactive' therefore if left empty ('openbaton_installation_manner=') or commented the installation will be interactive
 openbaton_component_autostart=true                          # Deafult is 'true' therefore if left empty ('openbaton_component_autostart=') or commented the debian component will start automatically at the end of the installation
 
 
