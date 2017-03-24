@@ -22,8 +22,10 @@ set -u
 #### Global Variables ####
 ##########################
 
-BOOTSTRAP_VERSION_DEFAULT=latest
-BOOTSTRAP_ENV_FILE="/tmp/bootstrap_env"
+OPENBATON_BOOTSTRAP_VERSION_DEFAULT=latest
+openbaton_bootstrap_version=${openbaton_bootstrap_version:-$OPENBATON_BOOTSTRAP_VERSION_DEFAULT}
+
+OPENBATON_BOOTSTRAP_ENV_FILE="/tmp/bootstrap_env"
 
 OPENBATON_BOOTSTRAP_FUNCTIONS_BASE_URL=http://get.openbaton.org/bootstraps/
 
@@ -100,16 +102,14 @@ fi
 prereq () {
     $_ex 'apt-get install -y wget'
 
-    bootstrap_version=${bootstrap_version:-$BOOTSTRAP_VERSION_DEFAULT}
-    wget -O bootstrap-common-functions "${OPENBATON_BOOTSTRAP_FUNCTIONS_BASE_URL}/${bootstrap_version}/bootstrap-common-functions"
+    wget -O bootstrap-common-functions "${OPENBATON_BOOTSTRAP_FUNCTIONS_BASE_URL}/${openbaton_bootstrap_version}/bootstrap-common-functions"
     . ./bootstrap-common-functions
 }
 
 main_src () {
     prereq
 
-    bootstrap_version=${bootstrap_version:-$BOOTSTRAP_VERSION_DEFAULT}
-    wget -O bootstrap-src-functions "${OPENBATON_BOOTSTRAP_FUNCTIONS_BASE_URL}/${bootstrap_version}/bootstrap-src-functions"
+    wget -O bootstrap-src-functions "${OPENBATON_BOOTSTRAP_FUNCTIONS_BASE_URL}/${openbaton_bootstrap_version}/bootstrap-src-functions"
     . ./bootstrap-src-functions
     src_bootstrap
 }
@@ -117,8 +117,7 @@ main_src () {
 main_deb () {
     prereq
 
-    bootstrap_version=${bootstrap_version:-$BOOTSTRAP_VERSION_DEFAULT}
-    wget -O bootstrap-deb-functions "${OPENBATON_BOOTSTRAP_FUNCTIONS_BASE_URL}/${bootstrap_version}/bootstrap-deb-functions"
+    wget -O bootstrap-deb-functions "${OPENBATON_BOOTSTRAP_FUNCTIONS_BASE_URL}/${openbaton_bootstrap_version}/bootstrap-deb-functions"
     . ./bootstrap-deb-functions
     deb_bootstrap "${1}" "${2}"           # ${1} = release/nightly ; ${2} = distribution codename
 }
@@ -157,8 +156,8 @@ main () {
 #####################
 
 if [ -n "${1+1}" ]; then
-    if [ -f ${BOOTSTRAP_ENV_FILE} ]; then
-        rm ${BOOTSTRAP_ENV_FILE}
+    if [ -f ${OPENBATON_BOOTSTRAP_ENV_FILE} ]; then
+        rm ${OPENBATON_BOOTSTRAP_ENV_FILE}
     fi
 
     for arg in $@ ; do
@@ -195,13 +194,13 @@ if [ -n "${1+1}" ]; then
                 fi
             else
                 arg_key=$(echo ${arg_key} | tr '-' '_')
-                echo "${arg_key}=${arg_value}" >> ${BOOTSTRAP_ENV_FILE}
+                echo "${arg_key}=${arg_value}" >> ${OPENBATON_BOOTSTRAP_ENV_FILE}
             fi
         fi
     done
 
     set -a # Mark the arguments passed by command line for export to the environment of subsequent commands
-    . ${BOOTSTRAP_ENV_FILE}
+    . ${OPENBATON_BOOTSTRAP_ENV_FILE}
 
     echo " * System Details:"
     echo "     OS Architecture: ${OS_ARCHITECTURE}"
