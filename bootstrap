@@ -181,14 +181,13 @@ if [ -n "${1+1}" ]; then
 
             if [ "${arg_key}" = "config-file" ]; then
                 if [ -f ${arg_value} ]; then
-                    openbaton_bootstrap_configuration_file=${arg_value}
                     echo " * Installing Open Baton using the following configuration file:"
                     echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-                    cat ${openbaton_bootstrap_configuration_file}
+                    cat ${arg_value}
                     echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
                     export DEBIAN_FRONTEND=noninteractive
                     set -a # Mark the variables set in the configuration file for export to the environment of subsequent commands
-                    . ${openbaton_bootstrap_configuration_file}
+                    . ${arg_value}
                 else
                     log_failure_msg "Configuration file '${arg_value}' does not exist."
                 fi
