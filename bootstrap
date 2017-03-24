@@ -186,7 +186,8 @@ if [ -n "${1+1}" ]; then
                             set -a # Mark the variables set in the configuration file for export to the environment of subsequent commands
                             . ${arg_value}
                         else
-                            log_failure_msg "Configuration file '${arg_value}' does not exist."                                                                                                                                                                                                         fi
+                            log_failure_msg "Configuration file '${arg_value}' does not exist."
+                        fi
                         continue
                     fi
                     #########################################################################################################################################
