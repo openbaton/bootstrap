@@ -101,7 +101,7 @@ prereq () {
     $_ex 'apt-get install -y wget'
 
     bootstrap_version=${bootstrap_version:-$BOOTSTRAP_VERSION_DEFAULT}
-    wget -O bootstrap-common-functions "${OPENBATON_BOOTSTRAP_FUNCTIONS_BASE_URL}/bootstrap_${bootstrap_version}/bootstrap-common-functions" # TODO remove "bootstrap_" from dirs names
+    wget -O bootstrap-common-functions "${OPENBATON_BOOTSTRAP_FUNCTIONS_BASE_URL}/${bootstrap_version}/bootstrap-common-functions"
     . ./bootstrap-common-functions
 }
 
@@ -109,7 +109,7 @@ main_src () {
     prereq
 
     bootstrap_version=${bootstrap_version:-$BOOTSTRAP_VERSION_DEFAULT}
-    wget -O bootstrap-src-functions "${OPENBATON_BOOTSTRAP_FUNCTIONS_BASE_URL}/bootstrap_${bootstrap_version}/bootstrap-src-functions" # TODO remove "bootstrap_" from dirs names
+    wget -O bootstrap-src-functions "${OPENBATON_BOOTSTRAP_FUNCTIONS_BASE_URL}/${bootstrap_version}/bootstrap-src-functions"
     . ./bootstrap-src-functions
     src_bootstrap
 }
@@ -118,7 +118,7 @@ main_deb () {
     prereq
 
     bootstrap_version=${bootstrap_version:-$BOOTSTRAP_VERSION_DEFAULT}
-    wget -O bootstrap-deb-functions "${OPENBATON_BOOTSTRAP_FUNCTIONS_BASE_URL}/bootstrap_${bootstrap_version}/bootstrap-deb-functions" # TODO remove "bootstrap_" from dirs names
+    wget -O bootstrap-deb-functions "${OPENBATON_BOOTSTRAP_FUNCTIONS_BASE_URL}/${bootstrap_version}/bootstrap-deb-functions"
     . ./bootstrap-deb-functions
     deb_bootstrap "${1}" "${2}"           # ${1} = release/nightly ; ${2} = distribution codename
 }
