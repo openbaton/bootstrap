@@ -194,6 +194,7 @@ deb_is_additional_component_installed () {
 ###################
 
 deb_bootstrap () {
+    export DEBIAN_FRONTEND=${openbaton_installation_manner:-$DEBIAN_FRONTEND_DEFAULT}
     export OPENBATON_COMPONENT_AUTOSTART="${openbaton_component_autostart:-$OPENBATON_COMPONENT_AUTOSTART_DEFAULT}"
 
     deb_add_openbaton_repo_reference "${1}" "${2}"
