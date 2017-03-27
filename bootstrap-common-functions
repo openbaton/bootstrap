@@ -292,6 +292,7 @@ clean () {
     # Retrieve rabbitmqadmin cli
     wget -O rabbitmqadmin http://${rabbitmq_ip}:${rabbitmq_management_port}/cli/rabbitmqadmin
     $_ex "chmod +x ./rabbitmqadmin"
+    $_ex "apt-get install -y python"
 
     # Clean Open Baton binaries and properties files
     debian_packages_num=$( dpkg -l | grep openbaton | wc -l )
