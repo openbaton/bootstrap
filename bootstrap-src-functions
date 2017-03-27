@@ -38,13 +38,6 @@ OPENBATON_FMS_MYSQL_USER_DEFAULT=fmsuser
 OPENBATON_FMS_MYSQL_USER_PASSWORD_DEFAULT=changeme
 OPENBATON_MYSQL_ROOT_PASSWORD_DEFAULT=root
 
-OPENBATON_NFVO_TAG_DEFAULT="develop"
-OPENBATON_PLUGIN_VIMDRIVER_ALL_TAG_DEFAULT="stable"
-OPENBATON_VNFM_GENERIC_TAG_DEFAULT="develop"
-OPENBATON_FMS_TAG_DEFAULT="develop"
-OPENBATON_ASE_TAG_DEFAULT="develop"
-OPENBATON_NSE_TAG_DEFAULT="develop"
-
 
 ##################
 #### RabbitMQ ####
@@ -473,12 +466,6 @@ src_configure_fms () {
 
 src_bootstrap () {
     src_prereq
-
-    openbaton_nfvo_version=${openbaton_nfvo_version:-$OPENBATON_NFVO_TAG_DEFAULT}
-    openbaton_vnfm_generic_version=${openbaton_vnfm_generic_version:-$OPENBATON_VNFM_GENERIC_TAG_DEFAULT}
-    openbaton_fms_version=${openbaton_fms_version:-$OPENBATON_FMS_TAG_DEFAULT}
-    openbaton_ase_version=${openbaton_ase_version:-$OPENBATON_ASE_TAG_DEFAULT}
-    openbaton_nse_version=${openbaton_nse_version:-$OPENBATON_NSE_TAG_DEFAULT}
 
     src_checkout_nfvo "3.2.0" "${openbaton_nfvo_version}"
 
