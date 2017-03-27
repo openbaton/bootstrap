@@ -1,0 +1,23 @@
+version: '2'
+services:
+  vnfm-generic:
+    image: openbaton/vnfm-generic:3.2.0
+    #image: docker.io/openbaton/vnfm-generic:3.2.0
+    depends_on:
+      - nfvo
+    environment: 
+      - RABBITMQ_BROKERIP=nfvo
+    ports:
+      - "5673:5672"
+  nfvo:
+    image: openbaton/nfvo:3.2.0
+    #image: docker.io/openbaton/nfvo:3.2.0
+    hostname: openbaton-rabbitmq
+    environment: 
+      - RABBITMQ_BROKERIP=<reachable IP>
+      #- RABBITMQ_BROKERIP=openbaton-rabbitmq
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+      - "15672:15672"
+      - "5672:5672"
