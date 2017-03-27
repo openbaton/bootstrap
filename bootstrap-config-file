@@ -11,7 +11,7 @@
 #################
 
 openbaton_bootstrap_version=latest                          # Deafult is 'latest' therefore if left empty ('openbaton_bootstrap_version=') or commented the bootstrap used will be the latest. Use format X.Y.Z for a specific version: the oldest VERSION installable is 3.2.0
-openbaton_installation_manner=interactive                   # Deafult is 'interactive' therefore if left empty ('openbaton_installation_manner=') or commented the installation will be interactive. Use 'noninteractive' or 'Noninteractive' for a not interactive installation
+openbaton_installation_manner=noninteractive                # Deafult is 'interactive' therefore if left empty ('openbaton_installation_manner=') or commented the installation will be interactive. Use 'noninteractive' or 'Noninteractive' for a not interactive installation
 openbaton_component_autostart=true                          # Deafult is 'true' therefore if left empty ('openbaton_component_autostart=') or commented the debian component will start automatically at the end of the installation
 
 
