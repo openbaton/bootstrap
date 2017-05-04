@@ -13,7 +13,7 @@ set -u
 #### Global Variables ####
 ##########################
 
-DEBIAN_FRONTEND_DEFAULT=interactive
+DEBIAN_FRONTEND_DEFAULT=dialog
 DEBIAN_FRONTEND=${openbaton_installation_manner:-$DEBIAN_FRONTEND_DEFAULT}
 
 BOOTSTRAP_DIR=$(pwd)
