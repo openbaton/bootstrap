@@ -65,7 +65,7 @@ deb_install_nfvo () {
     if [ "${nfvo_version}" = "" -o "${nfvo_version}" = "latest" ]; then
         nfvo_version=""
     else
-        nfvo_version="-${nfvo_version}"
+        nfvo_version="=${nfvo_version}"
     fi
 
     # Install the correct NFVO package according to the given input parameter
@@ -95,7 +95,7 @@ deb_install_additional_component_versioned () {
     if [ "${component_version}" = "" -o "${component_version}" = "latest" ]; then
         component_version=""
     else
-        component_version="-${component_version}"
+        component_version="=${component_version}"
     fi
 
     if [ "${release_nightly}" = "release" ]; then
@@ -206,13 +206,13 @@ deb_bootstrap () {
     #
 
     # OpenStack VIM Driver Plugin
-    deb_install_additional_component ${1} plugin-vimdriver-openstack-4j "OpenStack VIM-Driver Plugin" ${openbaton_plugin_vimdriver_openstack} false "3.2.0" "${OPENBATON_PLUGINS_VIMDRIVERS_OPENSTACK_4J_REPO_URL}" ${openbaton_plugin_vimdriver_openstack_version}
+    deb_install_additional_component ${1} plugin-vimdriver-openstack-4j "OpenStack VIM-Driver Plugin" ${openbaton_plugin_vimdriver_openstack} false "3.2.2" "${OPENBATON_PLUGINS_VIMDRIVERS_OPENSTACK_4J_REPO_URL}" ${openbaton_plugin_vimdriver_openstack_version}
 
     # Generic VNFM
     deb_install_additional_component ${1} vnfm-generic "Generic VNFM" ${openbaton_vnfm_generic} false "3.2.0" "${OPENBATON_VNFM_GENERIC_REPO_URL}" ${openbaton_vnfm_generic_version}
     
     # Fault Management System
-    deb_install_additional_component ${1} fms "Fault Management System" ${openbaton_fms} false "1.2.2" "${OPENBATON_FMS_REPO_URL}" ${openbaton_fms_version}
+    deb_install_additional_component ${1} fms "Fault Management System" ${openbaton_fms} false "1.2.4" "${OPENBATON_FMS_REPO_URL}" ${openbaton_fms_version}
     
     # Auto Scaling Engine
     deb_install_additional_component ${1} ase "Auto Scaling Engine" ${openbaton_ase} false "1.2.2" "${OPENBATON_ASE_REPO_URL}" ${openbaton_ase_version}
