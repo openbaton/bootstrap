@@ -2,22 +2,8 @@
 #
 # This script allows you to install openbaton. To execute it:
 #
-# sh <(curl -s http://get.openbaton.org/bootstrap) [release | nightly | develop]
+# sh <(curl -s http://get.openbaton.org/bootstrap) [[release | nightly | develop] [--openbaton-bootstrap-version=X.Y.Z] [--config-file=<absolute path to configuration file>]] [clean]
 
-###############
-#### Usage ####
-###############
-
-usage () {
-    echo "Usage:"
-    echo "./bootstrap [release | nightly | develop]                                            (if the script is already locally available)"
-    echo "sh <(curl -s http://get.openbaton.org/bootstrap) [release | nightly | develop]       (otherwise)"
-}
-
-if [ ${#} -gt 1 ]; then
-    usage
-    exit 1
-fi
 
 
 ##########################
@@ -36,18 +22,41 @@ set -u
 #### Global Variables ####
 ##########################
 
-BOOTSTRAP_DIR=$(pwd)
+OPENBATON_BOOTSTRAP_VERSION_DEFAULT=latest
+openbaton_bootstrap_version=${openbaton_bootstrap_version:-$OPENBATON_BOOTSTRAP_VERSION_DEFAULT}
+
+OPENBATON_BOOTSTRAP_ENV_FILE="/tmp/bootstrap_env"
+
+OPENBATON_BOOTSTRAP_FUNCTIONS_BASE_URL=http://get.openbaton.org/bootstraps/
+
 USER="$(id -un 2>/dev/null || true)"
 
-OPENBATON_BOOTSTRAP_SRC_FUNCTIONS_URL=http://get.openbaton.org/bootstrap-src-functions
-OPENBATON_BOOTSTRAP_DEB_FUNCTIONS_URL=http://get.openbaton.org/bootstrap-deb-functions
+OS_ARCHITECTURE=$(uname -m)
+OS_TYPE=$(uname -a | awk -F' ' '{ print $1 }')
 
-OPENJDK_7_LINUX_X86_64_SECURITYFILE="/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/security/java.security"
-OPENJDK_7_LINUX_I386_SECURITYFILE="/usr/lib/jvm/java-7-openjdk-i386/jre/lib/security/java.security"
-OPENJDK_7_OSX_SECURITYFILE="/Library/Java/JavaVirtualMachines/jdk1.7.*.jdk/Contents/Home/jre/lib/security/java.security"
+case "${OS_TYPE}" in
+    'Linux')
+        OS_DISTRIBUTION_ID=$( lsb_release -a | grep "Distributor ID" | sed "s/[ \t]*//g" | awk -F':' '{ print $2 }' )
+        OS_DISTRIBUTION_RELEASE=$( lsb_release -a | grep "Release" | sed "s/[ \t]*//g" | awk -F':' '{ print $2 }' )
+        OS_DISTRIBUTION_CODENAME=$( lsb_release -a | grep "Codename" | sed "s/[ \t]*//g" | awk -F':' '{ print $2 }' )
+        ;;
+    'Darwin')
+        OS_DISTRIBUTION_ID=$( sw_vers -productName )
+        OS_DISTRIBUTION_RELEASE=$( sw_vers -productVersion )
+        ;;
+    *)
+        OS_DISTRIBUTION_ID=undefined
+        OS_DISTRIBUTION_RELEASE=undefined
+        ;;
+esac
 
-DEBIAN_FRONTEND_DEFAULT=interactive
-DEBIAN_FRONTEND=${DEBIAN_FRONTEND:-$DEBIAN_FRONTEND_DEFAULT}
+if [ ${OS_DISTRIBUTION_RELEASE} != 'undefined' ]; then
+    OS_DISTRIBUTION_RELEASE_MAJOR=$( echo ${OS_DISTRIBUTION_RELEASE} | awk -F'.' '{ print $1 }' )
+else
+    OS_DISTRIBUTION_RELEASE_MAJOR=undefined
+fi
+
+OPENBATON_BOOTSTRAP_SUBCOMMAND_DEFAULT=release
 
 
 ###############
@@ -55,9 +64,9 @@ DEBIAN_FRONTEND=${DEBIAN_FRONTEND:-$DEBIAN_FRONTEND_DEFAULT}
 ###############
 
 usage () {
-    echo "Usage:"
-    echo "./bootstrap                                                 (if the script is already locally available)"
-    echo "sh <(curl -s http://get.openbaton.org/bootstrap)            (otherwise)"
+    echo " * Usage: (The RELEASE installation is the DEFAULT)"
+    echo "    ./bootstrap [[release | nightly | develop] [--openbaton-bootstrap-version=X.Y.Z] [--config-file=<absolute path to configuration file>]] [clean]                                             (if the script is already locally available)"
+    echo "    sh <(curl -s http://get.openbaton.org/bootstrap) [[release | nightly | develop] [--openbaton-bootstrap-version=X.Y.Z] [--config-file=<absolute path to configuration file>]] [clean]        (otherwise)"
 }
 
 
@@ -66,8 +75,8 @@ usage () {
 ##############################
 
 check_binary () {
-  echo -n " * Checking for '$1' ... "
-  if command -v $1 >/dev/null 2>&1; then
+  echo -n " * Checking for '${1}' ... "
+  if command -v ${1} >/dev/null 2>&1; then
      echo "OK"
      return 0
   else
@@ -86,172 +95,59 @@ if [ "${USER}" != "root" ]; then
 fi
 
 
-##################
-#### Security ####
-##################
-
-configure_security () {
-    export properties_file_name=${1}
-
-    # In case of "noninteractive" FRONTEND the default value will remain valid (see in lines below)
-    if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-        read -p "Do you want to enable HTTPS? [N/y]: " https
-        export https=${https}
-        if [ "${https}" != "" ]; then
-            if [ "${https}" = "y" -o "${https}" = "Y" -o "${https}" = "yes" ]; then
-                log_success_msg "Enabling HTTPS .."
-
-                # server.port = 8443
-                $_ex 'sed -i "s/# server.port = 8443/server.port = 8443/g" /etc/openbaton/${properties_file_name}'
-                # server.ssl.enabled = true
-                $_ex 'sed -i "s/# server.ssl.enabled = true/server.ssl.enabled = true/g" /etc/openbaton/${properties_file_name}'
-                # server.ssl.key-store = /etc/openbaton/keystore.p12
-                $_ex 'sed -i -e "s@# server.ssl.key-store = \/etc\/openbaton\/keystore.p12@server.ssl.key-store = \/etc\/openbaton\/keystore.p12@g" /etc/openbaton/${properties_file_name}'
-                # server.ssl.key-store-password = password
-                $_ex 'sed -i "s/# server.ssl.key-store-password = password/server.ssl.key-store-password = password/g" /etc/openbaton/${properties_file_name}'
-                # server.ssl.keyStoreType = PKCS12
-                $_ex 'sed -i "s/# server.ssl.keyStoreType = PKCS12/server.ssl.keyStoreType = PKCS12/g" /etc/openbaton/${properties_file_name}'
-                # server.ssl.keyAlias = tomcat
-                $_ex 'sed -i "s/# server.ssl.keyAlias = tomcat/server.ssl.keyAlias = tomcat/g" /etc/openbaton/${properties_file_name}'
-                # nfvo.https = false
-                $_ex 'sed -i "s/# nfvo.https = false/nfvo.https = true/g" /etc/openbaton/${properties_file_name}'
-            fi                                                                                                                                   
-        fi        
-    fi
-}
-
-fix_java_security () {
-    ostype=$(uname -a | awk -F ' ' '{ print $1 }')
-    if [ "${ostype}" = "Linux" ]; then
-        arch=$(uname -m)
-        if [ "${arch}" = "x86_64" ]; then
-            export OPENJDK_7_LINUX_X86_64_SECURITYFILE=${OPENJDK_7_LINUX_X86_64_SECURITYFILE}
-            $_ex "sed -i "s_securerandom.source=file:/dev/urandom_securerandom.source=file:/dev/./urandom_g" ${OPENJDK_7_LINUX_X86_64_SECURITYFILE}"
-        else
-            export OPENJDK_7_LINUX_I386_SECURITYFILE=${OPENJDK_7_LINUX_I386_SECURITYFILE}
-            $_ex "sed -i "s_securerandom.source=file:/dev/urandom_securerandom.source=file:/dev/./urandom_g" ${OPENJDK_7_LINUX_I386_SECURITYFILE}"
-        fi
-    elif [ "${ostype}" = "Darwin" ]; then
-        export OPENJDK_7_OSX_SECURITYFILE=${OPENJDK_7_OSX_SECURITYFILE}
-        $_ex 'sed -i "" "s_securerandom.source=file:/dev/urandom_securerandom.source=file:/dev/./urandom_g" ${OPENJDK_7_OSX_SECURITYFILE}'
-    fi
-}
-
-
-###############
-#### MySQL ####
-###############
-
-configure_mysql () {
-    export properties_file_name=${1}
-
-    log_success_msg "Configuring MySQL for Open Baton .."        
-    $_ex 'sed -i "s/spring.datasource.url=jdbc:hsqldb:file:\/tmp\/openbaton\/openbaton.hsdb/# spring.datasource.url=jdbc:hsqldb:file:\/tmp\/openbaton\/openbaton.hsdb/g" /etc/openbaton/${properties_file_name}'
-    $_ex 'sed -i "s/spring.datasource.driver-class-name=org.hsqldb.jdbc.JDBCDriver/# spring.datasource.driver-class-name=org.hsqldb.jdbc.JDBCDriver/g" /etc/openbaton/${properties_file_name}'
-    $_ex 'sed -i "s/spring.jpa.database-platform=org.hibernate.dialect.HSQLDialect/# spring.jpa.database-platform=org.hibernate.dialect.HSQLDialect/g" /etc/openbaton/${properties_file_name}'
-    $_ex 'sed -i "s/spring.jpa.hibernate.ddl-auto=create-drop/# spring.jpa.hibernate.ddl-auto=create-drop/g" /etc/openbaton/${properties_file_name}'
-    $_ex 'sed -i "s/# spring.jpa.hibernate.ddl-auto=update/spring.jpa.hibernate.ddl-auto=update/g" /etc/openbaton/${properties_file_name}'
-    $_ex 'sed -i "s/# spring.datasource.validationQuery=SELECT 1/spring.datasource.validationQuery=SELECT 1/g" /etc/openbaton/${properties_file_name}'
-    $_ex 'sed -i "s/# spring.datasource.testOnBorrow=true/spring.datasource.testOnBorrow=true/g" /etc/openbaton/${properties_file_name}'
-    # Enable MySQL
-    $_ex 'sed -i "s/# spring.datasource.url=jdbc:mysql:\/\/localhost:3306\/openbaton/spring.datasource.url=jdbc:mysql:\/\/localhost:3306\/openbaton/g" /etc/openbaton/${properties_file_name}'
-    $_ex 'sed -i "s/# spring.datasource.driver-class-name=com.mysql.jdbc.Driver/spring.datasource.driver-class-name=com.mysql.jdbc.Driver/g" /etc/openbaton/${properties_file_name}'
-    $_ex 'sed -i "s/# spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect/spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect/g" /etc/openbaton/${properties_file_name}'
-    
-    # In case of "noninteractive" FRONTEND the default value will remain valid (sqluser: admin ; sqlpassword: changeme)
-    # Redundant check since the 'configure_mysql' function is executed only when 'DEBIAN_FRONTEND != noninteractive'
-    if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-        read -p "Please, type the name of the mysql user you would like Open Baton to use [admin]: " sqluser
-        export dbuser=admin
-        export dbpassword=changeme
-        if [ "${sqluser}" != "" ]; then
-            dbuser=${sqluser}
-            $_ex 'sed -i "s/spring.datasource.username=admin/spring.datasource.username=${dbuser}/g" /etc/openbaton/${properties_file_name}'
-        fi
-        # Turning echo on and off between password reading
-        stty -echo
-        read -p "Please, provide the password for this user [changeme]: " sqlpassword ; echo
-        stty echo
-        if [ "${sqlpassword}" != "" ]; then
-            dbpassword=${sqlpassword}
-            $_ex 'sed -i "s/spring.datasource.password=changeme/spring.datasource.password=${dbpassword}/g" /etc/openbaton/${properties_file_name}'
-        fi                                                                                                                                                
-        # Turning echo on and off between password reading          
-        stty -echo
-        read -p "Please, provide the password of the 'root' user of mysql [root]: " rootpasswd ; echo
-        stty echo
-        if [ "${rootpasswd}" = "" ]; then
-            rootpasswd=root
-        fi
-        # Create the Database
-        mysql -uroot -p${rootpasswd} -e "CREATE DATABASE openbaton /*\!40100 DEFAULT CHARACTER SET utf8 */;"
-        mysql -uroot -p${rootpasswd} -e "CREATE USER ${dbuser}@localhost IDENTIFIED BY '${dbpassword}';"
-        mysql -uroot -p${rootpasswd} -e "GRANT ALL ON openbaton.* TO '${dbuser}'@'localhost';"
-        mysql -uroot -p${rootpasswd} -e "FLUSH PRIVILEGES;"
-        mysql -uroot -p${rootpasswd} -e "USE openbaton;"
-    fi
-}
-
-install_mysql () {
-    properties_file_name=${1}
-
-    # In case of "noninteractive" FRONTEND the default value will remain valid (sqluser: admin ; sqlpassword: changeme)
-    if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-        read -p "Do you want to enable the persistence through MySQL? [Y/n]: " mysql
-        if [ "${mysql}" = "" -o "${mysql}" = "y" -o "${mysql}" = "Y" -o "${mysql}" = "yes" ]; then
-            echo " * [INFO] Enabling MySQL Persistence"
-            $_ex 'apt-get update'
-            $_ex 'apt-get install -y mysql-server'
-            configure_mysql ${properties_file_name}
-        else
-            echo " * [WARN] NOT Enabling MySQL Persistence"
-        fi
-    fi
-}
-
-
 ##############
 #### Main ####
 ##############
 
+prereq () {
+    $_ex 'apt-get install -y wget'
+
+    wget -O bootstrap-common-functions "${OPENBATON_BOOTSTRAP_FUNCTIONS_BASE_URL}/${openbaton_bootstrap_version}/bootstrap-common-functions"
+    . ./bootstrap-common-functions
+}
+
 main_src () {
-    wget "${OPENBATON_BOOTSTRAP_SRC_FUNCTIONS_URL}"
+    prereq
+
+    wget -O bootstrap-src-functions "${OPENBATON_BOOTSTRAP_FUNCTIONS_BASE_URL}/${openbaton_bootstrap_version}/bootstrap-src-functions"
     . ./bootstrap-src-functions
     src_bootstrap
 }
 
 main_deb () {
-    wget "${OPENBATON_BOOTSTRAP_DEB_FUNCTIONS_URL}"
+    prereq
+
+    wget -O bootstrap-deb-functions "${OPENBATON_BOOTSTRAP_FUNCTIONS_BASE_URL}/${openbaton_bootstrap_version}/bootstrap-deb-functions"
     . ./bootstrap-deb-functions
-    deb_bootstrap ${1}
+    deb_bootstrap "${1}" "${2}"           # ${1} = release/nightly ; ${2} = distribution codename
 }
 
 main () {
     # In case of "noninteractive" FRONTEND the latest RELEASE package will be installed
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-        echo "Welcome to the Open Baton menu installation."
-        echo "Available installation types are the following:"
+        echo " * Welcome to the Open Baton menu installation."
+        echo " * Available installation types are the following:"
         echo "    1. develop (SOURCE): it will be downloaded the source code for all the components which will be executed in screens"
         echo "    2. release (DEBIAN): it will be installed the binary version of the latest released version"
         echo "    3. nightly (DEBIAN): it will be installed the binary version of the latest nightly build"
-        read -p "Select the Open Baton installation type you prefer [2]: " install_type
+        read -p " * Select the Open Baton installation type you prefer [2]: " install_type
         case ${install_type} in
             1 ) 
-                main_src ;;
+                main_src 
+                ;;
             3 ) 
-                main_deb unstable;;
+                main_deb nightly "${OS_DISTRIBUTION_CODENAME}"
+                ;;
             * ) 
-                main_deb stable ;;
+                main_deb release "${OS_DISTRIBUTION_CODENAME}"
+                ;;
         esac
     else
-        main_deb stable
+        # Non interactive debian release installation with the default values (when non interactive installation and no config file has been passed)
+        main_deb release "${OS_DISTRIBUTION_CODENAME}"
     fi
 
     log_success_msg "Open Baton installation complete"
-}
-
-prereq () {
-    $_ex 'apt-get install -y wget'
 }
 
 
@@ -259,24 +155,115 @@ prereq () {
 #### Entry Point ####
 #####################
 
-prereq
-
 if [ -n "${1+1}" ]; then
-    case ${1} in
+    if [ -f ${OPENBATON_BOOTSTRAP_ENV_FILE} ]; then
+        rm ${OPENBATON_BOOTSTRAP_ENV_FILE}
+    fi
+
+    for arg in $@ ; do
+        arg_id=$(echo $arg | cut -c1-2)
+        arg_key=${arg}
+        arg_value=
+
+        if [ ${arg_id} != "--" ]; then
+            case ${arg} in
+                "release" | "nightly" | "develop" | "clean" )
+                    bootstrap_subcommand=${arg}
+                    ;;
+                * )
+                    # TODO: temporary fix
+                    #########################################################################################################################################
+                    arg_key=$( echo ${arg} | cut -c2-  | awk -F'=' '{ print $1}' )
+                    if [ "${arg_key}" = "configFile" ]; then
+                        log_failure_msg "The argument '-configFile' will be not supported anymore from the next version. Please use '--config-file' instead."
+                        arg_value=$( echo ${arg} | cut -c2- | awk -F'=' '{ print $2}' )
+                        if [ -f ${arg_value} ]; then
+                            echo " * Installing Open Baton using the following configuration file:"
+                            echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+                            cat ${arg_value}
+                            echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+                            export DEBIAN_FRONTEND=noninteractive
+                            set -a # Mark the variables set in the configuration file for export to the environment of subsequent commands
+                            . ${arg_value}
+                        else
+                            log_failure_msg "Configuration file '${arg_value}' does not exist."
+                        fi
+                        continue
+                    fi
+                    #########################################################################################################################################
+
+                    usage
+                    exit 1
+                    ;;
+            esac
+        else
+            arg_key=$( echo ${arg} | cut -c3-  | awk -F'=' '{ print $1}' )
+            arg_value=$( echo ${arg} | cut -c3- | awk -F'=' '{ print $2}' )
+
+            if [ "${arg_key}" = "config-file" ]; then
+                if [ -f ${arg_value} ]; then
+                    echo " * Installing Open Baton using the following configuration file:"
+                    echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+                    cat ${arg_value}
+                    echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+                    export DEBIAN_FRONTEND=noninteractive
+                    set -a # Mark the variables set in the configuration file for export to the environment of subsequent commands
+                    . ${arg_value}
+                else
+                    log_failure_msg "Configuration file '${arg_value}' does not exist."
+                fi
+            else
+                arg_key=$(echo ${arg_key} | tr '-' '_')
+                echo "${arg_key}=${arg_value}" >> ${OPENBATON_BOOTSTRAP_ENV_FILE}
+            fi
+        fi
+    done
+
+    if [ -f ${OPENBATON_BOOTSTRAP_ENV_FILE} ]; then
+        set -a # Mark the arguments passed by command line for export to the environment of subsequent commands
+        . ${OPENBATON_BOOTSTRAP_ENV_FILE}
+    fi
+
+    echo " * System Details:"
+    echo "     OS Architecture: ${OS_ARCHITECTURE}"
+    echo "     OS Type: ${OS_TYPE}"
+    echo "     OS Distribution ID: ${OS_DISTRIBUTION_ID}"
+    echo "     OS Distribution Codename: ${OS_DISTRIBUTION_CODENAME}"
+    echo "     OS Distribution Release: ${OS_DISTRIBUTION_RELEASE}"
+
+    bootstrap_subcommand=${bootstrap_subcommand:-$OPENBATON_BOOTSTRAP_SUBCOMMAND_DEFAULT}
+    case ${bootstrap_subcommand} in
         "release" )
-            echo " * [INFO] Installing the latest RELEASE package"
-            main_deb stable ;;
+            echo " * Installing the latest RELEASE package"
+            main_deb release "${OS_DISTRIBUTION_CODENAME}"
+            ;;
         "nightly" )
-            echo " * [INFO] Installing the latest NIGHTLY-BUILD package"
-            main_deb unstable ;;
+            echo " * Installing the latest NIGHTLY-BUILD package"
+            main_deb nightly "${OS_DISTRIBUTION_CODENAME}"
+            ;;
         "develop" )
-            echo " * [INFO] Installing the latest source code"
-            main_src ;;
+            echo " * Installing the latest source code"
+            main_src
+            ;;
+        "clean" )
+            echo " * Cleaning the Open Baton installation"
+            prereq
+            clean
+            exit 0
+            ;;
         *)
             usage
-            exit 1 ;;
+            exit 1 
+            ;;
     esac
-else
+else # When invoked with 0 arguments: 'sh <(curl -s http://get.openbaton.org/bootstrap)'
+    echo " * System Details:"
+    echo "     OS Architecture: ${OS_ARCHITECTURE}"
+    echo "     OS Type: ${OS_TYPE}"
+    echo "     OS Distribution ID: ${OS_DISTRIBUTION_ID}"
+    echo "     OS Distribution Codename: ${OS_DISTRIBUTION_CODENAME}"
+    echo "     OS Distribution Release: ${OS_DISTRIBUTION_RELEASE}"
+
     main
 fi
 

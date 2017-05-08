@@ -1,0 +1,344 @@
+#!/bin/sh
+
+##########################
+#### General Settings ####
+##########################
+
+set -e
+set -u
+#set -x # only for DEBUG
+
+
+##########################
+#### Global Variables ####
+##########################
+
+DEBIAN_FRONTEND_DEFAULT=dialog
+DEBIAN_FRONTEND=${openbaton_installation_manner:-$DEBIAN_FRONTEND_DEFAULT}
+
+BOOTSTRAP_DIR=$(pwd)
+
+OPENBATON_NFVO_REPO_URL="https://github.com/openbaton/NFVO"
+OPENBATON_PLUGINS_VIMDRIVERS_OPENSTACK_4J_REPO_URL="https://github.com/openbaton/openstack4j-plugin"
+OPENBATON_VNFM_GENERIC_REPO_URL="https://github.com/openbaton/generic-vnfm"
+OPENBATON_FMS_REPO_URL="https://github.com/openbaton/fm-system"
+OPENBATON_ASE_REPO_URL="https://github.com/openbaton/autoscaling-engine"
+OPENBATON_NSE_REPO_URL="https://github.com/openbaton/network-slicing-engine"
+
+OPENJDK_7_LINUX_X86_64_SECURITYFILE="/usr/lib/jvm/java-7-openjdk-amd64/jre/lib/security/java.security"
+OPENJDK_7_LINUX_I386_SECURITYFILE="/usr/lib/jvm/java-7-openjdk-i386/jre/lib/security/java.security"
+OPENJDK_8_LINUX_X86_64_SECURITYFILE="/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/security/java.security"
+OPENJDK_8_LINUX_I386_SECURITYFILE="/usr/lib/jvm/java-8-openjdk-i386/jre/lib/security/java.security"
+OPENJDK_7_OSX_SECURITYFILE="/Library/Java/JavaVirtualMachines/jdk1.7.*.jdk/Contents/Home/jre/lib/security/java.security"
+
+HTTPS_DEFAULT=no
+MYSQL_DEFAULT=yes
+OPENBATON_NFVO_MYSQL_USER_DEFAULT=admin
+OPENBATON_NFVO_MYSQL_USER_PASSWORD_DEFAULT=changeme
+MYSQL_ROOT_PASSWORD_DEFAULT=root
+
+OPENBATON_BASE_CONFIG_DIR="/etc/openbaton"
+OPENBATON_SOURCE_INSTALLATION_BASE_DIR=/opt/openbaton
+
+OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_DEFAULT=yes
+OPENBATON_VNFM_GENERIC_DEFAULT=yes
+OPENBATON_FMS_DEFAULT=no
+OPENBATON_ASE_DEFAULT=no
+OPENBATON_NSE_DEFAULT=no
+OPENBATON_CLI_DEFAULT=no
+openbaton_plugin_vimdriver_openstack=${openbaton_plugin_vimdriver_openstack:-$OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_DEFAULT}
+openbaton_vnfm_generic=${openbaton_vnfm_generic:-$OPENBATON_VNFM_GENERIC_DEFAULT}
+openbaton_fms=${openbaton_fms:-$OPENBATON_FMS_DEFAULT}
+openbaton_ase=${openbaton_ase:-$OPENBATON_ASE_DEFAULT}
+openbaton_nse=${openbaton_nse:-$OPENBATON_NSE_DEFAULT}
+openbaton_cli=${openbaton_cli:-$OPENBATON_CLI_DEFAULT}
+
+OPENBATON_NFVO_VERSION_DEFAULT="3.2.0"
+OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_VERSION_DEFAULT="3.2.1"
+OPENBATON_VNFM_GENERIC_VERSION_DEFAULT="3.2.0"
+OPENBATON_FMS_VERSION_DEFAULT="1.2.4"
+OPENBATON_ASE_VERSION_DEFAULT="1.2.2"
+OPENBATON_NSE_VERSION_DEFAULT="1.1.2"
+openbaton_nfvo_version=${openbaton_nfvo_version:-$OPENBATON_NFVO_VERSION_DEFAULT}
+openbaton_plugin_vimdriver_openstack_version=${openbaton_plugin_vimdriver_openstack_version:-$OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_VERSION_DEFAULT}
+openbaton_vnfm_generic_version=${openbaton_vnfm_generic_version:-$OPENBATON_VNFM_GENERIC_VERSION_DEFAULT}
+openbaton_fms_version=${openbaton_fms_version:-$OPENBATON_FMS_VERSION_DEFAULT}
+openbaton_ase_version=${openbaton_ase_version:-$OPENBATON_ASE_VERSION_DEFAULT}
+openbaton_nse_version=${openbaton_nse_version:-$OPENBATON_NSE_VERSION_DEFAULT}
+
+
+##################
+#### Security ####
+##################
+
+enable_https () {
+    export properties_file_name=${1}
+
+    # In case of "noninteractive" FRONTEND the default value will remain valid (see in lines below)
+    if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
+        read -p " * Do you want to enable HTTPS? [N/y]: " https
+    fi
+
+    https=${https:-$HTTPS_DEFAULT}
+
+    if [ "${https}" = "y" -o "${https}" = "Y" -o "${https}" = "yes" ]; then
+        log_success_msg "Enabling HTTPS .."
+
+        # server.port = 8443
+        $_ex 'sed -i "s|#\s*server.port\s*=\s*8443|server.port=8443|g" /etc/openbaton/${properties_file_name}'
+        # server.ssl.enabled = true
+        $_ex 'sed -i "s|#\s*server.ssl.enabled\s*=\s*true|server.ssl.enabled=true|g" /etc/openbaton/${properties_file_name}'
+        # server.ssl.key-store = /etc/openbaton/keystore.p12
+        $_ex 'sed -i "s|#\s*server.ssl.key-store\s*=\s*\/etc\/openbaton\/keystore.p12|server.ssl.key-store=\/etc\/openbaton\/keystore.p12|g" /etc/openbaton/${properties_file_name}'
+        # server.ssl.key-store-password = password
+        $_ex 'sed -i "s|#\s*server.ssl.key-store-password\s*=\s*password|server.ssl.key-store-password=password|g" /etc/openbaton/${properties_file_name}'
+        # server.ssl.keyStoreType = PKCS12
+        $_ex 'sed -i "s|#\s*server.ssl.keyStoreType\s*=\s*PKCS12|server.ssl.keyStoreType=PKCS12|g" /etc/openbaton/${properties_file_name}'
+        # server.ssl.keyAlias = tomcat
+        $_ex 'sed -i "s|#\s*server.ssl.keyAlias\s*=\s*tomcat|server.ssl.keyAlias=tomcat|g" /etc/openbaton/${properties_file_name}'
+        # nfvo.https = false
+        $_ex 'sed -i "s|#\s*nfvo.https\s*=\s*false|nfvo.https=true|g" /etc/openbaton/${properties_file_name}'
+    fi
+}
+
+fix_jvm_delay_for_random_number_generation () {
+    java7_installed="false"
+    result=$( dpkg -l | grep "openjdk-7-jre" | wc -l)
+    if [ ${result} -gt 0 ]; then
+        java7_installed="true"
+    fi
+
+    if [ "${OS_TYPE}" = "Linux" ]; then
+        if [ "${OS_ARCHITECTURE}" = "x86_64" ]; then
+            if [ "${OS_DISTRIBUTION_RELEASE_MAJOR}" -ge "16" -a "${java7_installed}" != "true" ]; then # Ubuntu 16
+                export OPENJDK_8_LINUX_X86_64_SECURITYFILE=${OPENJDK_8_LINUX_X86_64_SECURITYFILE}
+                $_ex 'sed -i "s|securerandom.source=file:/dev/random|securerandom.source=file:/dev/./urandom|g" ${OPENJDK_8_LINUX_X86_64_SECURITYFILE}'
+            else # Ubuntu 14
+                export OPENJDK_7_LINUX_X86_64_SECURITYFILE=${OPENJDK_7_LINUX_X86_64_SECURITYFILE}
+                $_ex 'sed -i "s|securerandom.source=file:/dev/urandom|securerandom.source=file:/dev/./urandom|g" ${OPENJDK_7_LINUX_X86_64_SECURITYFILE}'
+            fi
+        else # i386
+            if [ "${OS_DISTRIBUTION_RELEASE_MAJOR}" -ge "16" -a "${java7_installed}" != "true" ]; then # Ubuntu 16
+                export OPENJDK_8_LINUX_I386_SECURITYFILE=${OPENJDK_8_LINUX_I386_SECURITYFILE}
+                $_ex 'sed -i "s|securerandom.source=file:/dev/random|securerandom.source=file:/dev/./urandom|g" ${OPENJDK_8_LINUX_I386_SECURITYFILE}'
+            else # Ubuntu 14
+                export OPENJDK_7_LINUX_I386_SECURITYFILE=${OPENJDK_7_LINUX_I386_SECURITYFILE}
+                $_ex 'sed -i "s|securerandom.source=file:/dev/urandom|securerandom.source=file:/dev/./urandom|g" ${OPENJDK_7_LINUX_I386_64_SECURITYFILE}'
+            fi
+        fi
+    elif [ "${ostype}" = "Darwin" ]; then
+        export OPENJDK_7_OSX_SECURITYFILE=${OPENJDK_7_OSX_SECURITYFILE}
+        $_ex 'sed -i "" "s|securerandom.source=file:/dev/urandom|securerandom.source=file:/dev/./urandom|g" ${OPENJDK_7_OSX_SECURITYFILE}'
+    fi
+}
+
+
+###############
+#### MySQL ####
+###############
+
+configure_mysql () {
+    export properties_file_name=${1}
+
+    log_success_msg "Configuring MySQL for Open Baton .."
+
+    $_ex 'sed -i "s|spring.datasource.url\s*=\s*jdbc:hsqldb:file:\/tmp\/openbaton\/openbaton.hsdb|spring.datasource.url=jdbc:mysql:\/\/localhost:3306\/openbaton|g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s|spring.datasource.driver-class-name\s*=\s*org.hsqldb.jdbc.JDBCDriver|spring.datasource.driver-class-name=com.mysql.jdbc.Driver|g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s|spring.jpa.database-platform\s*=\s*org.hibernate.dialect.HSQLDialect|spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect|g" /etc/openbaton/${properties_file_name}'
+
+    $_ex 'sed -i "s|spring.jpa.hibernate.ddl-auto\s*=\s*.*|spring.jpa.hibernate.ddl-auto=update|g" /etc/openbaton/${properties_file_name}'
+
+    $_ex 'sed -i "s|#\s*spring.datasource.validationQuery\s*=\s*SELECT 1|spring.datasource.validationQuery=SELECT 1|g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s|#\s*spring.datasource.testOnBorrow\s*=\s*true|spring.datasource.testOnBorrow=true|g" /etc/openbaton/${properties_file_name}'
+
+    # Enable MySQL
+
+    # In case of "noninteractive" FRONTEND the default value will remain valid (openbaton_nfvo_mysql_user: admin ; openbaton_nfvo_mysql_user_password: changeme)
+    if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
+        read -p " * Please, type the name of the MySQL user you would like the Open Baton NFVO to use [admin]: " openbaton_nfvo_mysql_user
+
+        # Turning echo ON and OFF between password reading
+        stty -echo
+        read -p " * Please, provide the password for this user [changeme]: " openbaton_nfvo_mysql_user_password ; echo
+        stty echo
+
+        # Turning echo ON and OFF batween password reading
+        stty -echo
+        read -p " * Please, provide the password of the 'root' user of MySQL [root]: " mysql_root_password ; echo
+        stty echo
+    fi
+
+    # Set the mysql user
+    export openbaton_nfvo_mysql_user=${openbaton_nfvo_mysql_user:-$OPENBATON_NFVO_MYSQL_USER_DEFAULT}
+    $_ex 'sed -i "s|spring.datasource.username\s*=\s*admin|spring.datasource.username=${openbaton_nfvo_mysql_user}|g" /etc/openbaton/${properties_file_name}'
+
+    # Set the mysql user's password
+    export openbaton_nfvo_mysql_user_password=${openbaton_nfvo_mysql_user_password:-$OPENBATON_NFVO_MYSQL_USER_PASSWORD_DEFAULT}
+    $_ex 'sed -i "s|spring.datasource.password\s*=\s*changeme|spring.datasource.password=${openbaton_nfvo_mysql_user_password}|g" /etc/openbaton/${properties_file_name}'
+
+    result=$(ps aux | grep -v 'grep' | grep 'mysql' | wc -l)
+    if [ ${result} -le 0 ]; then
+        $_ex 'service mysql start'
+    fi
+    export mysql_root_password=${mysql_root_password:-$MYSQL_ROOT_PASSWORD_DEFAULT}
+    # Create the Database
+    mysql -uroot -p${mysql_root_password} -e "CREATE DATABASE openbaton /*\!40100 DEFAULT CHARACTER SET utf8 */;"
+    mysql -uroot -p${mysql_root_password} -e "CREATE USER ${openbaton_nfvo_mysql_user}@localhost IDENTIFIED BY '${openbaton_nfvo_mysql_user_password}';"
+    mysql -uroot -p${mysql_root_password} -e "GRANT ALL ON openbaton.* TO '${openbaton_nfvo_mysql_user}'@'localhost';"
+    mysql -uroot -p${mysql_root_password} -e "FLUSH PRIVILEGES;"
+    mysql -uroot -p${mysql_root_password} -e "USE openbaton;"
+}
+
+install_mysql () {
+    properties_file_name=${1}
+
+    mysql=${mysql:-$MYSQL_DEFAULT}
+
+    # In case of "noninteractive" FRONTEND the default value will remain valid (mysql: yes)
+    if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
+        read -p " * Do you want to enable the persistence through MySQL? [Y/n]: " mysql
+    else
+        if [ "${mysql}" = "" -o "${mysql}" = "y" -o "${mysql}" = "Y" -o "${mysql}" = "yes" ]; then
+            export mysql_root_password=${mysql_root_password:-$MYSQL_ROOT_PASSWORD_DEFAULT}
+            log_warning_msg "The root password used for the installation is: '${mysql_root_password}'"
+
+            # TODO OSX support for non interactive installation
+            $_ex 'apt-get install -y debconf-utils'
+            $_ex 'echo mysql-server mysql-server/root_password password ${mysql_root_password} | debconf-set-selections'
+            $_ex 'echo mysql-server mysql-server/root_password_again password ${mysql_root_password} | debconf-set-selections'
+        fi
+    fi
+
+    if [ "${mysql}" = "" -o "${mysql}" = "y" -o "${mysql}" = "Y" -o "${mysql}" = "yes" ]; then
+        echo " * Enabling MySQL Persistence"
+        $_ex 'apt-get update'
+        $_ex 'apt-get install -y mysql-server'
+        configure_mysql ${properties_file_name}
+    else
+        echo " * NOT Enabling MySQL Persistence"
+    fi
+}
+
+
+##############
+#### Main ####
+##############
+
+wait_for_nfvo_up () {
+    max_wait=300
+    i_wait=${max_wait}
+
+    while ! nc -z localhost 8080; do
+        sleep 1 # wait for 1 second before check again
+        i_wait=$((${i_wait}-1))
+        if [ ${i_wait} -eq 0 ]; then
+            echo " * The NFVO is not up after ${max_wait} seconds. Please, check the problem into the log file."
+            exit 1
+        fi
+    done
+}
+
+clean_db () {
+    component_name_fancy="${1}"
+    component_db_name="${2}"
+    component_mysql_user="${3}"
+
+    # Clean MySQL for Components
+    component_mysql_user=${component_mysql_user:-"undefined"}
+    if [ "${component_mysql_user}" != "undefined" ]; then
+        read -p " * Do you want to delete the Open Baton ${component_name_fancy} database: '${component_db_name}' (this will also delete the associated user: '${component_mysql_user}')? (if you skip this step then you won't be able, later on, to delete this database and its user using this script) [Y/n]: " mysql
+        if [ "${mysql}" = "" -o "${mysql}" = "y" -o "${mysql}" = "Y" -o "${mysql}" = "yes" ]; then
+            stty -echo
+            read -p " * Please, provide the password of the 'root' user of mysql [root]: " mysql_root_password ; echo
+            stty echo
+
+            echo " * Deleting Open Baton ${component_name_fancy} database and its associated user."
+            mysql_root_password=${mysql_root_password:-$MYSQL_ROOT_PASSWORD_DEFAULT}
+            mysql -uroot -p${mysql_root_password} -e "DROP DATABASE IF EXISTS ${component_db_name};" >/dev/null 2>&1
+            mysql -uroot -p${mysql_root_password} -e "DROP USER ${component_mysql_user}@localhost;" >/dev/null 2>&1
+
+            1>$(tty)
+        else
+            echo " * NOT deleting Open Baton ${component_name_fancy} database and its associated user."
+        fi
+    fi
+}
+
+clean () {
+    mysql=$( dpkg -l | grep "mysql-client" | wc -l)
+
+    # TODO: fix properties files' names in DEBIAN and SOURCE installation
+    # Retrieve mysql credentials and rabbitmq user, ip, and management port
+    if [ -f "/etc/openbaton/openbaton-nfvo.properties" ]; then
+        nfvo_mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username=") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
+        if [ -f "/etc/openbaton/openbaton-fms.properties" ]; then
+            fms_mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username=") { print $2 }}' /etc/openbaton/openbaton-fms.properties )
+        fi
+
+        rabbitmq_user=$( awk -F'=' '{ if($0 ~ "spring.rabbitmq.username=") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
+        rabbitmq_ip=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.brokerIp=") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
+        rabbitmq_management_port=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.management.port=") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
+    elif [ -f "/etc/openbaton/openbaton.properties" ]; then
+        nfvo_mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username=") { print $2 }}' /etc/openbaton/openbaton.properties )
+        if [ -f "/etc/openbaton/openbaton-fms.properties" ]; then
+            fms_mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username=") { print $2 }}' /etc/openbaton/openbaton-fms.properties )
+        fi
+
+        rabbitmq_user=$( awk -F'=' '{ if($0 ~ "spring.rabbitmq.username=") { print $2 }}' /etc/openbaton/openbaton.properties )
+        rabbitmq_ip=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.brokerIp=") { print $2 }}' /etc/openbaton/openbaton.properties )
+        rabbitmq_management_port=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.management.port=") { print $2 }}' /etc/openbaton/openbaton.properties )
+    fi
+
+    # Retrieve rabbitmqadmin cli
+    wget -O rabbitmqadmin http://${rabbitmq_ip}:${rabbitmq_management_port}/cli/rabbitmqadmin
+    $_ex "chmod +x ./rabbitmqadmin"
+    $_ex "apt-get install -y python"
+
+    # Clean Open Baton binaries and properties files
+    debian_packages_num=$( dpkg -l | grep openbaton | wc -l )
+    for i in $( seq 1 ${debian_packages_num}); do
+        package=$( dpkg -l | grep openbaton | head -1 | awk '{print $2}' )
+        $_ex "apt-get purge -y ${package}"
+    done
+
+    # Clean Open Baton source code and properties files
+    if [ -d ${OPENBATON_SOURCE_INSTALLATION_BASE_DIR} ]; then
+        $_ex "rm -r ${OPENBATON_SOURCE_INSTALLATION_BASE_DIR}"
+        if [ -d ${OPENBATON_BASE_CONFIG_DIR} ]; then
+            $_ex "rm -r ${OPENBATON_BASE_CONFIG_DIR}"
+        fi
+    fi
+
+    if [ ${mysql} -gt 0 ]; then
+        # Clean MySQL for NFVO
+        nfvo_mysql_user=${nfvo_mysql_user:-"undefined"}
+        if [ "${nfvo_mysql_user}" != "undefined" ]; then
+            clean_db "NFVO" "openbaton" "${nfvo_mysql_user}"
+        fi
+        # Clean MySQL for FMS
+        fms_mysql_user=${fms_mysql_user:-"undefined"}
+        if [ "${fms_mysql_user}" != "undefined" ]; then
+            clean_db "FMS" "faultmanagement" "${fms_mysql_user}"
+        fi
+    fi
+
+    # Clean RabbitMQ
+    #./rabbitmqadmin delete vhost name="openbaton" #TODO
+    echo " * Deleting Open Baton RabbitMQ user and its associated exchanges (if any)."
+    ./rabbitmqadmin delete user name="${rabbitmq_user}"
+    result=$(./rabbitmqadmin list exchanges | grep "openbaton-exchange" | wc -l)
+    if [ ${result} -gt 0 ]; then
+        ./rabbitmqadmin delete exchange name="openbaton-exchange"
+    fi
+    result=$(./rabbitmqadmin list exchanges | grep "plugin-exchange" | wc -l)
+    if [ ${result} -gt 0 ]; then
+        ./rabbitmqadmin delete exchange name="plugin-exchange"
+    fi
+
+    # Delete rabbitmqadmin cli
+    $_ex "rm ./rabbitmqadmin"
+
+    1>$(tty)
+    echo " * Cleaning of Open Baton installation completed"
+}
+
