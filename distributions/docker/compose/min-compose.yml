@@ -1,0 +1,40 @@
+version: '3'
+services:
+  nfvo:
+    image: openbaton/nfvo:3.2.1
+    depends_on:
+      - rabbitmq_broker
+      - nfvo_database
+    restart: always
+    environment: 
+      - NFVO_RABBIT_BROKERIP=${HOST_IP} # for use in userdata.sh in vnfm-generic
+      - NFVO_MONITORING_IP=${ZABBIX_IP}
+      - SPRING_RABBITMQ_HOST=rabbitmq_broker
+      - SPRING_DATASOURCE_URL=jdbc:mysql://nfvo_database:3306/openbaton
+      - SPRING_DATASOURCE_DRIVER-CLASS-NAME=com.mysql.jdbc.Driver
+      - SPRING_JPA_DATABASE-PLATFORM=org.hibernate.dialect.MySQLDialect
+    ports:
+      - "8080:8080"
+  vnfm-generic:
+    image: openbaton/vnfm-generic:3.2.1
+    depends_on:
+      - nfvo
+    restart: always
+    environment: 
+      - VNFM_RABBITMQ_BROKERIP=rabbitmq_broker
+  nfvo_database:
+    image: mysql/mysql-server
+    environment:
+      - MYSQL_RANDOM_ROOT_PASSWORD=true
+      - MYSQL_DATABASE=openbaton
+      - MYSQL_USER=admin
+      - MYSQL_PASSWORD=changeme
+  rabbitmq_broker:
+    image: rabbitmq:3-management-alpine
+    hostname: openbaton-rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=openbaton
+    ports:
+      - "5672:5672"
+      - "15672:15672"
