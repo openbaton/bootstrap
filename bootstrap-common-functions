@@ -143,7 +143,7 @@ configure_mysql () {
     log_success_msg "Configuring MySQL for Open Baton .."
 
     $_ex 'sed -i "s|spring.datasource.url\s*=\s*jdbc:hsqldb:file:\/tmp\/openbaton\/openbaton.hsdb|spring.datasource.url=jdbc:mysql:\/\/localhost:3306\/openbaton|g" /etc/openbaton/${properties_file_name}'
-    $_ex 'sed -i "s|spring.datasource.driver-class-name\s*=\s*org.hsqldb.jdbc.JDBCDriver|spring.datasource.driver-class-name=com.mysql.jdbc.Driver|g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s|spring.datasource.driver-class-name\s*=\s*org.hsqldb.jdbc.JDBCDriver|spring.datasource.driver-class-name=org.mariadb.jdbc.Driver|g" /etc/openbaton/${properties_file_name}'
     $_ex 'sed -i "s|spring.jpa.database-platform\s*=\s*org.hibernate.dialect.HSQLDialect|spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect|g" /etc/openbaton/${properties_file_name}'
 
     $_ex 'sed -i "s|spring.jpa.hibernate.ddl-auto\s*=\s*.*|spring.jpa.hibernate.ddl-auto=update|g" /etc/openbaton/${properties_file_name}'
