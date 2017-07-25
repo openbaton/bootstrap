@@ -39,14 +39,14 @@ services:
       - VNFM_REST_NFVOHOST=nfvo
       - ENDPOINT=http://vnfm-dummy-rest:8081
   plugin-vimdriver-test:
-    image: openbaton/plugin-vimdriver-test:3.2.2
+    image: openbaton/plugin-vimdriver-test:4.0.0
     depends_on:
       - nfvo
     restart: always
     environment:
       - RABBITMQ=rabbitmq_broker
   plugin-vimdriver-openstack-4j:
-    image: openbaton/plugin-vimdriver-openstack-4j:3.2.3
+    image: openbaton/plugin-vimdriver-openstack-4j:4.0.1
     depends_on:
       - nfvo
     restart: always
