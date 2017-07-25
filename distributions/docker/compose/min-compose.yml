@@ -1,0 +1,70 @@
+version: '3'
+services:
+  nfvo:
+    image: openbaton/nfvo:4.0.1
+    depends_on:
+      - rabbitmq_broker
+      - nfvo_database
+    restart: always
+    environment: 
+      - NFVO_RABBIT_BROKERIP=${HOST_IP} # for use in userdata.sh in vnfm-generic
+      - NFVO_MONITORING_IP=${ZABBIX_IP}
+      - NFVO_PLUGIN_INSTALLATION-DIR=/dev/null
+      - SPRING_RABBITMQ_HOST=rabbitmq_broker
+      - SPRING_DATASOURCE_URL=jdbc:mysql://nfvo_database:3306/openbaton
+      - SPRING_DATASOURCE_DRIVER-CLASS-NAME=org.mariadb.jdbc.Driver
+      - SPRING_JPA_DATABASE-PLATFORM=org.hibernate.dialect.MySQLDialect
+    ports:
+      - "8080:8080"
+  vnfm-generic:
+    image: openbaton/vnfm-generic:4.0.1
+    depends_on:
+      - nfvo
+    restart: always
+    environment: 
+      - VNFM_RABBITMQ_BROKERIP=rabbitmq_broker
+  vnfm-dummy-amqp:
+    image: openbaton/vnfm-dummy-amqp:2.4.2
+    depends_on:
+      - nfvo
+    restart: always
+    environment:
+      - SPRING_RABBITMQ_HOST=rabbitmq_broker
+  vnfm-dummy-rest:
+    image: openbaton/vnfm-dummy-rest:1.0.2
+    depends_on:
+      - nfvo
+    restart: always
+    environment:
+      - VNFM_REST_NFVOHOST=nfvo
+      - ENDPOINT=http://vnfm-dummy-rest:8081
+  plugin-vimdriver-test:
+    image: openbaton/plugin-vimdriver-test:3.2.2
+    depends_on:
+      - nfvo
+    restart: always
+    environment:
+      - RABBITMQ=rabbitmq_broker
+  plugin-vimdriver-openstack-4j:
+    image: openbaton/plugin-vimdriver-openstack-4j:3.2.3
+    depends_on:
+      - nfvo
+    restart: always
+    environment:
+      - RABBITMQ=rabbitmq_broker
+  nfvo_database:
+    image: mysql/mysql-server
+    environment:
+      - MYSQL_RANDOM_ROOT_PASSWORD=true
+      - MYSQL_DATABASE=openbaton
+      - MYSQL_USER=admin
+      - MYSQL_PASSWORD=changeme
+  rabbitmq_broker:
+    image: rabbitmq:3-management-alpine
+    hostname: openbaton-rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=openbaton
+    ports:
+      - "5672:5672"
+      - "15672:15672"
