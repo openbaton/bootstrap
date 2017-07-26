@@ -4,7 +4,6 @@
 #### General Settings ####
 ##########################
 
-set -e
 set -u
 #set -x # only for DEBUG
 
@@ -170,11 +169,11 @@ configure_mysql () {
 
     # Set the mysql user
     export openbaton_nfvo_mysql_user=${openbaton_nfvo_mysql_user:-$OPENBATON_NFVO_MYSQL_USER_DEFAULT}
-    $_ex 'sed -i "s|spring.datasource.username\s*=\s*admin|spring.datasource.username=${openbaton_nfvo_mysql_user}|g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s|spring.datasource.username\s*=\s*.*|spring.datasource.username=${openbaton_nfvo_mysql_user}|g" /etc/openbaton/${properties_file_name}'
 
     # Set the mysql user's password
     export openbaton_nfvo_mysql_user_password=${openbaton_nfvo_mysql_user_password:-$OPENBATON_NFVO_MYSQL_USER_PASSWORD_DEFAULT}
-    $_ex 'sed -i "s|spring.datasource.password\s*=\s*changeme|spring.datasource.password=${openbaton_nfvo_mysql_user_password}|g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s|spring.datasource.password\s*=\s*.*|spring.datasource.password=${openbaton_nfvo_mysql_user_password}|g" /etc/openbaton/${properties_file_name}'
 
     result=$(ps aux | grep -v 'grep' | grep 'mysql' | wc -l)
     if [ ${result} -le 0 ]; then
@@ -190,13 +189,20 @@ configure_mysql () {
 }
 
 install_mysql () {
-    properties_file_name=${1}
+    # TODO: fix properties files' names in DEBIAN and SOURCE installation
+    if [ -f "${OPENBATON_BASE_CONFIG_DIR}/openbaton.properties" ]; then
+	properties_file_name="openbaton.properties"
+    elif [ -f "${OPENBATON_BASE_CONFIG_DIR}/openbaton-nfvo.properties" ]; then
+	properties_file_name="openbaton-nfvo.properties"
+    else
+	log_failure_msg "Open Baton properties file not found in properties standard directory ('${OPENBATON_BASE_CONFIG_DIR}'). Cannot enable persistence."
+    fi
 
     mysql=${mysql:-$MYSQL_DEFAULT}
 
     # In case of "noninteractive" FRONTEND the default value will remain valid (mysql: yes)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-        read -p " * Do you want to enable the persistence through MySQL? [Y/n]: " mysql
+        read -p " * Do you want to enable the Open Baton persistence through MySQL? [Y/n]: " mysql
     else
         if [ "${mysql}" = "" -o "${mysql}" = "y" -o "${mysql}" = "Y" -o "${mysql}" = "yes" ]; then
             export mysql_root_password=${mysql_root_password:-$MYSQL_ROOT_PASSWORD_DEFAULT}
@@ -289,11 +295,6 @@ clean () {
         rabbitmq_management_port=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.management.port=") { print $2 }}' /etc/openbaton/openbaton.properties )
     fi
 
-    # Retrieve rabbitmqadmin cli
-    wget -O rabbitmqadmin http://${rabbitmq_ip}:${rabbitmq_management_port}/cli/rabbitmqadmin
-    $_ex "chmod +x ./rabbitmqadmin"
-    $_ex "apt-get install -y python"
-
     # Clean Open Baton binaries and properties files
     debian_packages_num=$( dpkg -l | grep openbaton | wc -l )
     for i in $( seq 1 ${debian_packages_num}); do
@@ -321,6 +322,17 @@ clean () {
             clean_db "FMS" "faultmanagement" "${fms_mysql_user}"
         fi
     fi
+
+    # Retrieve rabbitmqadmin cli
+    wget -O rabbitmqadmin http://${rabbitmq_ip}:${rabbitmq_management_port}/cli/rabbitmqadmin
+    if [ $? -ne 0 ]; then
+	log_failure_msg "rabbitmqadmin utility not retrievable: impossible to clean the RabbitMQ installation"
+	echo " * Cleaning of Open Baton installation completed"
+	exit 0
+    fi
+
+    $_ex "chmod +x ./rabbitmqadmin"
+    $_ex "apt-get install -y python"
 
     # Clean RabbitMQ
     #./rabbitmqadmin delete vhost name="openbaton" #TODO

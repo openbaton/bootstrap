@@ -4,7 +4,6 @@
 #### General Settings ####
 ##########################
 
-set -e
 set -u
 #set -x # only for DEBUG
 
@@ -199,7 +198,7 @@ deb_bootstrap () {
 
     deb_add_openbaton_repo_reference "${1}" "${2}"
     deb_install_nfvo "${1}" "3.2.0" "${openbaton_nfvo_version}"
-    install_mysql "openbaton-nfvo.properties"
+    install_mysql
 
     #
     # Arguments of "deb_install_additional_component": ${1} component-name component-name-fancy install_during_noninteractive_installation force_component_version oldest_component_version_supported component_version
