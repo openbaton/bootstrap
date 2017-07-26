@@ -466,7 +466,7 @@ src_configure_fms () {
 src_bootstrap () {
     src_prereq
 
-    install_mysql "${OPENBATON_SRC_NFVO_CONFIG_FILE_NAME}"
+    install_mysql
 
     src_checkout_nfvo "3.2.0" "${openbaton_nfvo_version}"
 

@@ -170,11 +170,11 @@ configure_mysql () {
 
     # Set the mysql user
     export openbaton_nfvo_mysql_user=${openbaton_nfvo_mysql_user:-$OPENBATON_NFVO_MYSQL_USER_DEFAULT}
-    $_ex 'sed -i "s|spring.datasource.username\s*=\s*admin|spring.datasource.username=${openbaton_nfvo_mysql_user}|g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s|spring.datasource.username\s*=\s*.*|spring.datasource.username=${openbaton_nfvo_mysql_user}|g" /etc/openbaton/${properties_file_name}'
 
     # Set the mysql user's password
     export openbaton_nfvo_mysql_user_password=${openbaton_nfvo_mysql_user_password:-$OPENBATON_NFVO_MYSQL_USER_PASSWORD_DEFAULT}
-    $_ex 'sed -i "s|spring.datasource.password\s*=\s*changeme|spring.datasource.password=${openbaton_nfvo_mysql_user_password}|g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s|spring.datasource.password\s*=\s*.*|spring.datasource.password=${openbaton_nfvo_mysql_user_password}|g" /etc/openbaton/${properties_file_name}'
 
     result=$(ps aux | grep -v 'grep' | grep 'mysql' | wc -l)
     if [ ${result} -le 0 ]; then
@@ -190,7 +190,14 @@ configure_mysql () {
 }
 
 install_mysql () {
-    properties_file_name=${1}
+    # TODO: fix properties files' names in DEBIAN and SOURCE installation
+    if [ -f "${OPENBATON_BASE_CONFIG_DIR}/openbaton.properties" ]; then
+	properties_file_name="openbaton.properties"
+    elif [ -f "${OPENBATON_BASE_CONFIG_DIR}/openbaton-nfvo.properties" ]; then
+	properties_file_name="openbaton-nfvo.properties"
+    else
+	log_failure_msg "Open Baton properties file not found in properties standard directory ('${OPENBATON_BASE_CONFIG_DIR}'). Cannot enable persistence."
+    fi
 
     mysql=${mysql:-$MYSQL_DEFAULT}
 

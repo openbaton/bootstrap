@@ -253,7 +253,8 @@ if [ -n "${1+1}" ]; then
             ;;
 	"enable-persistence" )
 	    prereq
-	    install_mysql ${nfvo_properties_file_name}
+	    install_mysql
+	    exit 0
 	    ;;
         *)
             usage
