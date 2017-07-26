@@ -296,11 +296,6 @@ clean () {
         rabbitmq_management_port=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.management.port=") { print $2 }}' /etc/openbaton/openbaton.properties )
     fi
 
-    # Retrieve rabbitmqadmin cli
-    wget -O rabbitmqadmin http://${rabbitmq_ip}:${rabbitmq_management_port}/cli/rabbitmqadmin
-    $_ex "chmod +x ./rabbitmqadmin"
-    $_ex "apt-get install -y python"
-
     # Clean Open Baton binaries and properties files
     debian_packages_num=$( dpkg -l | grep openbaton | wc -l )
     for i in $( seq 1 ${debian_packages_num}); do
@@ -328,6 +323,17 @@ clean () {
             clean_db "FMS" "faultmanagement" "${fms_mysql_user}"
         fi
     fi
+
+    # Retrieve rabbitmqadmin cli
+    wget -O rabbitmqadmin http://${rabbitmq_ip}:${rabbitmq_management_port}/cli/rabbitmqadmin
+    if [ $? -ne 0 ]; then
+	log_failure_msg "rabbitmqadmin utility not retrievable: impossible to clean the RabbitMQ installation"
+	echo " * Cleaning of Open Baton installation completed"
+	exit 0
+    fi
+
+    $_ex "chmod +x ./rabbitmqadmin"
+    $_ex "apt-get install -y python"
 
     # Clean RabbitMQ
     #./rabbitmqadmin delete vhost name="openbaton" #TODO
