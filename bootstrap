@@ -167,7 +167,7 @@ if [ -n "${1+1}" ]; then
 
         if [ ${arg_id} != "--" ]; then
             case ${arg} in
-                "release" | "nightly" | "develop" | "clean" )
+                "release" | "nightly" | "develop" | "clean" | "enable-persistence" )
                     bootstrap_subcommand=${arg}
                     ;;
                 * )
@@ -251,6 +251,10 @@ if [ -n "${1+1}" ]; then
             clean
             exit 0
             ;;
+	"enable-persistence" )
+	    prereq
+	    install_mysql ${nfvo_properties_file_name}
+	    ;;
         *)
             usage
             exit 1 

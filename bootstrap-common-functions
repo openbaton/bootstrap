@@ -196,7 +196,7 @@ install_mysql () {
 
     # In case of "noninteractive" FRONTEND the default value will remain valid (mysql: yes)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-        read -p " * Do you want to enable the persistence through MySQL? [Y/n]: " mysql
+        read -p " * Do you want to enable the Open Baton persistence through MySQL? [Y/n]: " mysql
     else
         if [ "${mysql}" = "" -o "${mysql}" = "y" -o "${mysql}" = "Y" -o "${mysql}" = "yes" ]; then
             export mysql_root_password=${mysql_root_password:-$MYSQL_ROOT_PASSWORD_DEFAULT}
