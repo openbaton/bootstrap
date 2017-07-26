@@ -10,7 +10,6 @@
 #### General Settings ####
 ##########################
 
-set -e
 set -u
 #set -x # only for DEBUG
 
