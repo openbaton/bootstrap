@@ -1,26 +1,26 @@
 version: '3'
 services:
   nfvo:
-    image: openbaton/nfvo:3.2.1
+    image: openbaton/nfvo:4.0.1
     depends_on:
       - rabbitmq_broker
       - nfvo_database
     restart: always
-    environment: 
+    environment:
       - NFVO_RABBIT_BROKERIP=${HOST_IP} # for use in userdata.sh in vnfm-generic
       - NFVO_MONITORING_IP=${ZABBIX_IP}
       - SPRING_RABBITMQ_HOST=rabbitmq_broker
       - SPRING_DATASOURCE_URL=jdbc:mysql://nfvo_database:3306/openbaton
-      - SPRING_DATASOURCE_DRIVER-CLASS-NAME=com.mysql.jdbc.Driver
+      - SPRING_DATASOURCE_DRIVER-CLASS-NAME=org.mariadb.jdbc.Driver
       - SPRING_JPA_DATABASE-PLATFORM=org.hibernate.dialect.MySQLDialect
     ports:
       - "8080:8080"
   vnfm-generic:
-    image: openbaton/vnfm-generic:3.2.1
+    image: openbaton/vnfm-generic:4.0.1
     depends_on:
       - nfvo
     restart: always
-    environment: 
+    environment:
       - VNFM_RABBITMQ_BROKERIP=rabbitmq_broker
   zabbix-plugin:
     image: openbaton/plugin-monitoring-zabbix:3.2.3
@@ -68,17 +68,18 @@ services:
       - NFVO_IP=nfvo
       - SPRING_RABBITMQ_HOST=rabbitmq_broker
       - SPRING_DATASOURCE_URL=jdbc:mysql://fm_database:3306/faultmanagement
+      - SPRING_DATASOURCE_DRIVER-CLASS-NAME=org.mariadb.jdbc.Driver
     ports:
       - "9000:9000"
   fm_database:
-    image: mysql/mysql-server
+    image: mariadb:10
     environment:
       - MYSQL_RANDOM_ROOT_PASSWORD=true
       - MYSQL_DATABASE=faultmanagement
       - MYSQL_USER=fmsuser
       - MYSQL_PASSWORD=changeme
   nfvo_database:
-    image: mysql/mysql-server
+    image: mariadb:10
     environment:
       - MYSQL_RANDOM_ROOT_PASSWORD=true
       - MYSQL_DATABASE=openbaton

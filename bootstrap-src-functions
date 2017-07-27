@@ -4,7 +4,6 @@
 #### General Settings ####
 ##########################
 
-set -e
 set -u
 #set -x # only for DEBUG
 
@@ -207,7 +206,6 @@ src_start_nfvo () {
 
 src_deploy_nfvo () {
     src_compile_nfvo
-    install_mysql "${OPENBATON_SRC_NFVO_CONFIG_FILE_NAME}"
     src_set_nfvo_admin_credentials
     src_start_nfvo
 }
@@ -468,6 +466,8 @@ src_bootstrap () {
     src_prereq
 
     src_checkout_nfvo "3.2.0" "${openbaton_nfvo_version}"
+
+    install_mysql
 
     # VIM Driver Plugins
     #openbaton_plugin_vimdriver_all_version=${openbaton_plugin_vimdriver_all_version:-$OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_VERSION_DEFAULT}
