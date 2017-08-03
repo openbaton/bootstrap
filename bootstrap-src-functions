@@ -12,7 +12,8 @@ set -u
 #### Global Variables ####
 ##########################
 
-OPENBATON_PLUGINS_VIMDRIVERS_STABLE_URL="http://get.openbaton.org/plugins/stable/"
+
+OPENBATON_PLUGINS_VIMDRIVERS_URL="http://get.openbaton.org/plugins/"
 
 OPENBATON_TMP_FOLDER=`mktemp -d`
 
@@ -92,7 +93,7 @@ src_configure_rabbitmq () {
 
 src_download_plugins () {
     echo " * Downloading the Open Baton VIM Driver Plugins .."
-    wget -nH --cut-dirs 2 -r --no-parent  --reject "index.html*" "${OPENBATON_PLUGINS_VIMDRIVERS_STABLE_URL}" -P "${OPENBATON_TMP_FOLDER}"
+    wget -nH --cut-dirs 2 -r --no-parent  --reject "index.html*" "${OPENBATON_PLUGINS_VIMDRIVERS_URL}${1}/" -P "${OPENBATON_TMP_FOLDER}"
     mkdir -p ${OPENBATON_PLUGINS_VIMDRIVERS_DIR}
     cp -r ${OPENBATON_TMP_FOLDER}/* "${OPENBATON_PLUGINS_VIMDRIVERS_DIR}"
 }
@@ -184,7 +185,7 @@ src_checkout_nfvo () {
     git checkout ${nfvo_version}
     git submodule init
     git submodule update
-    
+
     $_ex 'rm -rf '"${OPENBATON_BASE_CONFIG_DIR}; mkdir -p ${OPENBATON_BASE_CONFIG_DIR}"
     $_ex 'cp '"${OPENBATON_NFVO_DIR}/etc/openbaton.properties ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}"
     $_ex 'cp '"${OPENBATON_NFVO_DIR}/etc/keystore.p12 ${OPENBATON_BASE_CONFIG_DIR}/keystore.p12"
@@ -473,7 +474,7 @@ src_bootstrap () {
 
     # VIM Driver Plugins
     #openbaton_plugin_vimdriver_all_version=${openbaton_plugin_vimdriver_all_version:-$OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_VERSION_DEFAULT}
-    src_download_plugins
+    src_download_plugins "${openbaton_nfvo_version}"
 
     src_install_rabbitmq
     src_check_environment
