@@ -474,7 +474,7 @@ src_bootstrap () {
 
     # VIM Driver Plugins
     #openbaton_plugin_vimdriver_all_version=${openbaton_plugin_vimdriver_all_version:-$OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_VERSION_DEFAULT}
-    src_download_plugins "${openbaton_nfvo_version}"
+    src_download_plugins "${nfvo_version}"
 
     src_install_rabbitmq
     src_check_environment
