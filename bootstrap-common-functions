@@ -191,11 +191,11 @@ configure_mysql () {
 install_mysql () {
     # TODO: fix properties files' names in DEBIAN and SOURCE installation
     if [ -f "${OPENBATON_BASE_CONFIG_DIR}/openbaton.properties" ]; then
-	properties_file_name="openbaton.properties"
+        properties_file_name="openbaton.properties"
     elif [ -f "${OPENBATON_BASE_CONFIG_DIR}/openbaton-nfvo.properties" ]; then
-	properties_file_name="openbaton-nfvo.properties"
+        properties_file_name="openbaton-nfvo.properties"
     else
-	log_failure_msg "Open Baton properties file not found in properties standard directory ('${OPENBATON_BASE_CONFIG_DIR}'). Cannot enable persistence."
+        log_failure_msg "Open Baton properties file not found in properties standard directory ('${OPENBATON_BASE_CONFIG_DIR}'). Cannot enable persistence."
     fi
 
     mysql=${mysql:-$MYSQL_DEFAULT}
