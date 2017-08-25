@@ -54,35 +54,45 @@ src_configure_rabbitmq () {
     if [ ${result} -gt 0 ]; then
         result=$($_ex 'rabbitmqctl list_users' | grep '^admin' | wc -l)
         if [ ${result} -eq 0 ]; then
-            $_ex 'rabbitmqctl add_user admin openbaton'
+            export rabbitmq_admin_password=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
+
+            $_ex 'rabbitmqctl add_user admin ${rabbitmq_admin_password}'
             $_ex 'rabbitmqctl set_user_tags admin administrator'
             $_ex 'rabbitmqctl set_permissions -p / admin ".*" ".*" ".*"'
             $_ex 'rabbitmq-plugins enable rabbitmq_management'
             $_ex 'service rabbitmq-server restart'
+
+            export OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE=${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}
+
+            # Set the rabbitmq 'admin' password
+            log_success_msg "Setting new 'admin' password: ${rabbitmq_admin_password}"
+            log_warning_msg "The 'admin' password has been randomly generated and you can find it in the '${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}' properties file as the value of the 'spring.rabbitmq.password' property"
+            $_ex 'sed -i "s|spring.rabbitmq.password\s*=\s*.*|spring.rabbitmq.password=${rabbitmq_admin_password}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
+
             if [ "$?" != "0" ]; then
                 echo " * ERROR: RabbitMQ is NOT running properly (check the problem in /var/log/rabbitmq)"
                 exit 1
             fi
         fi
+
+        # In case of "noninteractive" FRONTEND either the value from the configuration file or the default value will be used (DEFAULT: rabbitmq_broker_ip=localhost ; rabbitmq_management_port=15672)
+        if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
+            read -p " * Enter the rabbitmq broker ip [localhost]: " rabbitmq_broker_ip
+            read -p " * Enter the rabbitmq management port [15672]: " rabbitmq_management_port
+        fi
+
+        export OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE=${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}
+
+        # Set the rabbitmq broker ip
+        export rabbitmq_broker_ip=${rabbitmq_broker_ip:-$RABBITMQ_BROKER_IP_DEFAULT}
+        echo " * Setting new broker IP: ${rabbitmq_broker_ip}"
+        $_ex 'sed -i "s|nfvo.rabbit.brokerIp\s*=\s*localhost|nfvo.rabbit.brokerIp=${rabbitmq_broker_ip}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
+
+        # Set the rabbitmq management port
+        export rabbitmq_management_port=${rabbitmq_management_port:-$RABBITMQ_MANAGEMENT_PORT_DEFAULT}
+        echo " * Setting new management port: ${rabbitmq_management_port}"
+        $_ex 'sed -i "s|nfvo.rabbit.management.port\s*=\s*15672|nfvo.rabbit.management.port=${rabbitmq_management_port}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
     fi
-
-    # In case of "noninteractive" FRONTEND either the value from the configuration file or the default value will be used (DEFAULT: rabbitmq_broker_ip=localhost ; rabbitmq_management_port=15672)
-    if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-        read -p " * Enter the rabbitmq broker ip [localhost]: " rabbitmq_broker_ip
-        read -p " * Enter the rabbitmq management port [15672]: " rabbitmq_management_port
-    fi
-
-    export OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE=${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}
-
-    # Set the rabbitmq broker ip
-    export rabbitmq_broker_ip=${rabbitmq_broker_ip:-$RABBITMQ_BROKER_IP_DEFAULT}
-    echo " * Setting new broker IP: ${rabbitmq_broker_ip}"
-    $_ex 'sed -i "s|nfvo.rabbit.brokerIp\s*=\s*localhost|nfvo.rabbit.brokerIp=${rabbitmq_broker_ip}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
-
-    # Set the rabbitmq management port
-    export rabbitmq_management_port=${rabbitmq_management_port:-$RABBITMQ_MANAGEMENT_PORT_DEFAULT}
-    echo " * Setting new management port: ${rabbitmq_management_port}"
-    $_ex 'sed -i "s|nfvo.rabbit.management.port\s*=\s*15672|nfvo.rabbit.management.port=${rabbitmq_management_port}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
 }
 
 

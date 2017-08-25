@@ -226,6 +226,64 @@ install_mysql () {
 }
 
 
+##################
+#### RabbitMQ ####
+##################
+
+retrieve_rabbitmqadmin_cli () {
+    rabbitmq_broker_ip=${1}
+    rabbitmq_management_port=${2}
+
+    # Retrieve rabbitmqadmin cli
+    wget -O rabbitmqadmin http://${rabbitmq_broker_ip}:${rabbitmq_management_port}/cli/rabbitmqadmin
+    if [ $? -ne 0 ]; then
+        log_failure_msg "rabbitmqadmin utility not retrievable"
+        exit 1
+    fi
+}
+
+configure_remote_rabbitmq () {
+    log_success_msg "Configuring remote RabbitMQ for Open Baton"
+
+    read -p " * Please provide the IP of the remote RabbitMQ Broker? [localhost]: " rabbitmq_broker_ip
+    read -p " * Please provide the 'management port' of the remote RabbitMQ Broker? [15672]: " rabbitmq_management_port
+
+    retrieve_rabbitmqadmin_cli ${rabbitmq_broker_ip} ${rabbitmq_management_port}
+
+    read -p " * Does an 'admin' user exist in the remote RabbitMQ Broker on the '${rabbitmq_broker_ip}' host? [Y/n]: " rabbitmq_admin_user
+
+    if [ "${rabbitmq_admin_user}" = "" -o "${rabbitmq_admin_user}" = "y" -o "${rabbitmq_admin_user}" = "Y" -o "${rabbitmq_admin_user}" = "yes" ]; then
+        read -p " * Please provide the 'admin' password of the remote RabbitMQ Broker on the '${rabbitmq_broker_ip}' host?: " rabbitmq_admin_password
+    else
+        read -p " * Please provide the username of an user of the remote RabbitMQ Broker on the '${rabbitmq_broker_ip}' host?: " rabbitmq_user_username
+        read -p " * Please provide the password of the '${rabbitmq_user_username}' user of the remote RabbitMQ Broker on the '${rabbitmq_broker_ip}' host?: " rabbitmq_user_password
+
+        rabbitmq_admin_password=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
+        ./rabbitmqadmin -H "${rabbitmq_broker_ip}" -u "${rabbitmq_user_username}" -p "${rabbitmq_user_password}" declare user name=admin password="${rabbitmq_admin_password}" tags=administrator
+    fi
+
+    ./rabbitmqadmin -H "${rabbitmq_broker_ip}" -u "admin" -p "${rabbitmq_admin_password}" declare permission vhost="/" user="admin" configure=".*" write=".*" read=".*"
+
+    # Set the rabbitmq 'admin' password
+    export rabbitmq_admin_password=${rabbitmq_admin_password}
+    log_success_msg "Setting new 'admin' password: ${rabbitmq_admin_password}"
+    log_warning_msg "You can find the 'admin' password in the '/etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties' properties file as the value of the 'spring.rabbitmq.password' property"
+    sed -i "s|spring.rabbitmq.password\s*=\s*.*|spring.rabbitmq.password=${rabbitmq_admin_password}|g" /etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties
+
+    # Set the rabbitmq broker ip
+    rabbitmq_broker_ip=${rabbitmq_broker_ip:-$RABBITMQ_BROKER_IP_DEFAULT}
+    export rabbitmq_broker_ip=${rabbitmq_broker_ip}
+    log_success_msg "Setting new broker IP: ${rabbitmq_broker_ip}"
+    sed -i "s|nfvo.rabbit.brokerIp\s*=\s*localhost|nfvo.rabbit.brokerIp=${rabbitmq_broker_ip}|g" /etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties
+
+    # Set the rabbitmq management port
+    rabbitmq_management_port=${rabbitmq_management_port:-$RABBITMQ_MANAGEMENT_PORT_DEFAULT}
+    export rabbitmq_management_port=${rabbitmq_management_port}
+    log_success_msg "Setting new management port: ${rabbitmq_management_port}"
+    sed -i "s|nfvo.rabbit.management.port\s*=\s*15672|nfvo.rabbit.management.port=${rabbitmq_management_port}|g" /etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties
+}
+
+
 ##############
 #### Main ####
 ##############
@@ -324,11 +382,11 @@ clean () {
     fi
 
     # Retrieve rabbitmqadmin cli
-    wget -O rabbitmqadmin http://${rabbitmq_ip}:${rabbitmq_management_port}/cli/rabbitmqadmin
+    retrieve_rabbitmqadmin_cli ${rabbitmq_ip} ${rabbitmq_management_port}
     if [ $? -ne 0 ]; then
-	log_failure_msg "rabbitmqadmin utility not retrievable: impossible to clean the RabbitMQ installation"
-	echo " * Cleaning of Open Baton installation completed"
-	exit 0
+        log_failure_msg "rabbitmqadmin utility not retrievable: impossible to clean the RabbitMQ installation"
+        echo " * Cleaning of Open Baton installation completed"
+        exit 0
     fi
 
     $_ex "chmod +x ./rabbitmqadmin"
