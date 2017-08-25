@@ -46,10 +46,10 @@ src_install_rabbitmq () {
     echo " * Configuring RabbitMQ for Open Baton .."
     $_ex 'apt-get install -y rabbitmq-server'
     ulimit -S -n 4096
-    src_configure_rabbitmq
+    src_configure_rabbitmq_for_nfvo
 }
 
-src_configure_rabbitmq () {
+src_configure_rabbitmq_for_nfvo () {
     result=$(ps aux | grep -v 'grep' | grep 'rabbitmq' | wc -l)
     if [ ${result} -gt 0 ]; then
         result=$($_ex 'rabbitmqctl list_users' | grep '^admin' | wc -l)
@@ -92,6 +92,45 @@ src_configure_rabbitmq () {
         export rabbitmq_management_port=${rabbitmq_management_port:-$RABBITMQ_MANAGEMENT_PORT_DEFAULT}
         echo " * Setting new management port: ${rabbitmq_management_port}"
         $_ex 'sed -i "s|nfvo.rabbit.management.port\s*=\s*15672|nfvo.rabbit.management.port=${rabbitmq_management_port}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
+    fi
+}
+
+src_configure_rabbitmq_for_vnfm_generic () {
+    log_success_msg "Configuring RabbitMQ for the Open Baton Generic VNFM"
+    result=$(ps aux | grep -v 'grep' | grep 'rabbitmq' | wc -l)
+    if [ ${result} -gt 0 ]; then
+        result=$(rabbitmqctl list_users | grep "^${RABBITMQ_EMS_USER}" | wc -l)
+        if [ ${result} -eq 0 ]; then
+            rabbitmq_ems_user_password=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
+
+            rabbitmqctl add_user ${RABBITMQ_EMS_USER} ${rabbitmq_ems_user_password}
+            rabbitmqctl set_user_tags ${RABBITMQ_EMS_USER} administrator
+            rabbitmqctl set_permissions -p / ${RABBITMQ_EMS_USER} ".*" ".*" ".*"
+            service rabbitmq-server restart
+            if [ "$?" != "0" ]; then
+                log_failure_msg "rabbitmq is not running properly (check the problem in /var/log/rabbitmq)"
+                exit 1
+            fi
+
+            # Set the rabbitmq 'RABBITMQ_EMS_USER' username
+            export RABBITMQ_EMS_USER=${RABBITMQ_EMS_USER}
+            log_success_msg "Setting the username for the RabbitMQ EMS user: ${RABBITMQ_EMS_USER}"
+            sed -i "s|vnfm.ems.username\s*=\s*.*|vnfm.ems.username=${RABBITMQ_EMS_USER}|g" /etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties
+
+            # Set the rabbitmq 'RABBITMQ_EMS_USER' password
+            export rabbitmq_ems_user_password=${rabbitmq_ems_user_password}
+            log_success_msg "Setting new '${RABBITMQ_EMS_USER}' password: ${rabbitmq_ems_user_password}"
+            log_warning_msg "The '${RABBITMQ_EMS_USER}' password has been randomly generated and you can find it in the '/etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties' properties file as the value of the 'spring.rabbitmq.password' property"
+            sed -i "s|vnfm.ems.password\s*=\s*.*|vnfm.ems.password=${rabbitmq_ems_user_password}|g" /etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties
+
+       fi
+
+       # Set the rabbitmq broker ip retrieving its value from the NFVO properties file
+       rabbitmq_broker_ip=$(cat "${OPENBATON_BASE_CONFIG_DIR}"/"${OPENBATON_NFVO_CONFIG_FILE}" | grep "nfvo.rabbit.brokerIp" | head  -1 | awk -F'=' '{ print $2}' | sed s/\ //g)
+       echo "$rabbitmq_broker_ip"
+       export rabbitmq_broker_ip=${rabbitmq_broker_ip}
+       log_success_msg "Setting new broker IP: ${rabbitmq_broker_ip}"
+       sed -i "s|vnfm.rabbitmq.brokerIp\s*=\s*.*|vnfm.rabbitmq.brokerIp=${rabbitmq_broker_ip}|g" /etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties
     fi
 }
 
@@ -494,6 +533,7 @@ src_bootstrap () {
     # Generic VNFM
     src_checkout_additional_component "${OPENBATON_VNFM_GENERIC_REPO_URL}" "generic-vnfm" "Generic VNFM" "src/main/resources/application.properties" "openbaton-vnfm-generic.properties" ${openbaton_vnfm_generic} "3.2.0" "${openbaton_vnfm_generic_version}"
     if [ "${installed}" = "0" ]; then
+        src_configure_rabbitmq_for_vnfm_generic
         src_deploy_additional_component "generic-vnfm" "Generic VNFM"
     fi
 
