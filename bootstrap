@@ -2,7 +2,7 @@
 #
 # This script allows you to install openbaton. To execute it:
 #
-# sh <(curl -s http://get.openbaton.org/bootstrap) [help | clean | enable-persistence] | [[release | develop] [--openbaton-bootstrap-version=X.Y.Z (with X.Y.Z >= 3.2.0)] [--config-file=<absolute path to configuration file>]]
+# sh <(curl -s http://get.openbaton.org/bootstrap) [help | clean | enable-persistence | configure-remote-rabbitmq] | [[release | develop] [--openbaton-bootstrap-version=X.Y.Z (with X.Y.Z >= 3.2.0)] [--config-file=<absolute path to configuration file>]]
 
 
 
@@ -64,8 +64,8 @@ OPENBATON_BOOTSTRAP_SUBCOMMAND_DEFAULT=release
 
 usage () {
     echo " * Usage: (The 'release' installation is the DEFAULT)"
-    echo "    ./bootstrap [help | clean | enable-persistence] | [[release | develop] [--openbaton-bootstrap-version=X.Y.Z (with X.Y.Z >= 3.2.0)] [--config-file=<absolute path to configuration file>]]                                         (if bootstrap already locally available)"
-    echo "    sh <(curl -s http://get.openbaton.org/bootstrap) [help | clean | enable-persistence] | [[release | develop] [--openbaton-bootstrap-version=X.Y.Z (with X.Y.Z >= 3.2.0)] [--config-file=<absolute path to configuration file>]]    (otherwise)"
+    echo "    ./bootstrap [help | clean | enable-persistence | configure-remote-rabbitmq] | [[release | develop] [--openbaton-bootstrap-version=X.Y.Z (with X.Y.Z >= 3.2.0)] [--config-file=<absolute path to configuration file>]]                                         (if bootstrap already locally available)"
+    echo "    sh <(curl -s http://get.openbaton.org/bootstrap) [help | clean | enable-persistence | configure-remote-rabbitmq] | [[release | develop] [--openbaton-bootstrap-version=X.Y.Z (with X.Y.Z >= 3.2.0)] [--config-file=<absolute path to configuration file>]]    (otherwise)"
 }
 
 
@@ -166,7 +166,7 @@ if [ -n "${1+1}" ]; then
 
         if [ ${arg_id} != "--" ]; then
             case ${arg} in
-                "release" | "develop" | "clean" | "enable-persistence" )
+                "release" | "develop" | "clean" | "enable-persistence" | "configure-remote-rabbitmq" )
                     bootstrap_subcommand=${arg}
                     ;;
                 * )
@@ -250,11 +250,16 @@ if [ -n "${1+1}" ]; then
             clean
             exit 0
             ;;
-	"enable-persistence" )
-	    prereq
-	    install_mysql
-	    exit 0
-	    ;;
+	    "enable-persistence" )
+	        prereq
+	        install_mysql
+	        exit 0
+	        ;;
+        "configure-remote-rabbitmq" )
+	        prereq
+            configure_remote_rabbitmq
+            exit 0
+            ;;
         *)
             usage
             exit 1 
