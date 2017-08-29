@@ -27,6 +27,8 @@ OPENBATON_PLUGINS_VIMDRIVERS_DIR="${OPENBATON_PLUGINS_DIR}/vim-drivers"
 OPENBATON_SRC_NFVO_CONFIG_FILE_NAME="openbaton.properties"
 OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE="${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_SRC_NFVO_CONFIG_FILE_NAME}"
 
+OPENBATON_SRC_INTERNAL_PLUGIN_CONF_FILE="src/main/resources/plugin.conf.properties"
+
 RABBITMQ_BROKER_IP_DEFAULT=localhost
 RABBITMQ_MANAGEMENT_PORT_DEFAULT=15672
 OPENBATON_ADMIN_PASSWORD_DEFAULT=openbaton
@@ -46,33 +48,41 @@ src_install_rabbitmq () {
     echo " * Configuring RabbitMQ for Open Baton .."
     $_ex 'apt-get install -y rabbitmq-server'
     ulimit -S -n 4096
-    src_configure_rabbitmq_for_nfvo
 }
 
 src_configure_rabbitmq_for_nfvo () {
+    openbaton_nfvo_version="${1}"
+
+    log_success_msg "Configuring RabbitMQ for the Open Baton NFVO"
+
     result=$(ps aux | grep -v 'grep' | grep 'rabbitmq' | wc -l)
     if [ ${result} -gt 0 ]; then
         result=$($_ex 'rabbitmqctl list_users' | grep '^admin' | wc -l)
         if [ ${result} -eq 0 ]; then
-            export rabbitmq_admin_password=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
+            # Check the NFVO version being installed: the new RabbitMQ configuration is required only from version >= 4.0.1
+            compare_version_strings "4.0.0" "${openbaton_nfvo_version}"
+            result=$?
+            if [ ${result} -eq 1 ]; then
+                export rabbitmq_admin_password=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
+            else
+                export rabbitmq_admin_password="openbaton"
+            fi
 
             $_ex 'rabbitmqctl add_user admin ${rabbitmq_admin_password}'
             $_ex 'rabbitmqctl set_user_tags admin administrator'
             $_ex 'rabbitmqctl set_permissions -p / admin ".*" ".*" ".*"'
             $_ex 'rabbitmq-plugins enable rabbitmq_management'
             $_ex 'service rabbitmq-server restart'
-
-            export OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE=${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}
-
-            # Set the rabbitmq 'admin' password
-            log_success_msg "Setting new 'admin' password: ${rabbitmq_admin_password}"
-            log_warning_msg "The 'admin' password has been randomly generated and you can find it in the '${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}' properties file as the value of the 'spring.rabbitmq.password' property"
-            $_ex 'sed -i "s|spring.rabbitmq.password\s*=\s*.*|spring.rabbitmq.password=${rabbitmq_admin_password}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
-
             if [ "$?" != "0" ]; then
                 echo " * ERROR: RabbitMQ is NOT running properly (check the problem in /var/log/rabbitmq)"
                 exit 1
             fi
+
+            # Set the rabbitmq 'admin' password
+            export OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE=${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}
+            log_success_msg "Setting new 'admin' password: ${rabbitmq_admin_password}"
+            log_warning_msg "The 'admin' password has been randomly generated and you can find it in the '${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}' properties file as the value of the 'spring.rabbitmq.password' property"
+            $_ex 'sed -i "s|spring.rabbitmq.password\s*=\s*.*|spring.rabbitmq.password=${rabbitmq_admin_password}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
         fi
 
         # In case of "noninteractive" FRONTEND either the value from the configuration file or the default value will be used (DEFAULT: rabbitmq_broker_ip=localhost ; rabbitmq_management_port=15672)
@@ -85,6 +95,7 @@ src_configure_rabbitmq_for_nfvo () {
 
         # Set the rabbitmq broker ip
         export rabbitmq_broker_ip=${rabbitmq_broker_ip:-$RABBITMQ_BROKER_IP_DEFAULT}
+        export rabbitmq_broker_ip=${rabbitmq_broker_ip:-$RABBITMQ_BROKER_IP_DEFAULT}
         echo " * Setting new broker IP: ${rabbitmq_broker_ip}"
         $_ex 'sed -i "s|nfvo.rabbit.brokerIp\s*=\s*localhost|nfvo.rabbit.brokerIp=${rabbitmq_broker_ip}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
 
@@ -95,42 +106,70 @@ src_configure_rabbitmq_for_nfvo () {
     fi
 }
 
+src_configure_rabbitmq_for_plugin () {
+    plugin_repo="${1}"
+    plugin_name_fancy="${2}"
+    openbaton_nfvo_version="${3}"
+
+    log_success_msg "Configuring RabbitMQ for the Open Baton ${plugin_name_fancy}"
+
+    # Check the NFVO version being installed: the new RabbitMQ configuration is required only from version >= 4.0.1
+    compare_version_strings "4.0.0" "${openbaton_nfvo_version}"
+    result=$?
+    if [ ${result} -eq 1 ]; then
+        export rabbitmq_admin_password=$(cat "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | grep "spring.rabbitmq.password" | head -1 | awk -F'=' '{ print $2}' | sed s/\ //g)
+    else
+        export rabbitmq_admin_password="openbaton"
+    fi
+
+    # Set the rabbitmq 'admin' password for the Test VIM Driver Plugin
+    export OPENBATON_PLUGIN_CONF_FILE="${OPENBATON_BASE_DIR}/${plugin_repo}/${OPENBATON_SRC_INTERNAL_PLUGIN_CONF_FILE}"
+    log_success_msg "Setting new 'admin' password: ${rabbitmq_admin_password}"
+    $_ex 'echo "\nusername=admin" >> ${OPENBATON_PLUGIN_CONF_FILE}'
+    $_ex 'echo "password=${rabbitmq_admin_password}\n" >> ${OPENBATON_PLUGIN_CONF_FILE}'
+}
+
 src_configure_rabbitmq_for_vnfm_generic () {
+    OPENBATON_COMPONENT_NAME="vnfm-generic"
+    openbaton_vnfm_generic_version="${1}"
+
     log_success_msg "Configuring RabbitMQ for the Open Baton Generic VNFM"
     result=$(ps aux | grep -v 'grep' | grep 'rabbitmq' | wc -l)
     if [ ${result} -gt 0 ]; then
-        result=$(rabbitmqctl list_users | grep "^${RABBITMQ_EMS_USER}" | wc -l)
+        result=$($_ex 'rabbitmqctl list_users' | grep "^${RABBITMQ_EMS_USER}" | wc -l)
         if [ ${result} -eq 0 ]; then
-            rabbitmq_ems_user_password=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
+            # Check the NFVO version being installed: the new RabbitMQ configuration is required only from version >= 4.0.1
+            compare_version_strings "4.0.0" "${openbaton_vnfm_generic_version}"
+            result=$?
+            if [ ${result} -eq 1 ]; then
+                export rabbitmq_ems_user_password=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
 
-            rabbitmqctl add_user ${RABBITMQ_EMS_USER} ${rabbitmq_ems_user_password}
-            rabbitmqctl set_user_tags ${RABBITMQ_EMS_USER} administrator
-            rabbitmqctl set_permissions -p / ${RABBITMQ_EMS_USER} ".*" ".*" ".*"
-            service rabbitmq-server restart
-            if [ "$?" != "0" ]; then
-                log_failure_msg "rabbitmq is not running properly (check the problem in /var/log/rabbitmq)"
-                exit 1
+                $_ex 'rabbitmqctl add_user ${RABBITMQ_EMS_USER} ${rabbitmq_ems_user_password}'
+                $_ex 'rabbitmqctl set_user_tags ${RABBITMQ_EMS_USER} administrator'
+                $_ex 'rabbitmqctl set_permissions -p / ${RABBITMQ_EMS_USER} ".*" ".*" ".*"'
+                $_ex 'service rabbitmq-server restart'
+                if [ "$?" != "0" ]; then
+                    log_failure_msg "rabbitmq is not running properly (check the problem in /var/log/rabbitmq)"
+                    exit 1
+                fi
+
+                # Set the rabbitmq 'RABBITMQ_EMS_USER' username
+                export RABBITMQ_EMS_USER=${RABBITMQ_EMS_USER}
+                log_success_msg "Setting the username for the RabbitMQ EMS user: ${RABBITMQ_EMS_USER}"
+                $_ex 'sed -i "s|vnfm.ems.username\s*=\s*.*|vnfm.ems.username=${RABBITMQ_EMS_USER}|g" /etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties'
+
+                # Set the rabbitmq 'RABBITMQ_EMS_USER' password
+                export rabbitmq_ems_user_password=${rabbitmq_ems_user_password}
+                log_success_msg "Setting new '${RABBITMQ_EMS_USER}' password: ${rabbitmq_ems_user_password}"
+                log_warning_msg "The '${RABBITMQ_EMS_USER}' password has been randomly generated and you can find it in the '/etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties' properties file as the value of the 'spring.rabbitmq.password' property"
+                $_ex 'sed -i "s|vnfm.ems.password\s*=\s*.*|vnfm.ems.password=${rabbitmq_ems_user_password}|g" /etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties'
             fi
-
-            # Set the rabbitmq 'RABBITMQ_EMS_USER' username
-            export RABBITMQ_EMS_USER=${RABBITMQ_EMS_USER}
-            log_success_msg "Setting the username for the RabbitMQ EMS user: ${RABBITMQ_EMS_USER}"
-            sed -i "s|vnfm.ems.username\s*=\s*.*|vnfm.ems.username=${RABBITMQ_EMS_USER}|g" /etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties
-
-            # Set the rabbitmq 'RABBITMQ_EMS_USER' password
-            export rabbitmq_ems_user_password=${rabbitmq_ems_user_password}
-            log_success_msg "Setting new '${RABBITMQ_EMS_USER}' password: ${rabbitmq_ems_user_password}"
-            log_warning_msg "The '${RABBITMQ_EMS_USER}' password has been randomly generated and you can find it in the '/etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties' properties file as the value of the 'spring.rabbitmq.password' property"
-            sed -i "s|vnfm.ems.password\s*=\s*.*|vnfm.ems.password=${rabbitmq_ems_user_password}|g" /etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties
-
        fi
 
        # Set the rabbitmq broker ip retrieving its value from the NFVO properties file
-       rabbitmq_broker_ip=$(cat "${OPENBATON_BASE_CONFIG_DIR}"/"${OPENBATON_NFVO_CONFIG_FILE}" | grep "nfvo.rabbit.brokerIp" | head  -1 | awk -F'=' '{ print $2}' | sed s/\ //g)
-       echo "$rabbitmq_broker_ip"
-       export rabbitmq_broker_ip=${rabbitmq_broker_ip}
+       export rabbitmq_broker_ip=$(cat "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | grep "nfvo.rabbit.brokerIp" | head -1 | awk -F'=' '{ print $2}' | sed s/\ //g)
        log_success_msg "Setting new broker IP: ${rabbitmq_broker_ip}"
-       sed -i "s|vnfm.rabbitmq.brokerIp\s*=\s*.*|vnfm.rabbitmq.brokerIp=${rabbitmq_broker_ip}|g" /etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties
+       $_ex 'sed -i "s|vnfm.rabbitmq.brokerIp\s*=\s*.*|vnfm.rabbitmq.brokerIp=${rabbitmq_broker_ip}|g" /etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties'
     fi
 }
 
@@ -139,11 +178,27 @@ src_configure_rabbitmq_for_vnfm_generic () {
 #### VIM-Driver Plugins ####
 ############################
 
-src_download_plugins () {
-    echo " * Downloading the Open Baton VIM Driver Plugins .."
-    wget -nH --cut-dirs 2 -r --no-parent  --reject "index.html*" "${OPENBATON_PLUGINS_VIMDRIVERS_STABLE_URL}" -P "${OPENBATON_TMP_FOLDER}"
+src_compile_plugin () {
+    component_name="${1}"                       # the directory on which the repo has been cloned
+    component_name_fancy="${2}"
+
+    echo " * Compiling the ${component_name_fancy} .."
+    cd "${OPENBATON_BASE_DIR}/${component_name}"
+    ./gradlew clean build
+    if [ $? -ne 0 ]; then
+        echo " * ERROR: The compilation of the ${2} failed"
+        exit 1
+    fi
+}
+
+src_deploy_plugin_vimdriver () {
+    component_name="${1}"                       # the directory on which the repo has been cloned
+    component_name_fancy="${2}"
+
+    src_compile_plugin "${component_name}" "${component_name_fancy}"
+
     mkdir -p ${OPENBATON_PLUGINS_VIMDRIVERS_DIR}
-    cp -r ${OPENBATON_TMP_FOLDER}/* "${OPENBATON_PLUGINS_VIMDRIVERS_DIR}"
+    cp ${OPENBATON_BASE_DIR}/${component_name}/build/libs/*.jar ${OPENBATON_PLUGINS_VIMDRIVERS_DIR}
 }
 
 
@@ -306,7 +361,9 @@ src_do_checkout () {
 
     git checkout ${component_version}
 
-    $_ex 'cp '"${component_properties_file_src} ${OPENBATON_BASE_CONFIG_DIR}/${component_properties_file_dest}"
+    if [ "${component_properties_file_src}" != "" -a "${component_properties_file_dest}" != "" ]; then
+        $_ex 'cp '"${component_properties_file_src} ${OPENBATON_BASE_CONFIG_DIR}/${component_properties_file_dest}"
+    fi
     installed=0
 }
 
@@ -426,7 +483,7 @@ src_configure_ase () {
 
 src_fms_configure_rabbitmq () {
     # Set the RabbitMQ IP
-    rabbitmq_broker_ip=$( awk '$0 ~ "nfvo.rabbit.brokerIp[[:space:]]*="' "${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_NFVO_CONFIG_FILE}" | awk -F'=' '{print $2}' )
+    rabbitmq_broker_ip=$( awk '$0 ~ "nfvo.rabbit.brokerIp[[:space:]]*="' "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${rabbitmq_broker_ip+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting RabbitMQ IP into Fault Management System: ${rabbitmq_broker_ip}"
         export rabbitmq_broker_ip=${rabbitmq_broker_ip}
@@ -434,7 +491,7 @@ src_fms_configure_rabbitmq () {
     fi
 
     # Set the RabbitMQ Management port
-    rabbitmq_management_port=$( awk '$0 ~ "nfvo.rabbit.management.port[[:space:]]*="' "${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_NFVO_CONFIG_FILE}" | awk -F'=' '{print $2}' )
+    rabbitmq_management_port=$( awk '$0 ~ "nfvo.rabbit.management.port[[:space:]]*="' "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${rabbitmq_management_port+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting RabbitMQ Management port into Fault Management System: ${rabbitmq_management_port}"
         export rabbitmq_management_port=${rabbitmq_management_port}
@@ -455,7 +512,7 @@ src_fms_configure_nfvo () {
     export nfvo_admin_user="admin"
     sed -i "s|nfvo-usr\s*=*|nfvo-usr=${nfvo_admin_user}|g" ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_COMPONENT_CONFIG_FILE}
 
-    nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password[[:space:]]*="' "${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_NFVO_CONFIG_FILE}" | awk -F'=' '{print $2}' )
+    nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password[[:space:]]*="' "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${nfvo_admin_password+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting NFVO admin's password into Fault Management System: ${nfvo_admin_password}"
         export nfvo_admin_password=${nfvo_admin_password}
@@ -516,24 +573,37 @@ src_bootstrap () {
 
     src_checkout_nfvo "3.2.0" "${openbaton_nfvo_version}"
 
+    src_check_environment
+    src_install_rabbitmq
+    src_configure_rabbitmq_for_nfvo "${openbaton_nfvo_version}"
     install_mysql
 
-    # VIM Driver Plugins
-    #openbaton_plugin_vimdriver_all_version=${openbaton_plugin_vimdriver_all_version:-$OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_VERSION_DEFAULT}
-    src_download_plugins
+    #
+    # Arguments of "src_checkout_additional_component": ${1} component_repo_url component_name(the directory on which the repo will be locally cloned) component_name_fancy component_properties_file_src component_properties_file_dest install_during_noninteractive_installation oldest_component_version_supported component_version
+    #
 
-    src_install_rabbitmq
-    src_check_environment
+    # Test VIM Driver Plugin
+    src_checkout_additional_component "${OPENBATON_PLUGINS_VIMDRIVERS_TEST_REPO_URL}" "test-plugin" "Test VIM Driver Plugin" "" "" "${openbaton_plugin_vimdriver_test}" "3.2.0" "${openbaton_plugin_vimdriver_test_version}"
+    if [ -d "${OPENBATON_BASE_DIR}/test-plugin" ]; then
+        src_configure_rabbitmq_for_plugin "test-plugin" "Test VIM Driver Plugin" "${openbaton_nfvo_version}"
+        src_deploy_plugin_vimdriver "test-plugin" "Test VIM Driver Plugin"
+    fi
+
+    # OpenStack VIM Driver Plugin
+    src_checkout_additional_component "${OPENBATON_PLUGINS_VIMDRIVERS_OPENSTACK_4J_REPO_URL}" "openstack4j-plugin" "OpenStack VIM Driver Plugin" "" "" "${openbaton_plugin_vimdriver_openstack}" "3.2.0" "${openbaton_plugin_vimdriver_openstack_version}"
+    if [ -d "${OPENBATON_BASE_DIR}/openstack4j-plugin" ]; then
+        src_configure_rabbitmq_for_plugin "openstack4j-plugin" "OpenStack VIM Driver Plugin" "${openbaton_nfvo_version}"
+        src_deploy_plugin_vimdriver "openstack4j-plugin" "OpenStack VIM Driver Plugin"
+    fi
 
     enable_https "openbaton.properties"
 
     src_deploy_nfvo
-
    
     # Generic VNFM
     src_checkout_additional_component "${OPENBATON_VNFM_GENERIC_REPO_URL}" "generic-vnfm" "Generic VNFM" "src/main/resources/application.properties" "openbaton-vnfm-generic.properties" ${openbaton_vnfm_generic} "3.2.0" "${openbaton_vnfm_generic_version}"
     if [ "${installed}" = "0" ]; then
-        src_configure_rabbitmq_for_vnfm_generic
+        src_configure_rabbitmq_for_vnfm_generic "${openbaton_vnfm_generic_version}"
         src_deploy_additional_component "generic-vnfm" "Generic VNFM"
     fi
 
@@ -565,4 +635,3 @@ src_bootstrap () {
         rm ${BOOTSTRAP_DIR}/bootstrap-src-functions
     fi
 }
-
