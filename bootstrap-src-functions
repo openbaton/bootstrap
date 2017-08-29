@@ -12,7 +12,8 @@ set -u
 #### Global Variables ####
 ##########################
 
-OPENBATON_PLUGINS_VIMDRIVERS_STABLE_URL="http://get.openbaton.org/plugins/stable/"
+
+OPENBATON_PLUGINS_VIMDRIVERS_URL="http://get.openbaton.org/plugins/"
 
 OPENBATON_TMP_FOLDER=`mktemp -d`
 
@@ -286,7 +287,9 @@ src_checkout_nfvo () {
     cd "${OPENBATON_NFVO_DIR}"
 
     git checkout ${nfvo_version}
-    
+    git submodule init
+    git submodule update
+
     $_ex 'rm -rf '"${OPENBATON_BASE_CONFIG_DIR}; mkdir -p ${OPENBATON_BASE_CONFIG_DIR}"
     $_ex 'cp '"${OPENBATON_NFVO_DIR}/etc/openbaton.properties ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}"
     $_ex 'cp '"${OPENBATON_NFVO_DIR}/etc/keystore.p12 ${OPENBATON_BASE_CONFIG_DIR}/keystore.p12"
@@ -427,7 +430,7 @@ src_compile_additional_component () {
 src_start_additional_component () {
     component_name="${1}"                       # the directory on which the repo has been cloned
     component_name_fancy="${2}"
-    
+
     echo " * Starting the ${component_name_fancy} .."
     cd "${OPENBATON_BASE_DIR}/${component_name}"
     ./${component_name}.sh start
