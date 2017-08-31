@@ -255,7 +255,7 @@ src_checkout_nfvo () {
             fi
         done
     fi
-    if [ "${nfvo_version}" = "" ]; then
+    if [ "${nfvo_version}" = "" -o "${nfvo_version}" = "latest" ]; then
         nfvo_version="develop"
     fi
 
