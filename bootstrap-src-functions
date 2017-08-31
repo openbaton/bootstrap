@@ -65,6 +65,12 @@ src_configure_rabbitmq_for_nfvo () {
             result=$?
             if [ ${result} -eq 1 ]; then
                 export rabbitmq_admin_password=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
+
+                # Set the rabbitmq 'admin' password if different from the default one which is 'openbaton'
+                export OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE=${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}
+                log_success_msg "Setting new 'admin' password: ${rabbitmq_admin_password}"
+                log_warning_msg "The 'admin' password has been randomly generated and you can find it in the '${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}' properties file as the value of the 'spring.rabbitmq.password' property"
+                $_ex 'sed -i "s|spring.rabbitmq.password\s*=\s*.*|spring.rabbitmq.password=${rabbitmq_admin_password}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
             else
                 export rabbitmq_admin_password="openbaton"
             fi
@@ -78,12 +84,6 @@ src_configure_rabbitmq_for_nfvo () {
                 echo " * ERROR: RabbitMQ is NOT running properly (check the problem in /var/log/rabbitmq)"
                 exit 1
             fi
-
-            # Set the rabbitmq 'admin' password
-            export OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE=${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}
-            log_success_msg "Setting new 'admin' password: ${rabbitmq_admin_password}"
-            log_warning_msg "The 'admin' password has been randomly generated and you can find it in the '${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}' properties file as the value of the 'spring.rabbitmq.password' property"
-            $_ex 'sed -i "s|spring.rabbitmq.password\s*=\s*.*|spring.rabbitmq.password=${rabbitmq_admin_password}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
         fi
 
         # In case of "noninteractive" FRONTEND either the value from the configuration file or the default value will be used (DEFAULT: rabbitmq_broker_ip=localhost ; rabbitmq_management_port=15672)
@@ -105,29 +105,6 @@ src_configure_rabbitmq_for_nfvo () {
         echo " * Setting new management port: ${rabbitmq_management_port}"
         $_ex 'sed -i "s|nfvo.rabbit.management.port\s*=\s*15672|nfvo.rabbit.management.port=${rabbitmq_management_port}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
     fi
-}
-
-src_configure_rabbitmq_for_plugin () {
-    plugin_repo="${1}"
-    plugin_name_fancy="${2}"
-    openbaton_nfvo_version="${3}"
-
-    log_success_msg "Configuring RabbitMQ for the Open Baton ${plugin_name_fancy}"
-
-    # Check the NFVO version being installed: the new RabbitMQ configuration is required only from version >= 4.0.1
-    compare_version_strings "4.0.0" "${openbaton_nfvo_version}"
-    result=$?
-    if [ ${result} -eq 1 ]; then
-        export rabbitmq_admin_password=$(cat "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | grep "spring.rabbitmq.password" | head -1 | awk -F'=' '{ print $2}' | sed s/\ //g)
-    else
-        export rabbitmq_admin_password="openbaton"
-    fi
-
-    # Set the rabbitmq 'admin' password for the Test VIM Driver Plugin
-    export OPENBATON_PLUGIN_CONF_FILE="${OPENBATON_BASE_DIR}/${plugin_repo}/${OPENBATON_SRC_INTERNAL_PLUGIN_CONF_FILE}"
-    log_success_msg "Setting new 'admin' password: ${rabbitmq_admin_password}"
-    $_ex 'echo "\nusername=admin" >> ${OPENBATON_PLUGIN_CONF_FILE}'
-    $_ex 'echo "password=${rabbitmq_admin_password}\n" >> ${OPENBATON_PLUGIN_CONF_FILE}'
 }
 
 src_configure_rabbitmq_for_vnfm_generic () {
@@ -588,14 +565,12 @@ src_bootstrap () {
     # Test VIM Driver Plugin
     src_checkout_additional_component "${OPENBATON_PLUGINS_VIMDRIVERS_TEST_REPO_URL}" "test-plugin" "Test VIM Driver Plugin" "" "" "${openbaton_plugin_vimdriver_test}" "3.2.0" "${openbaton_plugin_vimdriver_test_version}"
     if [ -d "${OPENBATON_BASE_DIR}/test-plugin" ]; then
-        src_configure_rabbitmq_for_plugin "test-plugin" "Test VIM Driver Plugin" "${openbaton_nfvo_version}"
         src_deploy_plugin_vimdriver "test-plugin" "Test VIM Driver Plugin"
     fi
 
     # OpenStack VIM Driver Plugin
     src_checkout_additional_component "${OPENBATON_PLUGINS_VIMDRIVERS_OPENSTACK_4J_REPO_URL}" "openstack4j-plugin" "OpenStack VIM Driver Plugin" "" "" "${openbaton_plugin_vimdriver_openstack}" "3.2.0" "${openbaton_plugin_vimdriver_openstack_version}"
     if [ -d "${OPENBATON_BASE_DIR}/openstack4j-plugin" ]; then
-        src_configure_rabbitmq_for_plugin "openstack4j-plugin" "OpenStack VIM Driver Plugin" "${openbaton_nfvo_version}"
         src_deploy_plugin_vimdriver "openstack4j-plugin" "OpenStack VIM Driver Plugin"
     fi
 

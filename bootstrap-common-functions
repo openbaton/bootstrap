@@ -281,6 +281,19 @@ retrieve_rabbitmqadmin_cli () {
 configure_remote_rabbitmq () {
     log_success_msg "Configuring remote RabbitMQ for Open Baton"
 
+    read -p " * Please provide the Open Baton NFVO version for which you want to configure the RabbitMQ Broker? (version format: X.Y.Z) [latest]: " openbaton_nfvo_version
+    openbaton_nfvo_version=${openbaton_nfvo_version:-$OPENBATON_NFVO_VERSION_DEFAULT}
+
+    # Temporal fix until the NFVO properties file name is consistent
+    if [ -f "/etc/openbaton/openbaton-nfvo.properties" ]; then
+        export nfvo_properties_file_name="openbaton-nfvo.properties"
+    elif [ -f "/etc/openbaton/openbaton.properties" ]; then
+        export nfvo_properties_file_name="openbaton.properties"
+    else
+        log_failure_msg "The Open Baton seems to be not installed. To configure rabbit you first need to install the Open Baton NFVO on this local machine."
+        exit 1
+    fi
+
     read -p " * Please provide the IP of the remote RabbitMQ Broker? [localhost]: " rabbitmq_broker_ip
     read -p " * Please provide the 'management port' of the remote RabbitMQ Broker? [15672]: " rabbitmq_management_port
 
@@ -288,7 +301,7 @@ configure_remote_rabbitmq () {
     rabbitmq_management_port=${rabbitmq_management_port:-$RABBITMQ_MANAGEMENT_PORT_DEFAULT}
     retrieve_rabbitmqadmin_cli ${rabbitmq_broker_ip} ${rabbitmq_management_port}
 
-    # NFVO configuration
+    #### NFVO configuration
     OPENBATON_COMPONENT_NAME="nfvo"
     read -p " * Does an 'admin' user exist in the remote RabbitMQ Broker on the '${rabbitmq_broker_ip}' host? [Y/n]: " rabbitmq_admin_user
 
@@ -299,7 +312,14 @@ configure_remote_rabbitmq () {
         read -p " * Please provide the password of the '${rabbitmq_user_username}' user of the remote RabbitMQ Broker on the '${rabbitmq_broker_ip}' host?: " rabbitmq_user_password
 
         # Generate the password and creates the 'admin' user if not already existing
-        rabbitmq_admin_password=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
+        # Check the NFVO version being installed: the new RabbitMQ configuration is required only from version >= 4.0.1
+        compare_version_strings "4.0.0" "${openbaton_nfvo_version}"
+        result=$?
+        if [ ${result} -eq 1 ]; then
+            export rabbitmq_admin_password=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
+        else
+            export rabbitmq_admin_password="openbaton"
+        fi
         ./rabbitmqadmin -H "${rabbitmq_broker_ip}" -u "${rabbitmq_user_username}" -p "${rabbitmq_user_password}" declare user name=admin password="${rabbitmq_admin_password}" tags=administrator
     fi
 
@@ -307,49 +327,56 @@ configure_remote_rabbitmq () {
     ./rabbitmqadmin -H "${rabbitmq_broker_ip}" -u "admin" -p "${rabbitmq_admin_password}" declare permission vhost="/" user="admin" configure=".*" write=".*" read=".*"
 
     # Sets the rabbitmq 'admin' password
-
     export rabbitmq_admin_password=${rabbitmq_admin_password}
     log_success_msg "Setting new 'admin' password: ${rabbitmq_admin_password}"
-    log_warning_msg "You can find the 'admin' password in the '/etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties' properties file as the value of the 'spring.rabbitmq.password' property"
-    sed -i "s|spring.rabbitmq.password\s*=\s*.*|spring.rabbitmq.password=${rabbitmq_admin_password}|g" /etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties
+    log_warning_msg "You can find the 'admin' password in the '/etc/openbaton/${nfvo_properties_file_name}' properties file as the value of the 'spring.rabbitmq.password' property"
+    $_ex 'sed -i "s|spring.rabbitmq.password\s*=\s*.*|spring.rabbitmq.password=${rabbitmq_admin_password}|g" /etc/openbaton/${nfvo_properties_file_name}'
 
     # Sets the rabbitmq broker ip
     rabbitmq_broker_ip=${rabbitmq_broker_ip:-$RABBITMQ_BROKER_IP_DEFAULT}
     export rabbitmq_broker_ip=${rabbitmq_broker_ip}
     log_success_msg "Setting new broker IP: ${rabbitmq_broker_ip}"
-    sed -i "s|nfvo.rabbit.brokerIp\s*=\s*.*|nfvo.rabbit.brokerIp=${rabbitmq_broker_ip}|g" /etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties
+    $_ex 'sed -i "s|nfvo.rabbit.brokerIp\s*=\s*.*|nfvo.rabbit.brokerIp=${rabbitmq_broker_ip}|g" /etc/openbaton/${nfvo_properties_file_name}'
 
     # Sets the rabbitmq management port
     rabbitmq_management_port=${rabbitmq_management_port:-$RABBITMQ_MANAGEMENT_PORT_DEFAULT}
     export rabbitmq_management_port=${rabbitmq_management_port}
     log_success_msg "Setting new management port: ${rabbitmq_management_port}"
-    sed -i "s|nfvo.rabbit.management.port\s*=\s*15672|nfvo.rabbit.management.port=${rabbitmq_management_port}|g" /etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties
+    $_ex 'sed -i "s|nfvo.rabbit.management.port\s*=\s*15672|nfvo.rabbit.management.port=${rabbitmq_management_port}|g" /etc/openbaton/${nfvo_properties_file_name}'
 
-
-    # Generic VNFM configuration
+    #### Generic VNFM configuration
     OPENBATON_COMPONENT_NAME="vnfm-generic"
-    # Generates the password and creates the "RABBITMQ_EMS_USER" user, then sets the permissions
-    rabbitmq_ems_user_password=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
-    ./rabbitmqadmin -H "${rabbitmq_broker_ip}" -u "admin" -p "${rabbitmq_admin_password}" declare user name="${RABBITMQ_EMS_USER}" password="${rabbitmq_ems_user_password}" tags=administrator
-    ./rabbitmqadmin -H "${rabbitmq_broker_ip}" -u "admin" -p "${rabbitmq_admin_password}" declare permission vhost="/" user="${RABBITMQ_EMS_USER}" configure=".*" write=".*" read=".*"
+    # Check the NFVO version being installed: the new RabbitMQ configuration is required only from version >= 4.0.1
+    compare_version_strings "4.0.0" "${openbaton_nfvo_version}"
+    result=$?
+    if [ ${result} -eq 1 ]; then
+        export rabbitmq_ems_user_password=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
 
-    # Set the rabbitmq 'RABBITMQ_EMS_USER' username
-    export RABBITMQ_EMS_USER=${RABBITMQ_EMS_USER}
-    log_success_msg "Setting the username for the RabbitMQ EMS user: ${RABBITMQ_EMS_USER}"
-    sed -i "s|vnfm.ems.username\s*=\s*.*|vnfm.ems.username=${RABBITMQ_EMS_USER}|g" /etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties
+        # Creates the "RABBITMQ_EMS_USER" user, then sets the permissions
+        ./rabbitmqadmin -H "${rabbitmq_broker_ip}" -u "admin" -p "${rabbitmq_admin_password}" declare user name="${RABBITMQ_EMS_USER}" password="${rabbitmq_ems_user_password}" tags=administrator
+        ./rabbitmqadmin -H "${rabbitmq_broker_ip}" -u "admin" -p "${rabbitmq_admin_password}" declare permission vhost="/" user="${RABBITMQ_EMS_USER}" configure=".*" write=".*" read=".*"
 
-    # Set the rabbitmq 'RABBITMQ_EMS_USER' password
-    export rabbitmq_ems_user_password=${rabbitmq_ems_user_password}
-    log_success_msg "Setting new '${RABBITMQ_EMS_USER}' password: ${rabbitmq_ems_user_password}"
-    log_warning_msg "The '${RABBITMQ_EMS_USER}' password has been randomly generated and you can find it in the '/etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties' properties file as the value of the 'spring.rabbitmq.password' property"
-    sed -i "s|vnfm.ems.password\s*=\s*.*|vnfm.ems.password=${rabbitmq_ems_user_password}|g" /etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties
+        # Set the rabbitmq 'RABBITMQ_EMS_USER' username
+        export RABBITMQ_EMS_USER=${RABBITMQ_EMS_USER}
+        log_success_msg "Setting the username for the RabbitMQ EMS user: ${RABBITMQ_EMS_USER}"
+        $_ex 'sed -i "s|vnfm.ems.username\s*=\s*.*|vnfm.ems.username=${RABBITMQ_EMS_USER}|g" /etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties'
 
-    # Set the rabbitmq broker ip retrieving its value from the NFVO properties file
-    #rabbitmq_broker_ip=$(cat "${OPENBATON_BASE_CONFIG_DIR}"/"${OPENBATON_NFVO_CONFIG_FILE}" | grep "nfvo.rabbit.brokerIp" | head  -1 | awk -F'=' '{ print $2}' | sed s/\ //g)
-    echo "$rabbitmq_broker_ip"
-    export rabbitmq_broker_ip=${rabbitmq_broker_ip}
+        # Set the rabbitmq 'RABBITMQ_EMS_USER' password
+        log_success_msg "Setting new '${RABBITMQ_EMS_USER}' password: ${rabbitmq_ems_user_password}"
+        log_warning_msg "The '${RABBITMQ_EMS_USER}' password has been randomly generated and you can find it in the '/etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties' properties file as the value of the 'spring.rabbitmq.password' property"
+        $_ex 'sed -i "s|vnfm.ems.password\s*=\s*.*|vnfm.ems.password=${rabbitmq_ems_user_password}|g" /etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties'
+    else
+        # Sets the rabbitmq 'admin' password
+        export rabbitmq_admin_password=${rabbitmq_admin_password}
+        log_success_msg "Setting new 'admin' password: ${rabbitmq_admin_password}"
+        log_warning_msg "You can find the 'admin' password in the '/etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties' properties file as the value of the 'spring.rabbitmq.password' property"
+        $_ex 'sed -i "s|spring.rabbitmq.password\s*=\s*.*|spring.rabbitmq.password=${rabbitmq_admin_password}|g" /etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties'
+    fi
+
+    #### Generic VNFM configuration
+    # Set the rabbitmq broker ip for the Generic VNFM retrieving its value from the NFVO properties file
     log_success_msg "Setting new broker IP: ${rabbitmq_broker_ip}"
-    sed -i "s|vnfm.rabbitmq.brokerIp\s*=\s*.*|vnfm.rabbitmq.brokerIp=${rabbitmq_broker_ip}|g" /etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties
+    $_ex 'sed -i "s|vnfm.rabbitmq.brokerIp\s*=\s*.*|vnfm.rabbitmq.brokerIp=${rabbitmq_broker_ip}|g" /etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties'
 }
 
 
