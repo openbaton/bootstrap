@@ -382,6 +382,10 @@ src_checkout_additional_component () {
             return
         fi
     else
+        if [ "${component_version}" = "" -o "${component_version}" = "latest" ]; then
+            component_version="develop"
+        fi
+
         # Install the correct Additional Component according to the given input parameters
         if [ "${install_during_noninteractive_installation}" = "y" -o "${install_during_noninteractive_installation}" = "Y" -o "${install_during_noninteractive_installation}" = "yes" ]; then
             src_do_checkout "${component_repo_url}" "${component_name}" "${component_name_fancy}" "${component_properties_file_src}" "${component_properties_file_dest}" "${component_version}"
