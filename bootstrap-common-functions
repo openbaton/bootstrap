@@ -282,7 +282,7 @@ retrieve_rabbitmqadmin_cli () {
 configure_remote_rabbitmq () {
     log_success_msg "Configuring remote RabbitMQ for Open Baton"
 
-    read -p " * Please provide the Open Baton NFVO version for which you want to configure the RabbitMQ Broker? (version format: X.Y.Z) [latest]: " openbaton_nfvo_version
+    read -p " * Please provide the Open Baton NFVO version for which you want to configure the RabbitMQ Broker? (version format: 1) X.Y.Z for specific debian release/source tag, 2) 'latest' if the develop source code branch is installed) [latest]: " openbaton_nfvo_version
     openbaton_nfvo_version=${openbaton_nfvo_version:-$OPENBATON_NFVO_VERSION_DEFAULT}
 
     # Temporal fix until the NFVO properties file name is consistent
@@ -369,7 +369,7 @@ configure_remote_rabbitmq () {
         # Sets the rabbitmq 'admin' password
         export rabbitmq_admin_password=${rabbitmq_admin_password}
         log_success_msg "Setting new 'admin' password: ${rabbitmq_admin_password}"
-        log_warning_msg "You can find the 'admin' password in the '/etc/openbaton/openbaton-${OPENBATON_COMPONENT_NAME}.properties' properties file as the value of the 'spring.rabbitmq.password' property"
+        log_warning_msg "You can find the 'admin' password in the '/etc/openbaton/${OPENBATON_VNFM_GENERIC_PROPERTIES_FILE_NAME}' properties file as the value of the 'spring.rabbitmq.password' property"
         $_ex 'sed -i "s|spring.rabbitmq.password\s*=\s*.*|spring.rabbitmq.password=${rabbitmq_admin_password}|g" /etc/openbaton/${OPENBATON_VNFM_GENERIC_PROPERTIES_FILE_NAME}'
     fi
 
