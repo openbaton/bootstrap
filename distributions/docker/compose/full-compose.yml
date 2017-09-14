@@ -1,7 +1,7 @@
 version: '3'
 services:
   nfvo:
-    image: openbaton/nfvo:4.0.1
+    image: openbaton/nfvo:latest
     depends_on:
       - rabbitmq_broker
       - nfvo_database
@@ -16,7 +16,7 @@ services:
     ports:
       - "8080:8080"
   vnfm-generic:
-    image: openbaton/vnfm-generic:4.0.1
+    image: openbaton/vnfm-generic:latest
     depends_on:
       - nfvo
     restart: always
@@ -35,7 +35,7 @@ services:
     ports:
       - "8010:8010"
   ase:
-    image: openbaton/ase:1.2.3
+    image: openbaton/ase:latest
     depends_on:
       - zabbix-plugin
     restart: always
@@ -47,19 +47,9 @@ services:
     ports:
       - "9998:9998"
       - "9999:9999"
-  nse:
-    image: openbaton/nse:1.1.3
-    depends_on:
-      - nfvo
-    restart: always
-    environment:
-      - NFVO_IP=nfvo
-      - RABBITMQ_HOST=rabbitmq_broker
-    ports:
-      - "8082:8082"
   # external services, mysql and rabbitmq
   fms:
-    image: openbaton/fms:1.2.5
+    image: openbaton/fms:latest
     depends_on:
       - fm_database
       - zabbix-plugin
