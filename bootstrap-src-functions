@@ -471,7 +471,7 @@ src_fms_configure_rabbitmq () {
     if [ ! -z ${rabbitmq_broker_ip+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting RabbitMQ IP into Fault Management System: ${rabbitmq_broker_ip}"
         export rabbitmq_broker_ip=${rabbitmq_broker_ip}
-        sed -i "s|spring.rabbitmq.host\s*=.*|spring.rabbitmq.host=${rabbitmq_broker_ip}|g" ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_COMPONENT_CONFIG_FILE}
+        $_ex 'sed -i "s|spring.rabbitmq.host\s*=.*|spring.rabbitmq.host=${rabbitmq_broker_ip}|g" ${OPENBATON_BASE_CONFIG_DIR}/openbaton-fms.properties'
     fi
 
     # Set the RabbitMQ Management port
@@ -479,7 +479,7 @@ src_fms_configure_rabbitmq () {
     if [ ! -z ${rabbitmq_management_port+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting RabbitMQ Management port into Fault Management System: ${rabbitmq_management_port}"
         export rabbitmq_management_port=${rabbitmq_management_port}
-        sed -i "s|spring.rabbitmq.port\s*=\s*15672|spring.rabbitmq.port=${rabbitmq_management_port}|g" ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_COMPONENT_CONFIG_FILE}
+        $_ex 'sed -i "s|spring.rabbitmq.port\s*=\s*15672|spring.rabbitmq.port=${rabbitmq_management_port}|g" ${OPENBATON_BASE_CONFIG_DIR}/openbaton-fms.properties'
     fi
 }
 
@@ -490,17 +490,17 @@ src_fms_configure_nfvo () {
     fi
     # Set the NFVO IP
     export openbaton_nfvo_ip=${openbaton_nfvo_ip:-$OPENBATON_NFVO_IP_DEFAULT}
-    sed -i "s|nfvo.ip\s*=*|nfvo.ip=${openbaton_nfvo_ip}|g" ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_COMPONENT_CONFIG_FILE}
+    $_ex 'sed -i "s|nfvo.ip\s*=*|nfvo.ip=${openbaton_nfvo_ip}|g" ${OPENBATON_BASE_CONFIG_DIR}/openbaton-fms.properties'
 
     # Set the NFVO credentials
     export nfvo_admin_user="admin"
-    sed -i "s|nfvo-usr\s*=*|nfvo-usr=${nfvo_admin_user}|g" ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_COMPONENT_CONFIG_FILE}
+    $_ex 'sed -i "s|nfvo-usr\s*=*|nfvo-usr=${nfvo_admin_user}|g" ${OPENBATON_BASE_CONFIG_DIR}/openbaton-fms.properties'
 
     nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password[[:space:]]*="' "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${nfvo_admin_password+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting NFVO admin's password into Fault Management System: ${nfvo_admin_password}"
         export nfvo_admin_password=${nfvo_admin_password}
-        sed -i "s|nfvo-pwd\s*=.*|nfvo-pwd=${nfvo_admin_password}|g" ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_COMPONENT_CONFIG_FILE}
+        $_ex 'sed -i "s|nfvo-pwd\s*=.*|nfvo-pwd=${nfvo_admin_password}|g" ${OPENBATON_BASE_CONFIG_DIR}/openbaton-fms.properties'
     fi
 }
 
@@ -522,11 +522,11 @@ src_fms_configure_mysql () {
 
     # Set the MySQL user
     export openbaton_fms_mysql_user=${openbaton_fms_mysql_user:-$OPENBATON_FMS_MYSQL_USER_DEFAULT}
-    sed -i "s|spring.datasource.username\s*=.*|spring.datasource.username=${openbaton_fms_mysql_user}|g" ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_COMPONENT_CONFIG_FILE}
+    $_ex 'sed -i "s|spring.datasource.username\s*=.*|spring.datasource.username=${openbaton_fms_mysql_user}|g" ${OPENBATON_BASE_CONFIG_DIR}/openbaton-fms.properties'
 
     # Set the MySQL user's password
     export openbaton_fms_mysql_user_password=${openbaton_fms_mysql_user_password:-$OPENBATON_FMS_MYSQL_USER_PASSWORD_DEFAULT}
-    sed -i "s|spring.datasource.password\s*=.*|spring.datasource.password=${openbaton_fms_mysql_user_password}|g" ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_COMPONENT_CONFIG_FILE}
+    $_ex 'sed -i "s|spring.datasource.password\s*=.*|spring.datasource.password=${openbaton_fms_mysql_user_password}|g" ${OPENBATON_BASE_CONFIG_DIR}/openbaton-fms.properties'
 
     result=$(ps aux | grep -v 'grep' | grep 'mysql' | wc -l)
     if [ ${result} -le 0 ]; then
