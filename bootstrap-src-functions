@@ -581,6 +581,8 @@ src_bootstrap () {
     enable_https "openbaton.properties"
 
     src_deploy_nfvo
+
+    export OPENBATON_BASE_CONFIG_DIR=${OPENBATON_BASE_CONFIG_DIR}
    
     # Generic VNFM
     src_checkout_additional_component "${OPENBATON_VNFM_GENERIC_REPO_URL}" "generic-vnfm" "Generic VNFM" "src/main/resources/application.properties" "openbaton-vnfm-generic.properties" ${openbaton_vnfm_generic} "3.2.0" "${openbaton_vnfm_generic_version}"
