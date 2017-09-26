@@ -69,6 +69,7 @@ Removing network compose_default
 ## Further configuration
 Without further configuration docker-compose will use the images build on [Docker Hub](https://hub.docker.com/r/openbaton/) with the `latest` tag, which are build from the last pushes to the respective `master` branch. Check the repo for available tagged releases and replace the `latest` tag accordingly.
 
-If you have a installed and configured Zabbix2 or Zabbix3 server running and want Open Baton to automatically add monitoring capabilities to the deployed NSR's, you can set `ZABBIX_IP` just as `HOST_IP` on executing the `up` command. So the deploy would then look like```bash
+If you have a installed and configured Zabbix2 or Zabbix3 server running and want Open Baton to automatically add monitoring capabilities to the deployed NSR's, you can set `ZABBIX_IP` just as `HOST_IP` on executing the `up` command. So the deploy would then look like
+```bash
 $ env HOST_IP=$YOUR_LOCAL_IP ZABBIX_IP=$YOUR_ZABBIX_SERVER_IP docker-compose -f min_nomysql-compose.yml up -d
 ```
