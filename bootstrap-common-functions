@@ -17,6 +17,14 @@ DEBIAN_FRONTEND=${openbaton_installation_manner:-$DEBIAN_FRONTEND_DEFAULT}
 
 BOOTSTRAP_DIR=$(pwd)
 
+OPENBATON_NFVO_REPO_NAME="NFVO"
+OPENBATON_PLUGINS_VIMDRIVERS_TEST_REPO_NAME="test-plugin"
+OPENBATON_PLUGINS_VIMDRIVERS_OPENSTACK_4J_REPO_NAME="openstack4j-plugin"
+OPENBATON_VNFM_GENERIC_REPO_NAME="generic-vnfm"
+OPENBATON_FMS_REPO_NAME="fm-system"
+OPENBATON_ASE_REPO_NAME="autoscaling-engine"
+OPENBATON_NSE_REPO_NAME="network-slicing-engine"
+
 OPENBATON_NFVO_REPO_URL="https://github.com/openbaton/NFVO"
 OPENBATON_PLUGINS_VIMDRIVERS_TEST_REPO_URL="https://github.com/openbaton/test-plugin"
 OPENBATON_PLUGINS_VIMDRIVERS_OPENSTACK_4J_REPO_URL="https://github.com/openbaton/openstack4j-plugin"

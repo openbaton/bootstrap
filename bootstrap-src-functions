@@ -241,7 +241,10 @@ src_checkout_nfvo () {
         valid_version=false
         while [ "${valid_version}" = "false" ]; do
             # Ask for the NFVO version to be installed
-            read -p " * Which VERSION of the Open Baton NFVO do you want to install? ( Version Format is: X.Y.Z - ${oldest_nfvo_version_supported} is the oldest version installable - Check the list of available VERSIONs at: ${OPENBATON_NFVO_REPO_URL}/tags ) (develop): " nfvo_version
+            print " * You can install a specific TAG of the Open Baton NFVO or the latest code into the 'develop' branch of the repository."
+            print " * For a specific TAG, the format is X.Y.Z (where ${oldest_nfvo_version_supported} is the oldest version installable with this bootstrap) and the available TAGs are the following:"
+            curl -s GET https://api.github.com/repos/openbaton/${OPENBATON_NFVO_REPO_NAME}/tags | grep "name\":" | awk -F':' '{print $2}' | awk -F'"' '{print $2}' | grep -o ".\..\.."
+            read -p " * Which VERSION of the Open Baton NFVO do you want to install? (develop): " nfvo_version
 
             if [ "${nfvo_version}" = "" -o "${nfvo_version}" = "develop" ]; then
                 valid_version=true
@@ -348,14 +351,15 @@ src_do_checkout () {
 }
 
 src_checkout_additional_component () {
-    component_repo_url="${1}"
-    component_name="${2}"                       # the directory on which the repo will be locally cloned
-    component_name_fancy="${3}"
-    component_properties_file_src="${4}"
-    component_properties_file_dest="${5}"
-    install_during_noninteractive_installation="${6}"
-    oldest_component_version_supported="${7}"
-    component_version="${8}"
+    component_repo_name="${1}"
+    component_repo_url="${2}"
+    component_name="${3}"                       # the directory on which the repo will be locally cloned
+    component_name_fancy="${4}"
+    component_properties_file_src="${5}"
+    component_properties_file_dest="${6}"
+    install_during_noninteractive_installation="${7}"
+    oldest_component_version_supported="${8}"
+    component_version="${9}"
 
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         # Ask for the specified Additional Component installation
@@ -364,7 +368,10 @@ src_checkout_additional_component () {
         if [ "${ac}" = "" -o "${ac}" = "y" -o "${ac}" = "Y" -o "${ac}" = "yes" -o "${ac}" = "YES" ]; then
             valid_version=false
             while [ "${valid_version}" = "false" ]; do
-                read -p " * Which VERSION of the Open Baton ${component_name_fancy} do you want to install? ( Version Format is: X.Y.Z - ${oldest_component_version_supported} is the oldest version installable - Check the list of available VERSIONs at: ${component_repo_url}/tags ) (develop): " component_version
+                print " * You can install a specific TAG of the Open Baton ${component_name_fancy} or the latest code into the 'develop' branch of the repository."
+                print " * For a specific TAG, the format is X.Y.Z (where ${oldest_component_version_supported} is the oldest version installable with this bootstrap) and the available TAGs are the following: "
+                curl -s GET https://api.github.com/repos/openbaton/${component_repo_name}/tags | grep "name\":" | awk -F':' '{print $2}' | awk -F'"' '{print $2}' | grep -o ".\..\.."
+                read -p " * Which VERSION of the Open Baton NFVO do you want to install? (develop): " component_version
 
                 if [ "${component_version}" = "" -o "${component_version}" = "develop" ]; then
                     valid_version=true
@@ -567,13 +574,13 @@ src_bootstrap () {
     #
 
     # Test VIM Driver Plugin
-    src_checkout_additional_component "${OPENBATON_PLUGINS_VIMDRIVERS_TEST_REPO_URL}" "test-plugin" "Test VIM Driver Plugin" "" "" "${openbaton_plugin_vimdriver_test}" "3.2.0" "${openbaton_plugin_vimdriver_test_version}"
+    src_checkout_additional_component "${OPENBATON_PLUGINS_VIMDRIVERS_TEST_REPO_NAME}" "${OPENBATON_PLUGINS_VIMDRIVERS_TEST_REPO_URL}" "test-plugin" "Test VIM Driver Plugin" "" "" "${openbaton_plugin_vimdriver_test}" "3.2.0" "${openbaton_plugin_vimdriver_test_version}"
     if [ -d "${OPENBATON_BASE_DIR}/test-plugin" ]; then
         src_deploy_plugin_vimdriver "test-plugin" "Test VIM Driver Plugin"
     fi
 
     # OpenStack VIM Driver Plugin
-    src_checkout_additional_component "${OPENBATON_PLUGINS_VIMDRIVERS_OPENSTACK_4J_REPO_URL}" "openstack4j-plugin" "OpenStack VIM Driver Plugin" "" "" "${openbaton_plugin_vimdriver_openstack}" "3.2.0" "${openbaton_plugin_vimdriver_openstack_version}"
+    src_checkout_additional_component "${OPENBATON_PLUGINS_VIMDRIVERS_OPENSTACK_4J_REPO_NAME}" "${OPENBATON_PLUGINS_VIMDRIVERS_OPENSTACK_4J_REPO_URL}" "openstack4j-plugin" "OpenStack VIM Driver Plugin" "" "" "${openbaton_plugin_vimdriver_openstack}" "3.2.0" "${openbaton_plugin_vimdriver_openstack_version}"
     if [ -d "${OPENBATON_BASE_DIR}/openstack4j-plugin" ]; then
         src_deploy_plugin_vimdriver "openstack4j-plugin" "OpenStack VIM Driver Plugin"
     fi
@@ -585,28 +592,28 @@ src_bootstrap () {
     export OPENBATON_BASE_CONFIG_DIR=${OPENBATON_BASE_CONFIG_DIR}
    
     # Generic VNFM
-    src_checkout_additional_component "${OPENBATON_VNFM_GENERIC_REPO_URL}" "generic-vnfm" "Generic VNFM" "src/main/resources/application.properties" "openbaton-vnfm-generic.properties" ${openbaton_vnfm_generic} "3.2.0" "${openbaton_vnfm_generic_version}"
+    src_checkout_additional_component "${OPENBATON_VNFM_GENERIC_REPO_NAME}" "${OPENBATON_VNFM_GENERIC_REPO_URL}" "generic-vnfm" "Generic VNFM" "src/main/resources/application.properties" "openbaton-vnfm-generic.properties" ${openbaton_vnfm_generic} "3.2.0" "${openbaton_vnfm_generic_version}"
     if [ "${installed}" = "0" ]; then
         src_configure_rabbitmq_for_vnfm_generic "${openbaton_vnfm_generic_version}"
         src_deploy_additional_component "generic-vnfm" "Generic VNFM"
     fi
 
     # Fault Management System
-    src_checkout_additional_component "${OPENBATON_FMS_REPO_URL}" "fm-system" "Fault Management System (FMS)" "etc/fms.properties" "openbaton-fms.properties" "${openbaton_fms}" "1.2.4" "${openbaton_fms_version}"
+    src_checkout_additional_component "${OPENBATON_FMS_REPO_NAME}" "${OPENBATON_FMS_REPO_URL}" "fm-system" "Fault Management System (FMS)" "etc/fms.properties" "openbaton-fms.properties" "${openbaton_fms}" "1.2.4" "${openbaton_fms_version}"
     if [ "${installed}" = "0" ]; then
         src_configure_fms
         src_deploy_additional_component "fm-system" "Fault Management System (FMS)"
     fi
 
     # Auto Scaling Engine
-    src_checkout_additional_component "${OPENBATON_ASE_REPO_URL}" "autoscaling-engine" "Auto Scaling Engine (ASE)" "etc/ase.properties" "ase.properties" "${openbaton_ase}" "1.2.2" "${openbaton_ase_version}"
+    src_checkout_additional_component "${OPENBATON_ASE_REPO_NAME}" "${OPENBATON_ASE_REPO_URL}" "autoscaling-engine" "Auto Scaling Engine (ASE)" "etc/ase.properties" "ase.properties" "${openbaton_ase}" "1.2.2" "${openbaton_ase_version}"
     if [ "${installed}" = "0" ]; then
         src_configure_ase
         src_deploy_additional_component "autoscaling-engine" "Auto Scaling Engine (ASE)"
     fi
 
     # Network Slicing Engine
-    src_checkout_additional_component "${OPENBATON_NSE_REPO_URL}" "network-slicing-engine" "Network Slicing Engine (NSE)" "etc/nse.properties" "openbaton-nse.properties" "${openbaton_nse}" "1.1.2" "${openbaton_nse_version}"
+    src_checkout_additional_component "${OPENBATON_NSE_REPO_NAME}" "${OPENBATON_NSE_REPO_URL}" "network-slicing-engine" "Network Slicing Engine (NSE)" "etc/nse.properties" "openbaton-nse.properties" "${openbaton_nse}" "1.1.2" "${openbaton_nse_version}"
     if [ "${installed}" = "0" ]; then
         src_deploy_additional_component "network-slicing-engine" "Network Slicing Engine"
     fi
