@@ -241,9 +241,10 @@ src_checkout_nfvo () {
         valid_version=false
         while [ "${valid_version}" = "false" ]; do
             # Ask for the NFVO version to be installed
-            echo " * You can install a specific TAG of the Open Baton NFVO or the latest code into the 'develop' branch of the repository."
-            echo " * For a specific TAG, the format is X.Y.Z (where ${oldest_nfvo_version_supported} is the oldest version installable with this bootstrap) and the available TAGs are the following:"
-            curl -s GET https://api.github.com/repos/openbaton/${OPENBATON_NFVO_REPO_NAME}/tags | grep "name\":" | awk -F':' '{print $2}' | awk -F'"' '{print $2}' | grep -o ".\..\.."
+            echo " * You can install a specific TAG of the Open Baton NFVO or the latest source code of the 'develop' branch of the repository."
+            echo " * For the latest code of the 'develop' branch type 'develop'"
+            echo " * For a specific TAG, the format is X.Y.Z and the available TAGs installable with this bootstrap are the following:"
+            curl -s GET https://api.github.com/repos/openbaton/${OPENBATON_NFVO_REPO_NAME}/tags | grep "name\":" | awk -F':' '{print $2}' | awk -F'"' '{print $2}' | awk -v oldest="${oldest_nfvo_version_supported}" '$1 >= oldest'
             read -p " * Which VERSION of the Open Baton NFVO do you want to install? (develop): " nfvo_version
 
             if [ "${nfvo_version}" = "" -o "${nfvo_version}" = "develop" ]; then
@@ -368,9 +369,10 @@ src_checkout_additional_component () {
         if [ "${ac}" = "" -o "${ac}" = "y" -o "${ac}" = "Y" -o "${ac}" = "yes" -o "${ac}" = "YES" ]; then
             valid_version=false
             while [ "${valid_version}" = "false" ]; do
-                echo " * You can install a specific TAG of the Open Baton ${component_name_fancy} or the latest code into the 'develop' branch of the repository."
-                echo " * For a specific TAG, the format is X.Y.Z (where ${oldest_component_version_supported} is the oldest version installable with this bootstrap) and the available TAGs are the following: "
-                curl -s GET https://api.github.com/repos/openbaton/${component_repo_name}/tags | grep "name\":" | awk -F':' '{print $2}' | awk -F'"' '{print $2}' | grep -o ".\..\.."
+                echo " * You can install a specific TAG of the Open Baton ${component_name_fancy} or the latest source code of the 'develop' branch of the repository."
+                echo " * For the latest code of the 'develop' branch type 'develop'"
+                echo " * For a specific TAG, the format is X.Y.Z and the available TAGs installable with this bootstrap are the following: "
+                curl -s GET https://api.github.com/repos/openbaton/${component_repo_name}/tags | grep "name\":" | awk -F':' '{print $2}' | awk -F'"' '{print $2}' | awk -v oldest="${oldest_component_version_supported}" '$1 >= oldest'
                 read -p " * Which VERSION of the Open Baton NFVO do you want to install? (develop): " component_version
 
                 if [ "${component_version}" = "" -o "${component_version}" = "develop" ]; then
