@@ -3,6 +3,8 @@
 # This script allows you to install openbaton. To execute it:
 #
 # sh <(curl -s http://get.openbaton.org/bootstrap) [help | clean | enable-persistence | configure-remote-rabbitmq] | [[release | develop] [--openbaton-bootstrap-version=X.Y.Z (with X.Y.Z >= 3.2.0)] [--config-file=<absolute path to configuration file>]]
+#
+# If you need support, get in contact with us at: info@openbaton.org
 
 
 
@@ -66,6 +68,8 @@ usage () {
     echo " * Usage: (The 'release' installation is the DEFAULT)"
     echo "    ./bootstrap [help | clean | enable-persistence | configure-remote-rabbitmq] | [[release | develop] [--openbaton-bootstrap-version=X.Y.Z (with X.Y.Z >= 3.2.0)] [--config-file=<absolute path to configuration file>]]                                         (if bootstrap already locally available)"
     echo "    sh <(curl -s http://get.openbaton.org/bootstrap) [help | clean | enable-persistence | configure-remote-rabbitmq] | [[release | develop] [--openbaton-bootstrap-version=X.Y.Z (with X.Y.Z >= 3.2.0)] [--config-file=<absolute path to configuration file>]]    (otherwise)"
+    echo ""
+    echo " * If you need support, get in contact with us at: info@openbaton.org"
 }
 
 
