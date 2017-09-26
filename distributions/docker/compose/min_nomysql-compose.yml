@@ -26,14 +26,6 @@ services:
     restart: always
     environment:
       - SPRING_RABBITMQ_HOST=rabbitmq_broker
-  vnfm-dummy-rest:
-    image: openbaton/vnfm-dummy-rest:latest
-    depends_on:
-      - nfvo
-    restart: always
-    environment:
-      - VNFM_REST_NFVOHOST=nfvo
-      - ENDPOINT=http://vnfm-dummy-rest:8081
   plugin-vimdriver-test:
     image: openbaton/plugin-vimdriver-test:latest
     depends_on:
