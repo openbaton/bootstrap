@@ -235,8 +235,7 @@ src_create_openbaton_log () {
 
 src_checkout_nfvo () {
     export oldest_nfvo_version_supported="${1}"
-    export oldest_nfvo_version_for_trusty="${2}"
-    export nfvo_version="${3}"
+    export nfvo_version="${2}"
 
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         valid_version=false
@@ -247,18 +246,6 @@ src_checkout_nfvo () {
             echo " * For a specific TAG, the format is X.Y.Z and the available TAGs installable with this bootstrap are the following:"
             curl -s GET https://api.github.com/repos/openbaton/${OPENBATON_NFVO_REPO_NAME}/tags | grep "name\":" | awk -F':' '{print $2}' | awk -F'"' '{print $2}' | awk -v oldest="${oldest_nfvo_version_supported}" '$1 >= oldest'
             read -p " * Which VERSION of the Open Baton NFVO do you want to install? (develop): " nfvo_version
-
-            if [ "${OS_DISTRIBUTION_ID}" = "Ubuntu" -a "${OS_DISTRIBUTION_RELEASE}" \< "16.04" ]; then
-                if [ "${nfvo_version}" = "" -o "${nfvo_version}" = "develop" -o "${nfvo_version}" \> "${oldest_nfvo_version_for_trusty}" ]; then
-                    echo " * ERROR:"
-                    echo " * The TAG '${oldest_nfvo_version_for_trusty}' is the newest source code you can install on a machine with Ubuntu Trusty (14.04)."
-                    echo " * If you want to install the latest source code of the 'develop' branch or a subsequent TAG you need a machine with Ubuntu Xenial (16.04) or later."
-                    echo " * In case you really want to install the latest source code you need to manually install Java 8 and clone the repository from ${OPENBATON_NFVO_REPO_URL}"
-                    echo ""
-                    valid_version=false
-                    continue
-                fi
-            fi
 
             if [ "${nfvo_version}" = "" -o "${nfvo_version}" = "develop" ]; then
                 valid_version=true
@@ -372,8 +359,7 @@ src_checkout_additional_component () {
     component_properties_file_dest="${5}"
     install_during_noninteractive_installation="${6}"
     oldest_component_version_supported="${7}"
-    oldest_component_version_for_trusty="${8}"
-    component_version="${9}"
+    component_version="${8}"
 
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         # Ask for the specified Additional Component installation
@@ -387,18 +373,6 @@ src_checkout_additional_component () {
                 echo " * For a specific TAG, the format is X.Y.Z and the available TAGs installable with this bootstrap are the following: "
                 curl -s GET https://api.github.com/repos/openbaton/${component_name}/tags | grep "name\":" | awk -F':' '{print $2}' | awk -F'"' '{print $2}' | awk -v oldest="${oldest_component_version_supported}" '$1 >= oldest'
                 read -p " * Which VERSION of the Open Baton ${component_name_fancy} do you want to install? (develop): " component_version
-
-                if [ "${OS_DISTRIBUTION_ID}" = "Ubuntu" -a "${OS_DISTRIBUTION_RELEASE}" \< "16.04" ]; then
-                    if [ "${component_version}" = "" -o "${component_version}" = "develop" -o "${component_version}" \> "${oldest_component_version_for_trusty}" ]; then
-                        echo " * ERROR:"
-                        echo " * The TAG '${oldest_component_version_for_trusty}' is the newest source code you can install on a machine with Ubuntu Trusty (14.04)."
-                        echo " * If you want to install the latest source code of the 'develop' branch or a subsequent TAG you need a machine with Ubuntu Xenial (16.04) or later."
-                        echo " * In case you really want to install the latest source code you need to manually install Java 8 and clone the repository from ${component_repo_url}"
-                        echo ""
-                        valid_version=false
-                        continue
-                    fi
-                fi
 
                 if [ "${component_version}" = "" -o "${component_version}" = "develop" ]; then
                     valid_version=true
@@ -587,12 +561,21 @@ src_configure_fms () {
 ##############
 
 src_bootstrap () {
+    ## Check for OS: the develop installation works (i.e.: it has been tested) on Ubuntu 16.04 or later
+    #if [ "${OS_DISTRIBUTION_ID}" = "Ubuntu" -a "${OS_DISTRIBUTION_RELEASE}" \< "16.04" ]; then
+    #    echo " * ERROR:"
+    #    echo " * If you want to install the source code through this bootstrap you need a machine with Ubuntu Xenial (16.04) or later."
+    #    echo " * In case you want to install the source code on a different OS you need to manually install Java 8 (if needed) and clone the repositories from ${OPENBATON_HOME_REPO_URL}"
+    #    echo ""
+    #    exit 0
+    #fi
+
     src_prereq
 
     #
     # Arguments of "src_checkout_nfvo": oldest_nfvo_version_supported(with this bootstrap) oldest_nfvo_version_for_trusty nfvo_version
     #
-    src_checkout_nfvo "3.2.0" "4.0.0" "${openbaton_nfvo_version}"
+    src_checkout_nfvo "3.2.0" "${openbaton_nfvo_version}"
 
     src_check_environment
     src_install_rabbitmq
@@ -600,17 +583,17 @@ src_bootstrap () {
     install_mysql
 
     #
-    # Arguments of "src_checkout_additional_component": component_repo_url component_name(the directory on which the repo will be locally cloned) component_name_fancy component_properties_file_src component_properties_file_dest install_during_noninteractive_installation oldest_component_version_supported oldest_component_version_for_trusty component_version
+    # Arguments of "src_checkout_additional_component": component_repo_url component_name(the directory on which the repo will be locally cloned) component_name_fancy component_properties_file_src component_properties_file_dest install_during_noninteractive_installation oldest_component_version_supported component_version
     #
 
     # Test VIM Driver Plugin
-    src_checkout_additional_component "${OPENBATON_PLUGINS_VIMDRIVERS_TEST_REPO_URL}" "${OPENBATON_PLUGINS_VIMDRIVERS_TEST_REPO_NAME}" "Test VIM Driver Plugin" "" "" "${openbaton_plugin_vimdriver_test}" "3.2.0" "4.0.0" "${openbaton_plugin_vimdriver_test_version}"
+    src_checkout_additional_component "${OPENBATON_PLUGINS_VIMDRIVERS_TEST_REPO_URL}" "${OPENBATON_PLUGINS_VIMDRIVERS_TEST_REPO_NAME}" "Test VIM Driver Plugin" "" "" "${openbaton_plugin_vimdriver_test}" "3.2.0" "${openbaton_plugin_vimdriver_test_version}"
     if [ -d "${OPENBATON_BASE_DIR}/test-plugin" ]; then
         src_deploy_plugin_vimdriver "test-plugin" "Test VIM Driver Plugin"
     fi
 
     # OpenStack VIM Driver Plugin
-    src_checkout_additional_component "${OPENBATON_PLUGINS_VIMDRIVERS_OPENSTACK_4J_REPO_URL}" "${OPENBATON_PLUGINS_VIMDRIVERS_OPENSTACK_4J_REPO_NAME}" "OpenStack VIM Driver Plugin" "" "" "${openbaton_plugin_vimdriver_openstack}" "3.2.0" "4.0.1" "${openbaton_plugin_vimdriver_openstack_version}"
+    src_checkout_additional_component "${OPENBATON_PLUGINS_VIMDRIVERS_OPENSTACK_4J_REPO_URL}" "${OPENBATON_PLUGINS_VIMDRIVERS_OPENSTACK_4J_REPO_NAME}" "OpenStack VIM Driver Plugin" "" "" "${openbaton_plugin_vimdriver_openstack}" "3.2.0" "${openbaton_plugin_vimdriver_openstack_version}"
     if [ -d "${OPENBATON_BASE_DIR}/openstack4j-plugin" ]; then
         src_deploy_plugin_vimdriver "openstack4j-plugin" "OpenStack VIM Driver Plugin"
     fi
@@ -622,28 +605,28 @@ src_bootstrap () {
     export OPENBATON_BASE_CONFIG_DIR=${OPENBATON_BASE_CONFIG_DIR}
    
     # Generic VNFM
-    src_checkout_additional_component "${OPENBATON_VNFM_GENERIC_REPO_URL}" "${OPENBATON_VNFM_GENERIC_REPO_NAME}" "Generic VNFM" "src/main/resources/application.properties" "openbaton-vnfm-generic.properties" ${openbaton_vnfm_generic} "3.2.0" "4.0.0" "${openbaton_vnfm_generic_version}"
+    src_checkout_additional_component "${OPENBATON_VNFM_GENERIC_REPO_URL}" "${OPENBATON_VNFM_GENERIC_REPO_NAME}" "Generic VNFM" "src/main/resources/application.properties" "openbaton-vnfm-generic.properties" ${openbaton_vnfm_generic} "3.2.0" "${openbaton_vnfm_generic_version}"
     if [ "${installed}" = "0" ]; then
         src_configure_rabbitmq_for_vnfm_generic "${openbaton_vnfm_generic_version}"
         src_deploy_additional_component "generic-vnfm" "Generic VNFM"
     fi
 
     # Fault Management System
-    src_checkout_additional_component "${OPENBATON_FMS_REPO_URL}" "${OPENBATON_FMS_REPO_NAME}" "Fault Management System (FMS)" "etc/fms.properties" "openbaton-fms.properties" "${openbaton_fms}" "1.2.4" "1.2.5" "${openbaton_fms_version}"
+    src_checkout_additional_component "${OPENBATON_FMS_REPO_URL}" "${OPENBATON_FMS_REPO_NAME}" "Fault Management System (FMS)" "etc/fms.properties" "openbaton-fms.properties" "${openbaton_fms}" "1.2.4" "${openbaton_fms_version}"
     if [ "${installed}" = "0" ]; then
         src_configure_fms
         src_deploy_additional_component "fm-system" "Fault Management System (FMS)"
     fi
 
     # Auto Scaling Engine
-    src_checkout_additional_component "${OPENBATON_ASE_REPO_URL}" "${OPENBATON_ASE_REPO_NAME}" "Auto Scaling Engine (ASE)" "etc/ase.properties" "ase.properties" "${openbaton_ase}" "1.2.2" "1.2.3" "${openbaton_ase_version}"
+    src_checkout_additional_component "${OPENBATON_ASE_REPO_URL}" "${OPENBATON_ASE_REPO_NAME}" "Auto Scaling Engine (ASE)" "etc/ase.properties" "ase.properties" "${openbaton_ase}" "1.2.2" "${openbaton_ase_version}"
     if [ "${installed}" = "0" ]; then
         src_configure_ase
         src_deploy_additional_component "autoscaling-engine" "Auto Scaling Engine (ASE)"
     fi
 
     # Network Slicing Engine
-    src_checkout_additional_component "${OPENBATON_NSE_REPO_URL}" "${OPENBATON_NSE_REPO_NAME}" "Network Slicing Engine (NSE)" "etc/nse.properties" "openbaton-nse.properties" "${openbaton_nse}" "1.1.2" "1.1.2" "${openbaton_nse_version}"
+    src_checkout_additional_component "${OPENBATON_NSE_REPO_URL}" "${OPENBATON_NSE_REPO_NAME}" "Network Slicing Engine (NSE)" "etc/nse.properties" "openbaton-nse.properties" "${openbaton_nse}" "1.1.2" "${openbaton_nse_version}"
     if [ "${installed}" = "0" ]; then
         src_deploy_additional_component "network-slicing-engine" "Network Slicing Engine"
     fi

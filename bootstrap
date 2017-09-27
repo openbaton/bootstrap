@@ -245,6 +245,13 @@ if [ -n "${1+1}" ]; then
             main_deb release "${OS_DISTRIBUTION_CODENAME}"
             ;;
         "develop" )
+            # Check for OS: the develop installation works (i.e.: it has been tested) on Ubuntu 16.04 or later
+            if [ "${OS_DISTRIBUTION_ID}" = "Ubuntu" -a "${OS_DISTRIBUTION_RELEASE}" \< "16.04" ]; then
+                echo " * Sorry, If you want to install the source code through this bootstrap you need a machine with Ubuntu Xenial (16.04) or later."
+                echo " * In case you want to install the source code on a different OS you need to manually install Java 8 (if needed) and clone the repositories from ${OPENBATON_HOME_REPO_URL}"
+                exit 0
+            fi
+
             echo " * Installing the latest source code"
             main_src
             ;;
@@ -254,13 +261,13 @@ if [ -n "${1+1}" ]; then
             clean
             exit 0
             ;;
-	    "enable-persistence" )
-	        prereq
-	        install_mysql
-	        exit 0
-	        ;;
+        "enable-persistence" )
+            prereq
+            install_mysql
+            exit 0
+            ;;
         "configure-remote-rabbitmq" )
-	        prereq
+            prereq
             configure_remote_rabbitmq
             exit 0
             ;;
