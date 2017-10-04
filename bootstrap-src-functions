@@ -564,7 +564,7 @@ src_bootstrap () {
     src_prereq
 
     #
-    # Arguments of "src_checkout_nfvo": oldest_nfvo_version_supported(with this bootstrap) oldest_nfvo_version_for_trusty nfvo_version
+    # Arguments of "src_checkout_nfvo": oldest_nfvo_version_supported(with this bootstrap) nfvo_version
     #
     src_checkout_nfvo "3.2.0" "${openbaton_nfvo_version}"
 
