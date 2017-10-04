@@ -561,15 +561,6 @@ src_configure_fms () {
 ##############
 
 src_bootstrap () {
-    ## Check for OS: the develop installation works (i.e.: it has been tested) on Ubuntu 16.04 or later
-    #if [ "${OS_DISTRIBUTION_ID}" = "Ubuntu" -a "${OS_DISTRIBUTION_RELEASE}" \< "16.04" ]; then
-    #    echo " * ERROR:"
-    #    echo " * If you want to install the source code through this bootstrap you need a machine with Ubuntu Xenial (16.04) or later."
-    #    echo " * In case you want to install the source code on a different OS you need to manually install Java 8 (if needed) and clone the repositories from ${OPENBATON_HOME_REPO_URL}"
-    #    echo ""
-    #    exit 0
-    #fi
-
     src_prereq
 
     #
