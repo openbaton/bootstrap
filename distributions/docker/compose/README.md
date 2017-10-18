@@ -62,6 +62,12 @@ Removing compose_nfvo_1 ... done
 Removing compose_rabbitmq_broker_1 ... done
 Removing network compose_default
 ```
+
+To restart only a single service, e.g. after changing ENV variables of the openstackplugin in the compose file:
+```bash
+$ docker-compose -f min-compose.yml up -d --no-deps plugin-vimdriver-openstack-4j
+Recreating compose_plugin-vimdriver-openstack-4j_1
+```
 ## Available scenarios
 - min-compose: Containing NFVO, vnfm-generic, vnfm-dummy-amqp, test- and openstack-plugin, MySQL, RabbitMQ
 - min_nomysql-compose: As above, but without MySQL but rather the in-memory database
