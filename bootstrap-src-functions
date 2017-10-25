@@ -25,9 +25,6 @@ OPENBATON_NFVO_DIR="${OPENBATON_BASE_DIR}/nfvo"
 OPENBATON_PLUGINS_DIR="${OPENBATON_NFVO_DIR}/plugins"
 OPENBATON_PLUGINS_VIMDRIVERS_DIR="${OPENBATON_PLUGINS_DIR}/vim-drivers"
 
-OPENBATON_SRC_NFVO_CONFIG_FILE_NAME="openbaton.properties"
-OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE="${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_SRC_NFVO_CONFIG_FILE_NAME}"
-
 OPENBATON_SRC_INTERNAL_PLUGIN_CONF_FILE="src/main/resources/plugin.conf.properties"
 
 RABBITMQ_BROKER_IP_DEFAULT=localhost
@@ -67,10 +64,10 @@ src_configure_rabbitmq_for_nfvo () {
                 export rabbitmq_admin_password=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
 
                 # Set the rabbitmq 'admin' password if different from the default one which is 'openbaton'
-                export OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE=${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}
+                export OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE=${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}
                 log_success_msg "Setting new 'admin' password: ${rabbitmq_admin_password}"
-                log_warning_msg "The 'admin' password has been randomly generated and you can find it in the '${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}' properties file as the value of the 'spring.rabbitmq.password' property"
-                $_ex 'sed -i "s|spring.rabbitmq.password\s*=\s*.*|spring.rabbitmq.password=${rabbitmq_admin_password}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
+                log_warning_msg "The 'admin' password has been randomly generated and you can find it in the '${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}' properties file as the value of the 'spring.rabbitmq.password' property"
+                $_ex 'sed -i "s|spring.rabbitmq.password\s*=\s*.*|spring.rabbitmq.password=${rabbitmq_admin_password}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
             else
                 export rabbitmq_admin_password="openbaton"
             fi
@@ -92,18 +89,18 @@ src_configure_rabbitmq_for_nfvo () {
             read -p " * Enter the rabbitmq management port [15672]: " rabbitmq_management_port
         fi
 
-        export OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE=${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}
+        export OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE=${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}
 
         # Set the rabbitmq broker ip
         export rabbitmq_broker_ip=${rabbitmq_broker_ip:-$RABBITMQ_BROKER_IP_DEFAULT}
         export rabbitmq_broker_ip=${rabbitmq_broker_ip:-$RABBITMQ_BROKER_IP_DEFAULT}
         echo " * Setting new broker IP: ${rabbitmq_broker_ip}"
-        $_ex 'sed -i "s|nfvo.rabbit.brokerIp\s*=\s*localhost|nfvo.rabbit.brokerIp=${rabbitmq_broker_ip}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
+        $_ex 'sed -i "s|nfvo.rabbit.brokerIp\s*=\s*localhost|nfvo.rabbit.brokerIp=${rabbitmq_broker_ip}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
 
         # Set the rabbitmq management port
         export rabbitmq_management_port=${rabbitmq_management_port:-$RABBITMQ_MANAGEMENT_PORT_DEFAULT}
         echo " * Setting new management port: ${rabbitmq_management_port}"
-        $_ex 'sed -i "s|nfvo.rabbit.management.port\s*=\s*15672|nfvo.rabbit.management.port=${rabbitmq_management_port}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
+        $_ex 'sed -i "s|nfvo.rabbit.management.port\s*=\s*15672|nfvo.rabbit.management.port=${rabbitmq_management_port}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
     fi
 }
 
@@ -145,7 +142,7 @@ src_configure_rabbitmq_for_vnfm_generic () {
        fi
 
        # Set the rabbitmq broker ip retrieving its value from the NFVO properties file
-       export rabbitmq_broker_ip=$(cat "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | grep "nfvo.rabbit.brokerIp" | head -1 | awk -F'=' '{ print $2}' | sed s/\ //g)
+       export rabbitmq_broker_ip=$(cat "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | grep "nfvo.rabbit.brokerIp" | head -1 | awk -F'=' '{ print $2}' | sed s/\ //g)
        log_success_msg "Setting new broker IP: ${rabbitmq_broker_ip}"
        $_ex 'sed -i "s|vnfm.rabbitmq.brokerIp\s*=\s*.*|vnfm.rabbitmq.brokerIp=${rabbitmq_broker_ip}|g" /etc/openbaton/${OPENBATON_VNFM_GENERIC_PROPERTIES_FILE_NAME}'
     fi
@@ -272,7 +269,7 @@ src_checkout_nfvo () {
     git submodule update
 
     $_ex 'rm -rf '"${OPENBATON_BASE_CONFIG_DIR}; mkdir -p ${OPENBATON_BASE_CONFIG_DIR}"
-    $_ex 'cp '"${OPENBATON_NFVO_DIR}/etc/openbaton.properties ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}"
+    $_ex 'cp '"${OPENBATON_NFVO_DIR}/main/src/main/resources/${OPENBATON_NFVO_CONFIG_FILE} ${OPENBATON_BASE_CONFIG_DIR}"
     $_ex 'cp '"${OPENBATON_NFVO_DIR}/etc/keystore.p12 ${OPENBATON_BASE_CONFIG_DIR}/keystore.p12"
 }
 
@@ -319,7 +316,7 @@ src_set_nfvo_admin_credentials () {
 
     # Set the openbaton admin password
     export openbaton_admin_password=${openbaton_admin_password:-$OPENBATON_ADMIN_PASSWORD_DEFAULT}
-    $_ex 'sed -i "s|nfvo.security.admin.password\s*=\s*openbaton|nfvo.security.admin.password=${openbaton_admin_password}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
+    $_ex 'sed -i "s|nfvo.security.admin.password\s*=\s*openbaton|nfvo.security.admin.password=${openbaton_admin_password}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
 }
 
 
@@ -437,7 +434,7 @@ src_deploy_additional_component () {
 
 src_ase_configure_rabbitmq () {
     # Set the RabbitMQ IP
-    ase_rabbitmq_broker_ip=$( awk '$0 ~ "nfvo.rabbit.brokerIp[[:space:]]*="' "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | awk -F'=' '{print $2}' )
+    ase_rabbitmq_broker_ip=$( awk '$0 ~ "nfvo.rabbit.brokerIp[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${ase_rabbitmq_broker_ip+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting RabbitMQ IP into Auto Scaling Engine: ${ase_rabbitmq_broker_ip}"
         export ase_rabbitmq_broker_ip=${ase_rabbitmq_broker_ip}
@@ -445,7 +442,7 @@ src_ase_configure_rabbitmq () {
     fi
 
     # Set the RabbitMQ Management port
-    ase_rabbitmq_management_port=$( awk '$0 ~ "nfvo.rabbit.management.port[[:space:]]*="' "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | awk -F'=' '{print $2}' )
+    ase_rabbitmq_management_port=$( awk '$0 ~ "nfvo.rabbit.management.port[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${ase_rabbitmq_management_port+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting RabbitMQ Management port into Auto Scaling Engine: ${ase_rabbitmq_management_port}"
         export ase_rabbitmq_management_port=${ase_rabbitmq_management_port}
@@ -455,7 +452,7 @@ src_ase_configure_rabbitmq () {
 
 src_ase_configure_nfvo_admin_credentials () {
     # Set the NFVO admin's password
-    ase_nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password[[:space:]]*="' "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | awk -F'=' '{print $2}' )
+    ase_nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${ase_nfvo_admin_password+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting NFVO admin's password into Auto Scaling Engine: ${ase_nfvo_admin_password}"
         export ase_nfvo_admin_password=${ase_nfvo_admin_password}
@@ -475,7 +472,7 @@ src_configure_ase () {
 
 src_fms_configure_rabbitmq () {
     # Set the RabbitMQ IP
-    rabbitmq_broker_ip=$( awk '$0 ~ "nfvo.rabbit.brokerIp[[:space:]]*="' "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | awk -F'=' '{print $2}' )
+    rabbitmq_broker_ip=$( awk '$0 ~ "nfvo.rabbit.brokerIp[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${rabbitmq_broker_ip+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting RabbitMQ IP into Fault Management System: ${rabbitmq_broker_ip}"
         export rabbitmq_broker_ip=${rabbitmq_broker_ip}
@@ -483,7 +480,7 @@ src_fms_configure_rabbitmq () {
     fi
 
     # Set the RabbitMQ Management port
-    rabbitmq_management_port=$( awk '$0 ~ "nfvo.rabbit.management.port[[:space:]]*="' "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | awk -F'=' '{print $2}' )
+    rabbitmq_management_port=$( awk '$0 ~ "nfvo.rabbit.management.port[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${rabbitmq_management_port+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting RabbitMQ Management port into Fault Management System: ${rabbitmq_management_port}"
         export rabbitmq_management_port=${rabbitmq_management_port}
@@ -504,7 +501,7 @@ src_fms_configure_nfvo () {
     export nfvo_admin_user="admin"
     $_ex 'sed -i "s|nfvo-usr\s*=*|nfvo-usr=${nfvo_admin_user}|g" ${OPENBATON_BASE_CONFIG_DIR}/openbaton-fms.properties'
 
-    nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password[[:space:]]*="' "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | awk -F'=' '{print $2}' )
+    nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${nfvo_admin_password+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting NFVO admin's password into Fault Management System: ${nfvo_admin_password}"
         export nfvo_admin_password=${nfvo_admin_password}
@@ -589,7 +586,7 @@ src_bootstrap () {
         src_deploy_plugin_vimdriver "openstack4j-plugin" "OpenStack VIM Driver Plugin"
     fi
 
-    enable_https "openbaton.properties"
+    enable_https
 
     src_deploy_nfvo
 
@@ -617,7 +614,7 @@ src_bootstrap () {
     # Fault Management System
     src_checkout_additional_component "${OPENBATON_FMS_REPO_URL}" "${OPENBATON_FMS_REPO_NAME}" "Fault Management System (FMS)" "etc/fms.properties" "openbaton-fms.properties" "${openbaton_fms}" "1.2.4" "${openbaton_fms_version}"
     if [ "${installed}" = "0" ]; then
-        create_service "fms" "openbaton-fms.properties" "openbaton.properties"
+        create_service "fms" "openbaton-fms.properties"
         src_configure_fms
         src_deploy_additional_component "fm-system" "Fault Management System (FMS)"
     fi
@@ -625,7 +622,7 @@ src_bootstrap () {
     # Auto Scaling Engine
     src_checkout_additional_component "${OPENBATON_ASE_REPO_URL}" "${OPENBATON_ASE_REPO_NAME}" "Auto Scaling Engine (ASE)" "etc/ase.properties" "ase.properties" "${openbaton_ase}" "1.2.2" "${openbaton_ase_version}"
     if [ "${installed}" = "0" ]; then
-        create_service "ase" "ase.properties" "openbaton.properties"
+        create_service "ase" "ase.properties"
         src_configure_ase
         src_deploy_additional_component "autoscaling-engine" "Auto Scaling Engine (ASE)"
     fi
@@ -633,7 +630,7 @@ src_bootstrap () {
     # Network Slicing Engine
     src_checkout_additional_component "${OPENBATON_NSE_REPO_URL}" "${OPENBATON_NSE_REPO_NAME}" "Network Slicing Engine (NSE)" "etc/nse.properties" "openbaton-nse.properties" "${openbaton_nse}" "1.1.2" "${openbaton_nse_version}"
     if [ "${installed}" = "0" ]; then
-        create_service "nse" "openbaton-nse.properties" "openbaton.properties"
+        create_service "nse" "openbaton-nse.properties"
         src_deploy_additional_component "network-slicing-engine" "Network Slicing Engine"
     fi
 

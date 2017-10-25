@@ -53,9 +53,10 @@ RABBITMQ_MANAGEMENT_PORT_DEFAULT=15672
 RABBITMQ_EMS_USER="openbaton-ems-user"
 
 OPENBATON_BASE_CONFIG_DIR="/etc/openbaton"
-OPENBATON_SOURCE_INSTALLATION_BASE_DIR=/opt/openbaton
+OPENBATON_SOURCE_INSTALLATION_BASE_DIR="/opt/openbaton"
 OPENBATON_NFVO_CONFIG_FILE="openbaton-nfvo.properties"
 OPENBATON_VNFM_GENERIC_PROPERTIES_FILE_NAME="openbaton-vnfm-generic.properties"
+OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE="${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_NFVO_CONFIG_FILE}"
 
 OPENBATON_PLUGIN_VIMDRIVER_TEST_DEFAULT=yes
 OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_DEFAULT=yes
@@ -116,7 +117,7 @@ compare_version_strings () {
 ##################
 
 enable_https () {
-    export properties_file_name=${1}
+    export OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE=${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}
 
     # In case of "noninteractive" FRONTEND the default value will remain valid (see in lines below)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
@@ -129,19 +130,19 @@ enable_https () {
         log_success_msg "Enabling HTTPS .."
 
         # server.port = 8443
-        $_ex 'sed -i "s|#\s*server.port\s*=\s*8443|server.port=8443|g" /etc/openbaton/${properties_file_name}'
+        $_ex 'sed -i "s|#\s*server.port\s*=\s*8443|server.port=8443|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
         # server.ssl.enabled = true
-        $_ex 'sed -i "s|#\s*server.ssl.enabled\s*=\s*true|server.ssl.enabled=true|g" /etc/openbaton/${properties_file_name}'
+        $_ex 'sed -i "s|#\s*server.ssl.enabled\s*=\s*true|server.ssl.enabled=true|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
         # server.ssl.key-store = /etc/openbaton/keystore.p12
-        $_ex 'sed -i "s|#\s*server.ssl.key-store\s*=\s*\/etc\/openbaton\/keystore.p12|server.ssl.key-store=\/etc\/openbaton\/keystore.p12|g" /etc/openbaton/${properties_file_name}'
+        $_ex 'sed -i "s|#\s*server.ssl.key-store\s*=\s*\/etc\/openbaton\/keystore.p12|server.ssl.key-store=\/etc\/openbaton\/keystore.p12|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
         # server.ssl.key-store-password = password
-        $_ex 'sed -i "s|#\s*server.ssl.key-store-password\s*=\s*password|server.ssl.key-store-password=password|g" /etc/openbaton/${properties_file_name}'
+        $_ex 'sed -i "s|#\s*server.ssl.key-store-password\s*=\s*password|server.ssl.key-store-password=password|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
         # server.ssl.keyStoreType = PKCS12
-        $_ex 'sed -i "s|#\s*server.ssl.keyStoreType\s*=\s*PKCS12|server.ssl.keyStoreType=PKCS12|g" /etc/openbaton/${properties_file_name}'
+        $_ex 'sed -i "s|#\s*server.ssl.keyStoreType\s*=\s*PKCS12|server.ssl.keyStoreType=PKCS12|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
         # server.ssl.keyAlias = tomcat
-        $_ex 'sed -i "s|#\s*server.ssl.keyAlias\s*=\s*tomcat|server.ssl.keyAlias=tomcat|g" /etc/openbaton/${properties_file_name}'
+        $_ex 'sed -i "s|#\s*server.ssl.keyAlias\s*=\s*tomcat|server.ssl.keyAlias=tomcat|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
         # nfvo.https = false
-        $_ex 'sed -i "s|#\s*nfvo.https\s*=\s*false|nfvo.https=true|g" /etc/openbaton/${properties_file_name}'
+        $_ex 'sed -i "s|#\s*nfvo.https\s*=\s*false|nfvo.https=true|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
     fi
 }
 
@@ -182,18 +183,18 @@ fix_jvm_delay_for_random_number_generation () {
 ###############
 
 configure_mysql () {
-    export properties_file_name=${1}
+    export OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE=${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}
 
     log_success_msg "Configuring MySQL for Open Baton .."
 
-    $_ex 'sed -i "s|spring.datasource.url\s*=\s*jdbc:hsqldb:file:\/tmp\/openbaton\/openbaton.hsdb|spring.datasource.url=jdbc:mysql:\/\/localhost:3306\/openbaton|g" /etc/openbaton/${properties_file_name}'
-    $_ex 'sed -i "s|spring.datasource.driver-class-name\s*=\s*org.hsqldb.jdbc.JDBCDriver|spring.datasource.driver-class-name=org.mariadb.jdbc.Driver|g" /etc/openbaton/${properties_file_name}'
-    $_ex 'sed -i "s|spring.jpa.database-platform\s*=\s*org.hibernate.dialect.HSQLDialect|spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect|g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s|spring.datasource.url\s*=\s*jdbc:hsqldb:file:\/tmp\/openbaton\/openbaton.hsdb|spring.datasource.url=jdbc:mysql:\/\/localhost:3306\/openbaton|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
+    $_ex 'sed -i "s|spring.datasource.driver-class-name\s*=\s*org.hsqldb.jdbc.JDBCDriver|spring.datasource.driver-class-name=org.mariadb.jdbc.Driver|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
+    $_ex 'sed -i "s|spring.jpa.database-platform\s*=\s*org.hibernate.dialect.HSQLDialect|spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
 
-    $_ex 'sed -i "s|spring.jpa.hibernate.ddl-auto\s*=\s*.*|spring.jpa.hibernate.ddl-auto=update|g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s|spring.jpa.hibernate.ddl-auto\s*=\s*.*|spring.jpa.hibernate.ddl-auto=update|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
 
-    $_ex 'sed -i "s|#\s*spring.datasource.validationQuery\s*=\s*SELECT 1|spring.datasource.validationQuery=SELECT 1|g" /etc/openbaton/${properties_file_name}'
-    $_ex 'sed -i "s|#\s*spring.datasource.testOnBorrow\s*=\s*true|spring.datasource.testOnBorrow=true|g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s|#\s*spring.datasource.validationQuery\s*=\s*SELECT 1|spring.datasource.validationQuery=SELECT 1|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
+    $_ex 'sed -i "s|#\s*spring.datasource.testOnBorrow\s*=\s*true|spring.datasource.testOnBorrow=true|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
 
     # Enable MySQL
 
@@ -214,11 +215,11 @@ configure_mysql () {
 
     # Set the mysql user
     export openbaton_nfvo_mysql_user=${openbaton_nfvo_mysql_user:-$OPENBATON_NFVO_MYSQL_USER_DEFAULT}
-    $_ex 'sed -i "s|spring.datasource.username\s*=\s*.*|spring.datasource.username=${openbaton_nfvo_mysql_user}|g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s|spring.datasource.username\s*=\s*.*|spring.datasource.username=${openbaton_nfvo_mysql_user}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
 
     # Set the mysql user's password
     export openbaton_nfvo_mysql_user_password=${openbaton_nfvo_mysql_user_password:-$OPENBATON_NFVO_MYSQL_USER_PASSWORD_DEFAULT}
-    $_ex 'sed -i "s|spring.datasource.password\s*=\s*.*|spring.datasource.password=${openbaton_nfvo_mysql_user_password}|g" /etc/openbaton/${properties_file_name}'
+    $_ex 'sed -i "s|spring.datasource.password\s*=\s*.*|spring.datasource.password=${openbaton_nfvo_mysql_user_password}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
 
     result=$(ps aux | grep -v 'grep' | grep 'mysql' | wc -l)
     if [ ${result} -le 0 ]; then
@@ -234,15 +235,6 @@ configure_mysql () {
 }
 
 install_mysql () {
-    # TODO: fix properties files' names in DEBIAN and SOURCE installation
-    if [ -f "${OPENBATON_BASE_CONFIG_DIR}/openbaton.properties" ]; then
-        properties_file_name="openbaton.properties"
-    elif [ -f "${OPENBATON_BASE_CONFIG_DIR}/openbaton-nfvo.properties" ]; then
-        properties_file_name="openbaton-nfvo.properties"
-    else
-        log_failure_msg "Open Baton properties file not found in properties standard directory ('${OPENBATON_BASE_CONFIG_DIR}'). Cannot enable persistence."
-    fi
-
     mysql=${mysql:-$MYSQL_DEFAULT}
 
     # In case of "noninteractive" FRONTEND the default value will remain valid (mysql: yes)
@@ -264,7 +256,7 @@ install_mysql () {
         echo " * Enabling MySQL Persistence"
         $_ex 'apt-get update'
         $_ex 'apt-get install -y mysql-server'
-        configure_mysql ${properties_file_name}
+        configure_mysql 
     else
         echo " * NOT Enabling MySQL Persistence"
     fi
@@ -291,20 +283,12 @@ retrieve_rabbitmqadmin_cli () {
 }
 
 configure_remote_rabbitmq () {
+    export OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE=${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}
+
     log_success_msg "Configuring remote RabbitMQ for Open Baton"
 
     read -p " * Please provide the Open Baton NFVO version for which you want to configure the RabbitMQ Broker? (version format: 1) X.Y.Z for specific debian release/source tag, 2) 'latest' if the develop source code branch is installed) [latest]: " openbaton_nfvo_version
     openbaton_nfvo_version=${openbaton_nfvo_version:-$OPENBATON_NFVO_VERSION_DEFAULT}
-
-    # Temporal fix until the NFVO properties file name is consistent
-    if [ -f "/etc/openbaton/openbaton-nfvo.properties" ]; then
-        export nfvo_properties_file_name="openbaton-nfvo.properties"
-    elif [ -f "/etc/openbaton/openbaton.properties" ]; then
-        export nfvo_properties_file_name="openbaton.properties"
-    else
-        log_failure_msg "The Open Baton seems to be not installed. To configure rabbit you first need to install the Open Baton NFVO on this local machine."
-        exit 1
-    fi
 
     read -p " * Please provide the IP of the remote RabbitMQ Broker? [localhost]: " rabbitmq_broker_ip
     read -p " * Please provide the 'management port' of the remote RabbitMQ Broker? [15672]: " rabbitmq_management_port
@@ -340,20 +324,20 @@ configure_remote_rabbitmq () {
     # Sets the rabbitmq 'admin' password
     export rabbitmq_admin_password=${rabbitmq_admin_password}
     log_success_msg "Setting new 'admin' password: ${rabbitmq_admin_password}"
-    log_warning_msg "You can find the 'admin' password in the '/etc/openbaton/${nfvo_properties_file_name}' properties file as the value of the 'spring.rabbitmq.password' property"
-    $_ex 'sed -i "s|spring.rabbitmq.password\s*=\s*.*|spring.rabbitmq.password=${rabbitmq_admin_password}|g" /etc/openbaton/${nfvo_properties_file_name}'
+    log_warning_msg "You can find the 'admin' password in the '${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}' properties file as the value of the 'spring.rabbitmq.password' property"
+    $_ex 'sed -i "s|spring.rabbitmq.password\s*=\s*.*|spring.rabbitmq.password=${rabbitmq_admin_password}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
 
     # Sets the rabbitmq broker ip
     rabbitmq_broker_ip=${rabbitmq_broker_ip:-$RABBITMQ_BROKER_IP_DEFAULT}
     export rabbitmq_broker_ip=${rabbitmq_broker_ip}
     log_success_msg "Setting new broker IP: ${rabbitmq_broker_ip}"
-    $_ex 'sed -i "s|nfvo.rabbit.brokerIp\s*=\s*.*|nfvo.rabbit.brokerIp=${rabbitmq_broker_ip}|g" /etc/openbaton/${nfvo_properties_file_name}'
+    $_ex 'sed -i "s|nfvo.rabbit.brokerIp\s*=\s*.*|nfvo.rabbit.brokerIp=${rabbitmq_broker_ip}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
 
     # Sets the rabbitmq management port
     rabbitmq_management_port=${rabbitmq_management_port:-$RABBITMQ_MANAGEMENT_PORT_DEFAULT}
     export rabbitmq_management_port=${rabbitmq_management_port}
     log_success_msg "Setting new management port: ${rabbitmq_management_port}"
-    $_ex 'sed -i "s|nfvo.rabbit.management.port\s*=\s*15672|nfvo.rabbit.management.port=${rabbitmq_management_port}|g" /etc/openbaton/${nfvo_properties_file_name}'
+    $_ex 'sed -i "s|nfvo.rabbit.management.port\s*=\s*15672|nfvo.rabbit.management.port=${rabbitmq_management_port}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
 
     #### Generic VNFM configuration
     export OPENBATON_VNFM_GENERIC_PROPERTIES_FILE_NAME=${OPENBATON_VNFM_GENERIC_PROPERTIES_FILE_NAME}
@@ -398,14 +382,14 @@ configure_remote_rabbitmq () {
 create_service () {
     export service_name="${1}"
     export service_properties_file_name="${2}"
-    export nfvo_properties_file_name="${3}"
+    export OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE=${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}
 
     echo "Creating new Service '${service_name}'"
     echo "{ \"name\":\"${service_name}\", \"roles\":[\"default\"] }" > /tmp/create_service_body
 
     export nfvo_user="admin"
-    export nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password[[:space:]]*="' "/etc/openbaton/${nfvo_properties_file_name}" | awk -F'=' '{print $2}' )
-    export nfvo_ip=$( awk '$0 ~ "nfvo.rabbit.brokerIp[[:space:]]*="' "/etc/openbaton/${nfvo_properties_file_name}" | awk -F'=' '{print $2}' )
+    export nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
+    export nfvo_ip=$( awk '$0 ~ "nfvo.rabbit.brokerIp[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
     export nfvo_port="8080"
     log_success_msg "NFVO_USER: ${nfvo_user}"
     log_success_msg "NFVO_ADMIN_PASSWORD: ****"
@@ -470,28 +454,22 @@ clean_db () {
 }
 
 clean () {
+    export OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE=${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}
+
     mysql=$( dpkg -l | grep "mysql-client" | wc -l)
 
-    # TODO: fix properties files' names in DEBIAN and SOURCE installation
     # Retrieve mysql credentials and rabbitmq user, ip, and management port
-    if [ -f "/etc/openbaton/openbaton-nfvo.properties" ]; then
-        nfvo_mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username=") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
+    if [ -f "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" ]; then
+        nfvo_mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username=") { print $2 }}' ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE} )
         if [ -f "/etc/openbaton/openbaton-fms.properties" ]; then
             fms_mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username=") { print $2 }}' /etc/openbaton/openbaton-fms.properties )
         fi
 
-        rabbitmq_user=$( awk -F'=' '{ if($0 ~ "spring.rabbitmq.username=") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
-        rabbitmq_ip=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.brokerIp=") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
-        rabbitmq_management_port=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.management.port=") { print $2 }}' /etc/openbaton/openbaton-nfvo.properties )
-    elif [ -f "/etc/openbaton/openbaton.properties" ]; then
-        nfvo_mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username=") { print $2 }}' /etc/openbaton/openbaton.properties )
-        if [ -f "/etc/openbaton/openbaton-fms.properties" ]; then
-            fms_mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username=") { print $2 }}' /etc/openbaton/openbaton-fms.properties )
-        fi
-
-        rabbitmq_user=$( awk -F'=' '{ if($0 ~ "spring.rabbitmq.username=") { print $2 }}' /etc/openbaton/openbaton.properties )
-        rabbitmq_ip=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.brokerIp=") { print $2 }}' /etc/openbaton/openbaton.properties )
-        rabbitmq_management_port=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.management.port=") { print $2 }}' /etc/openbaton/openbaton.properties )
+        rabbitmq_user=$( awk -F'=' '{ if($0 ~ "spring.rabbitmq.username=") { print $2 }}' ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE} )
+        rabbitmq_ip=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.brokerIp=") { print $2 }}' ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE} )
+        rabbitmq_management_port=$( awk -F'=' '{ if($0 ~ "nfvo.rabbit.management.port=") { print $2 }}' ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE} )
+    else
+        log_failure_msg "NFVO properties file '${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}' not found: impossible to complete the installation cleaning"
     fi
 
     # Clean Open Baton binaries and properties files
