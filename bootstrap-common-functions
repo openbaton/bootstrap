@@ -54,9 +54,11 @@ RABBITMQ_EMS_USER="openbaton-ems-user"
 
 OPENBATON_BASE_CONFIG_DIR="/etc/openbaton"
 OPENBATON_SOURCE_INSTALLATION_BASE_DIR="/opt/openbaton"
+
 OPENBATON_NFVO_CONFIG_FILE="openbaton-nfvo.properties"
-OPENBATON_VNFM_GENERIC_PROPERTIES_FILE_NAME="openbaton-vnfm-generic.properties"
 OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE="${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_NFVO_CONFIG_FILE}"
+OPENBATON_VNFM_GENERIC_CONFIG_FILE="openbaton-vnfm-generic.properties"
+OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE="${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_VNFM_GENERIC_CONFIG_FILE}"
 
 OPENBATON_PLUGIN_VIMDRIVER_TEST_DEFAULT=yes
 OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_DEFAULT=yes
@@ -340,7 +342,7 @@ configure_remote_rabbitmq () {
     $_ex 'sed -i "s|nfvo.rabbit.management.port\s*=\s*15672|nfvo.rabbit.management.port=${rabbitmq_management_port}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
 
     #### Generic VNFM configuration
-    export OPENBATON_VNFM_GENERIC_PROPERTIES_FILE_NAME=${OPENBATON_VNFM_GENERIC_PROPERTIES_FILE_NAME}
+    export OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE=${OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE}
     # Check the NFVO version being installed: the new RabbitMQ configuration is required only from version >= 4.0.1
     compare_version_strings "4.0.0" "${openbaton_nfvo_version}"
     result=$?
@@ -354,24 +356,24 @@ configure_remote_rabbitmq () {
         # Set the rabbitmq 'RABBITMQ_EMS_USER' username
         export RABBITMQ_EMS_USER=${RABBITMQ_EMS_USER}
         log_success_msg "Setting the username for the RabbitMQ EMS user: ${RABBITMQ_EMS_USER}"
-        $_ex 'sed -i "s|vnfm.ems.username\s*=\s*.*|vnfm.ems.username=${RABBITMQ_EMS_USER}|g" /etc/openbaton/${OPENBATON_VNFM_GENERIC_PROPERTIES_FILE_NAME}'
+        $_ex 'sed -i "s|vnfm.ems.username\s*=\s*.*|vnfm.ems.username=${RABBITMQ_EMS_USER}|g" ${OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE}'
 
         # Set the rabbitmq 'RABBITMQ_EMS_USER' password
         log_success_msg "Setting new '${RABBITMQ_EMS_USER}' password: ${rabbitmq_ems_user_password}"
-        log_warning_msg "The '${RABBITMQ_EMS_USER}' password has been randomly generated and you can find it in the '/etc/openbaton/${OPENBATON_VNFM_GENERIC_PROPERTIES_FILE_NAME}' properties file as the value of the 'spring.rabbitmq.password' property"
-        $_ex 'sed -i "s|vnfm.ems.password\s*=\s*.*|vnfm.ems.password=${rabbitmq_ems_user_password}|g" /etc/openbaton/${OPENBATON_VNFM_GENERIC_PROPERTIES_FILE_NAME}'
+        log_warning_msg "The '${RABBITMQ_EMS_USER}' password has been randomly generated and you can find it in the '${OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE}' properties file as the value of the 'spring.rabbitmq.password' property"
+        $_ex 'sed -i "s|vnfm.ems.password\s*=\s*.*|vnfm.ems.password=${rabbitmq_ems_user_password}|g" ${OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE}'
     else
         # Sets the rabbitmq 'admin' password
         export rabbitmq_admin_password=${rabbitmq_admin_password}
         log_success_msg "Setting new 'admin' password: ${rabbitmq_admin_password}"
-        log_warning_msg "You can find the 'admin' password in the '/etc/openbaton/${OPENBATON_VNFM_GENERIC_PROPERTIES_FILE_NAME}' properties file as the value of the 'spring.rabbitmq.password' property"
-        $_ex 'sed -i "s|spring.rabbitmq.password\s*=\s*.*|spring.rabbitmq.password=${rabbitmq_admin_password}|g" /etc/openbaton/${OPENBATON_VNFM_GENERIC_PROPERTIES_FILE_NAME}'
+        log_warning_msg "You can find the 'admin' password in the '${OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE}' properties file as the value of the 'spring.rabbitmq.password' property"
+        $_ex 'sed -i "s|spring.rabbitmq.password\s*=\s*.*|spring.rabbitmq.password=${rabbitmq_admin_password}|g" ${OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE}'
     fi
 
     #### Generic VNFM configuration
     # Set the rabbitmq broker ip for the Generic VNFM retrieving its value from the NFVO properties file
     log_success_msg "Setting new broker IP: ${rabbitmq_broker_ip}"
-    $_ex 'sed -i "s|vnfm.rabbitmq.brokerIp\s*=\s*.*|vnfm.rabbitmq.brokerIp=${rabbitmq_broker_ip}|g" /etc/openbaton/${OPENBATON_VNFM_GENERIC_PROPERTIES_FILE_NAME}'
+    $_ex 'sed -i "s|vnfm.rabbitmq.brokerIp\s*=\s*.*|vnfm.rabbitmq.brokerIp=${rabbitmq_broker_ip}|g" ${OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE}'
 }
 
 

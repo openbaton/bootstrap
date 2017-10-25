@@ -106,7 +106,7 @@ src_configure_rabbitmq_for_nfvo () {
 
 src_configure_rabbitmq_for_vnfm_generic () {
     openbaton_vnfm_generic_version="${1}"
-    export OPENBATON_VNFM_GENERIC_PROPERTIES_FILE_NAME=${OPENBATON_VNFM_GENERIC_PROPERTIES_FILE_NAME}
+    export OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE=${OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE}
 
     log_success_msg "Configuring RabbitMQ for the Open Baton Generic VNFM"
     result=$(ps aux | grep -v 'grep' | grep 'rabbitmq' | wc -l)
@@ -131,20 +131,20 @@ src_configure_rabbitmq_for_vnfm_generic () {
 
                 # Set the rabbitmq 'RABBITMQ_EMS_USER' username
                 log_success_msg "Setting the username for the RabbitMQ EMS user: ${RABBITMQ_EMS_USER}"
-                $_ex 'sed -i "s|vnfm.ems.username\s*=\s*.*|vnfm.ems.username=${RABBITMQ_EMS_USER}|g" /etc/openbaton/${OPENBATON_VNFM_GENERIC_PROPERTIES_FILE_NAME}'
+                $_ex 'sed -i "s|vnfm.ems.username\s*=\s*.*|vnfm.ems.username=${RABBITMQ_EMS_USER}|g" ${OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE}'
 
                 # Set the rabbitmq 'RABBITMQ_EMS_USER' password
                 export rabbitmq_ems_user_password=${rabbitmq_ems_user_password}
                 log_success_msg "Setting new '${RABBITMQ_EMS_USER}' password: ${rabbitmq_ems_user_password}"
-                log_warning_msg "The '${RABBITMQ_EMS_USER}' password has been randomly generated and you can find it in the '/etc/openbaton/${OPENBATON_VNFM_GENERIC_PROPERTIES_FILE_NAME}' properties file as the value of the 'spring.rabbitmq.password' property"
-                $_ex 'sed -i "s|vnfm.ems.password\s*=\s*.*|vnfm.ems.password=${rabbitmq_ems_user_password}|g" /etc/openbaton/${OPENBATON_VNFM_GENERIC_PROPERTIES_FILE_NAME}'
+                log_warning_msg "The '${RABBITMQ_EMS_USER}' password has been randomly generated and you can find it in the '${OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE}' properties file as the value of the 'spring.rabbitmq.password' property"
+                $_ex 'sed -i "s|vnfm.ems.password\s*=\s*.*|vnfm.ems.password=${rabbitmq_ems_user_password}|g" ${OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE}'
             fi
        fi
 
        # Set the rabbitmq broker ip retrieving its value from the NFVO properties file
        export rabbitmq_broker_ip=$(cat "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | grep "nfvo.rabbit.brokerIp" | head -1 | awk -F'=' '{ print $2}' | sed s/\ //g)
        log_success_msg "Setting new broker IP: ${rabbitmq_broker_ip}"
-       $_ex 'sed -i "s|vnfm.rabbitmq.brokerIp\s*=\s*.*|vnfm.rabbitmq.brokerIp=${rabbitmq_broker_ip}|g" /etc/openbaton/${OPENBATON_VNFM_GENERIC_PROPERTIES_FILE_NAME}'
+       $_ex 'sed -i "s|vnfm.rabbitmq.brokerIp\s*=\s*.*|vnfm.rabbitmq.brokerIp=${rabbitmq_broker_ip}|g" ${OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE}'
     fi
 }
 
