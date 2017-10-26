@@ -613,7 +613,7 @@ src_bootstrap () {
     export OPENBATON_BASE_CONFIG_DIR=${OPENBATON_BASE_CONFIG_DIR}
    
     # Generic VNFM
-    src_checkout_additional_component "${OPENBATON_VNFM_GENERIC_REPO_URL}" "${OPENBATON_VNFM_GENERIC_REPO_NAME}" "Generic VNFM" "src/main/resources/application.properties" "openbaton-vnfm-generic.properties" ${openbaton_vnfm_generic} "3.2.0" "${openbaton_vnfm_generic_version}"
+    src_checkout_additional_component "${OPENBATON_VNFM_GENERIC_REPO_URL}" "${OPENBATON_VNFM_GENERIC_REPO_NAME}" "Generic VNFM" "src/main/resources/${OPENBATON_VNFM_GENERIC_CONFIG_FILE}" "${OPENBATON_VNFM_GENERIC_CONFIG_FILE}" "${openbaton_vnfm_generic}" "3.2.0" "${openbaton_vnfm_generic_version}"
     if [ "${installed}" = "0" ]; then
         src_configure_rabbitmq_for_vnfm_generic "${openbaton_vnfm_generic_version}"
         src_deploy_additional_component "generic-vnfm" "Generic VNFM"
