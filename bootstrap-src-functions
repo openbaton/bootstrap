@@ -630,9 +630,9 @@ src_bootstrap () {
     fi
 
     # Network Slicing Engine
-    src_checkout_additional_component "${OPENBATON_NSE_REPO_URL}" "${OPENBATON_NSE_REPO_NAME}" "Network Slicing Engine (NSE)" "etc/nse.properties" "openbaton-nse.properties" "${openbaton_nse}" "1.1.2" "${openbaton_nse_version}"
+    src_checkout_additional_component "${OPENBATON_NSE_REPO_URL}" "${OPENBATON_NSE_REPO_NAME}" "Network Slicing Engine (NSE)" "src/main/resources/${OPENBATON_NSE_CONFIG_FILE}" "${OPENBATON_NSE_CONFIG_FILE}" "${openbaton_nse}" "1.1.2" "${openbaton_nse_version}"
     if [ "${installed}" = "0" ]; then
-        create_service "nse" "openbaton-nse.properties"
+        create_service "nse" "${OPENBATON_NSE_CONFIG_FILE_ABSOLUTE}"
         src_deploy_additional_component "network-slicing-engine" "Network Slicing Engine"
     fi
 
