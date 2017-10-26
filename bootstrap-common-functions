@@ -59,6 +59,8 @@ OPENBATON_NFVO_CONFIG_FILE="openbaton-nfvo.properties"
 OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE="${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_NFVO_CONFIG_FILE}"
 OPENBATON_VNFM_GENERIC_CONFIG_FILE="openbaton-vnfm-generic.properties"
 OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE="${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_VNFM_GENERIC_CONFIG_FILE}"
+OPENBATON_ASE_CONFIG_FILE="openbaton-ase.properties"
+OPENBATON_ASE_CONFIG_FILE_ABSOLUTE="${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_ASE_CONFIG_FILE}"
 
 OPENBATON_PLUGIN_VIMDRIVER_TEST_DEFAULT=yes
 OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_DEFAULT=yes
@@ -383,7 +385,7 @@ configure_remote_rabbitmq () {
 
 create_service () {
     export service_name="${1}"
-    export service_properties_file_name="${2}"
+    export service_properties_file_name_absolute="${2}"
     export OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE=${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}
 
     echo "Creating new Service '${service_name}'"
@@ -407,7 +409,7 @@ create_service () {
 
     # Set service key in properties file
     log_success_msg "Setting Service key: ${service_key}"
-    $_ex 'sed -i "s|${service_name}\.service\.key\s*=.*|${service_name}\.service\.key=${service_key}|g" ${OPENBATON_BASE_CONFIG_DIR}/${service_properties_file_name}'
+    $_ex 'sed -i "s|${service_name}\.service\.key\s*=.*|${service_name}\.service\.key=${service_key}|g" ${service_properties_file_name_absolute}'
 }
 
 

@@ -433,12 +433,14 @@ src_deploy_additional_component () {
 #############
 
 src_ase_configure_rabbitmq () {
+    export OPENBATON_ASE_CONFIG_FILE_ABSOLUTE=${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}
+
     # Set the RabbitMQ IP
     ase_rabbitmq_broker_ip=$( awk '$0 ~ "nfvo.rabbit.brokerIp[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${ase_rabbitmq_broker_ip+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting RabbitMQ IP into Auto Scaling Engine: ${ase_rabbitmq_broker_ip}"
         export ase_rabbitmq_broker_ip=${ase_rabbitmq_broker_ip}
-        $_ex 'sed -i "s|autoscaling.rabbitmq.brokerIp\s*=\s*localhost|autoscaling.rabbitmq.brokerIp=${ase_rabbitmq_broker_ip}|g" ${OPENBATON_BASE_CONFIG_DIR}/ase.properties'
+        $_ex 'sed -i "s|autoscaling.rabbitmq.brokerIp\s*=\s*localhost|autoscaling.rabbitmq.brokerIp=${ase_rabbitmq_broker_ip}|g" ${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}'
     fi
 
     # Set the RabbitMQ Management port
@@ -446,7 +448,7 @@ src_ase_configure_rabbitmq () {
     if [ ! -z ${ase_rabbitmq_management_port+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting RabbitMQ Management port into Auto Scaling Engine: ${ase_rabbitmq_management_port}"
         export ase_rabbitmq_management_port=${ase_rabbitmq_management_port}
-        $_ex 'sed -i "s|autoscaling.rabbitmq.management.port\s*=\s*15672|autoscaling.rabbitmq.management.port=${ase_rabbitmq_management_port}|g" ${OPENBATON_BASE_CONFIG_DIR}/ase.properties'
+        $_ex 'sed -i "s|autoscaling.rabbitmq.management.port\s*=\s*15672|autoscaling.rabbitmq.management.port=${ase_rabbitmq_management_port}|g" ${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}'
     fi
 }
 
@@ -456,7 +458,7 @@ src_ase_configure_nfvo_admin_credentials () {
     if [ ! -z ${ase_nfvo_admin_password+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting NFVO admin's password into Auto Scaling Engine: ${ase_nfvo_admin_password}"
         export ase_nfvo_admin_password=${ase_nfvo_admin_password}
-        $_ex 'sed -i "s|nfvo.password\s*=\s*openbaton|nfvo.password=${ase_nfvo_admin_password}|g" ${OPENBATON_BASE_CONFIG_DIR}/ase.properties'
+        $_ex 'sed -i "s|nfvo.password\s*=\s*openbaton|nfvo.password=${ase_nfvo_admin_password}|g" ${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}'
     fi
 }
 
@@ -620,9 +622,9 @@ src_bootstrap () {
     fi
 
     # Auto Scaling Engine
-    src_checkout_additional_component "${OPENBATON_ASE_REPO_URL}" "${OPENBATON_ASE_REPO_NAME}" "Auto Scaling Engine (ASE)" "etc/ase.properties" "ase.properties" "${openbaton_ase}" "1.2.2" "${openbaton_ase_version}"
+    src_checkout_additional_component "${OPENBATON_ASE_REPO_URL}" "${OPENBATON_ASE_REPO_NAME}" "Auto Scaling Engine (ASE)" "src/main/resources/${OPENBATON_ASE_CONFIG_FILE}" "${OPENBATON_ASE_CONFIG_FILE}" "${openbaton_ase}" "1.2.2" "${openbaton_ase_version}"
     if [ "${installed}" = "0" ]; then
-        create_service "ase" "ase.properties"
+        create_service "ase" "${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}"
         src_configure_ase
         src_deploy_additional_component "autoscaling-engine" "Auto Scaling Engine (ASE)"
     fi
