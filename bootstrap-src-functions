@@ -473,12 +473,14 @@ src_configure_ase () {
 #############
 
 src_fms_configure_rabbitmq () {
+    export OPENBATON_FMS_CONFIG_FILE_ABSOLUTE=${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}
+
     # Set the RabbitMQ IP
     rabbitmq_broker_ip=$( awk '$0 ~ "nfvo.rabbit.brokerIp[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${rabbitmq_broker_ip+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting RabbitMQ IP into Fault Management System: ${rabbitmq_broker_ip}"
         export rabbitmq_broker_ip=${rabbitmq_broker_ip}
-        $_ex 'sed -i "s|spring.rabbitmq.host\s*=.*|spring.rabbitmq.host=${rabbitmq_broker_ip}|g" ${OPENBATON_BASE_CONFIG_DIR}/openbaton-fms.properties'
+        $_ex 'sed -i "s|spring.rabbitmq.host\s*=.*|spring.rabbitmq.host=${rabbitmq_broker_ip}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
     fi
 
     # Set the RabbitMQ Management port
@@ -486,32 +488,36 @@ src_fms_configure_rabbitmq () {
     if [ ! -z ${rabbitmq_management_port+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting RabbitMQ Management port into Fault Management System: ${rabbitmq_management_port}"
         export rabbitmq_management_port=${rabbitmq_management_port}
-        $_ex 'sed -i "s|spring.rabbitmq.port\s*=\s*15672|spring.rabbitmq.port=${rabbitmq_management_port}|g" ${OPENBATON_BASE_CONFIG_DIR}/openbaton-fms.properties'
+        $_ex 'sed -i "s|spring.rabbitmq.port\s*=\s*15672|spring.rabbitmq.port=${rabbitmq_management_port}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
     fi
 }
 
 src_fms_configure_nfvo () {
+    export OPENBATON_FMS_CONFIG_FILE_ABSOLUTE=${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}
+
     # In case of "noninteractive" FRONTEND the default value will remain valid (openbaton_nfvo_ip: localhost)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
        read -p " * Please, provide the IP of the NFVO [localhost]: " openbaton_nfvo_ip
     fi
     # Set the NFVO IP
     export openbaton_nfvo_ip=${openbaton_nfvo_ip:-$OPENBATON_NFVO_IP_DEFAULT}
-    $_ex 'sed -i "s|nfvo.ip\s*=*|nfvo.ip=${openbaton_nfvo_ip}|g" ${OPENBATON_BASE_CONFIG_DIR}/openbaton-fms.properties'
+    $_ex 'sed -i "s|nfvo.ip\s*=*|nfvo.ip=${openbaton_nfvo_ip}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
 
     # Set the NFVO credentials
     export nfvo_admin_user="admin"
-    $_ex 'sed -i "s|nfvo-usr\s*=*|nfvo-usr=${nfvo_admin_user}|g" ${OPENBATON_BASE_CONFIG_DIR}/openbaton-fms.properties'
+    $_ex 'sed -i "s|nfvo-usr\s*=*|nfvo-usr=${nfvo_admin_user}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
 
     nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${nfvo_admin_password+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting NFVO admin's password into Fault Management System: ${nfvo_admin_password}"
         export nfvo_admin_password=${nfvo_admin_password}
-        $_ex 'sed -i "s|nfvo-pwd\s*=.*|nfvo-pwd=${nfvo_admin_password}|g" ${OPENBATON_BASE_CONFIG_DIR}/openbaton-fms.properties'
+        $_ex 'sed -i "s|nfvo-pwd\s*=.*|nfvo-pwd=${nfvo_admin_password}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
     fi
 }
 
 src_fms_configure_mysql () {
+    export OPENBATON_FMS_CONFIG_FILE_ABSOLUTE=${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}
+
     # In case of "noninteractive" FRONTEND the default value will remain valid (openbaton_fms_mysql_user: fmsuser ; openbaton_fms_mysql_user_password: changeme)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         read -p " * Please, type the name of the MySQL user you would like the Open Baton FMS to use [fmsuser]: " openbaton_fms_mysql_user
@@ -529,11 +535,11 @@ src_fms_configure_mysql () {
 
     # Set the MySQL user
     export openbaton_fms_mysql_user=${openbaton_fms_mysql_user:-$OPENBATON_FMS_MYSQL_USER_DEFAULT}
-    $_ex 'sed -i "s|spring.datasource.username\s*=.*|spring.datasource.username=${openbaton_fms_mysql_user}|g" ${OPENBATON_BASE_CONFIG_DIR}/openbaton-fms.properties'
+    $_ex 'sed -i "s|spring.datasource.username\s*=.*|spring.datasource.username=${openbaton_fms_mysql_user}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
 
     # Set the MySQL user's password
     export openbaton_fms_mysql_user_password=${openbaton_fms_mysql_user_password:-$OPENBATON_FMS_MYSQL_USER_PASSWORD_DEFAULT}
-    $_ex 'sed -i "s|spring.datasource.password\s*=.*|spring.datasource.password=${openbaton_fms_mysql_user_password}|g" ${OPENBATON_BASE_CONFIG_DIR}/openbaton-fms.properties'
+    $_ex 'sed -i "s|spring.datasource.password\s*=.*|spring.datasource.password=${openbaton_fms_mysql_user_password}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
 
     result=$(ps aux | grep -v 'grep' | grep 'mysql' | wc -l)
     if [ ${result} -le 0 ]; then
@@ -614,9 +620,9 @@ src_bootstrap () {
     fi
 
     # Fault Management System
-    src_checkout_additional_component "${OPENBATON_FMS_REPO_URL}" "${OPENBATON_FMS_REPO_NAME}" "Fault Management System (FMS)" "etc/fms.properties" "openbaton-fms.properties" "${openbaton_fms}" "1.2.4" "${openbaton_fms_version}"
+    src_checkout_additional_component "${OPENBATON_FMS_REPO_URL}" "${OPENBATON_FMS_REPO_NAME}" "Fault Management System (FMS)" "src/main/resources/${OPENBATON_FMS_CONFIG_FILE}" "${OPENBATON_FMS_CONFIG_FILE}" "${openbaton_fms}" "1.2.4" "${openbaton_fms_version}"
     if [ "${installed}" = "0" ]; then
-        create_service "fms" "openbaton-fms.properties"
+        create_service "fms" "${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}"
         src_configure_fms
         src_deploy_additional_component "fm-system" "Fault Management System (FMS)"
     fi

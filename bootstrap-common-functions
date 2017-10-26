@@ -59,6 +59,8 @@ OPENBATON_NFVO_CONFIG_FILE="openbaton-nfvo.properties"
 OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE="${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_NFVO_CONFIG_FILE}"
 OPENBATON_VNFM_GENERIC_CONFIG_FILE="openbaton-vnfm-generic.properties"
 OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE="${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_VNFM_GENERIC_CONFIG_FILE}"
+OPENBATON_FMS_CONFIG_FILE="openbaton-fms.properties"
+OPENBATON_FMS_CONFIG_FILE_ABSOLUTE="${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_FMS_CONFIG_FILE}"
 OPENBATON_ASE_CONFIG_FILE="openbaton-ase.properties"
 OPENBATON_ASE_CONFIG_FILE_ABSOLUTE="${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_ASE_CONFIG_FILE}"
 OPENBATON_NSE_CONFIG_FILE="openbaton-nse.properties"
@@ -461,14 +463,15 @@ clean_db () {
 
 clean () {
     export OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE=${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}
+    export OPENBATON_FMS_CONFIG_FILE_ABSOLUTE=${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}
 
     mysql=$( dpkg -l | grep "mysql-client" | wc -l)
 
     # Retrieve mysql credentials and rabbitmq user, ip, and management port
     if [ -f "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" ]; then
         nfvo_mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username=") { print $2 }}' ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE} )
-        if [ -f "/etc/openbaton/openbaton-fms.properties" ]; then
-            fms_mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username=") { print $2 }}' /etc/openbaton/openbaton-fms.properties )
+        if [ -f "${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}" ]; then
+            fms_mysql_user=$( awk -F'=' '{ if($0 ~ "spring.datasource.username=") { print $2 }}' ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE} )
         fi
 
         rabbitmq_user=$( awk -F'=' '{ if($0 ~ "spring.rabbitmq.username=") { print $2 }}' ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE} )
