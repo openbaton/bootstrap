@@ -403,10 +403,11 @@ src_checkout_additional_component () {
 src_compile_additional_component () {
     component_name="${1}"                       # the directory on which the repo has been cloned
     component_name_fancy="${2}"
+    component_start_script_name="${3}"
 
     echo " * Compiling the ${component_name_fancy} .."
     cd "${OPENBATON_BASE_DIR}/${component_name}"
-    ./${component_name}.sh compile
+    ./${component_start_script_name} compile
     if [ $? -ne 0 ]; then
         echo " * ERROR: The compilation of the ${2} failed"
         exit 1
@@ -416,15 +417,16 @@ src_compile_additional_component () {
 src_start_additional_component () {
     component_name="${1}"                       # the directory on which the repo has been cloned
     component_name_fancy="${2}"
+    component_start_script_name="${3}"
 
     echo " * Starting the ${component_name_fancy} .."
     cd "${OPENBATON_BASE_DIR}/${component_name}"
-    ./${component_name}.sh start
+    ./${component_start_script_name} start
 }
 
 src_deploy_additional_component () {
-    src_compile_additional_component "${1}" "${2}"
-    src_start_additional_component "${1}" "${2}"
+    src_compile_additional_component "${1}" "${2}" "${3}"
+    src_start_additional_component "${1}" "${2}" "${3}"
 }
 
 
@@ -618,7 +620,7 @@ src_bootstrap () {
     src_checkout_additional_component "${OPENBATON_VNFM_GENERIC_REPO_URL}" "${OPENBATON_VNFM_GENERIC_REPO_NAME}" "Generic VNFM" "src/main/resources/${OPENBATON_VNFM_GENERIC_CONFIG_FILE}" "${OPENBATON_VNFM_GENERIC_CONFIG_FILE}" "${openbaton_vnfm_generic}" "3.2.0" "${openbaton_vnfm_generic_version}"
     if [ "${installed}" = "0" ]; then
         src_configure_rabbitmq_for_vnfm_generic "${openbaton_vnfm_generic_version}"
-        src_deploy_additional_component "generic-vnfm" "Generic VNFM"
+        src_deploy_additional_component "generic-vnfm" "Generic VNFM" "generic-vnfm.sh"
     fi
 
     # Fault Management System
@@ -626,7 +628,7 @@ src_bootstrap () {
     if [ "${installed}" = "0" ]; then
         create_service "fms" "${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}"
         src_configure_fms
-        src_deploy_additional_component "fm-system" "Fault Management System (FMS)"
+        src_deploy_additional_component "fm-system" "Fault Management System (FMS)" "openbaton-fms.sh"
     fi
 
     # Auto Scaling Engine
@@ -634,14 +636,14 @@ src_bootstrap () {
     if [ "${installed}" = "0" ]; then
         create_service "ase" "${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}"
         src_configure_ase
-        src_deploy_additional_component "autoscaling-engine" "Auto Scaling Engine (ASE)"
+        src_deploy_additional_component "autoscaling-engine" "Auto Scaling Engine (ASE)" "autoscaling-engine.sh"
     fi
 
     # Network Slicing Engine
     src_checkout_additional_component "${OPENBATON_NSE_REPO_URL}" "${OPENBATON_NSE_REPO_NAME}" "Network Slicing Engine (NSE)" "src/main/resources/${OPENBATON_NSE_CONFIG_FILE}" "${OPENBATON_NSE_CONFIG_FILE}" "${openbaton_nse}" "1.1.2" "${openbaton_nse_version}"
     if [ "${installed}" = "0" ]; then
         create_service "nse" "${OPENBATON_NSE_CONFIG_FILE_ABSOLUTE}"
-        src_deploy_additional_component "network-slicing-engine" "Network Slicing Engine"
+        src_deploy_additional_component "network-slicing-engine" "Network Slicing Engine" "network-slicing-engine.sh"
     fi
 
     echo " * Waiting for Open Baton to be up..."
