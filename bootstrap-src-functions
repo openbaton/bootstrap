@@ -269,7 +269,7 @@ src_checkout_nfvo () {
     git submodule update
 
     $_ex 'rm -rf '"${OPENBATON_BASE_CONFIG_DIR}; mkdir -p ${OPENBATON_BASE_CONFIG_DIR}"
-    $_ex 'cp '"${OPENBATON_NFVO_DIR}/main/src/main/resources/${OPENBATON_NFVO_CONFIG_FILE} ${OPENBATON_BASE_CONFIG_DIR}"
+    $_ex 'cp '"${OPENBATON_NFVO_DIR}/main/src/main/resources/application.properties ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_NFVO_CONFIG_FILE}"
     $_ex 'cp '"${OPENBATON_NFVO_DIR}/etc/keystore.p12 ${OPENBATON_BASE_CONFIG_DIR}/keystore.p12"
 }
 
@@ -617,14 +617,14 @@ src_bootstrap () {
     export OPENBATON_BASE_CONFIG_DIR=${OPENBATON_BASE_CONFIG_DIR}
    
     # Generic VNFM
-    src_checkout_additional_component "${OPENBATON_VNFM_GENERIC_REPO_URL}" "${OPENBATON_VNFM_GENERIC_REPO_NAME}" "Generic VNFM" "src/main/resources/${OPENBATON_VNFM_GENERIC_CONFIG_FILE}" "${OPENBATON_VNFM_GENERIC_CONFIG_FILE}" "${openbaton_vnfm_generic}" "3.2.0" "${openbaton_vnfm_generic_version}"
+    src_checkout_additional_component "${OPENBATON_VNFM_GENERIC_REPO_URL}" "${OPENBATON_VNFM_GENERIC_REPO_NAME}" "Generic VNFM" "src/main/resources/application.properties" "${OPENBATON_VNFM_GENERIC_CONFIG_FILE}" "${openbaton_vnfm_generic}" "3.2.0" "${openbaton_vnfm_generic_version}"
     if [ "${installed}" = "0" ]; then
         src_configure_rabbitmq_for_vnfm_generic "${openbaton_vnfm_generic_version}"
         src_deploy_additional_component "generic-vnfm" "Generic VNFM" "generic-vnfm.sh"
     fi
 
     # Fault Management System
-    src_checkout_additional_component "${OPENBATON_FMS_REPO_URL}" "${OPENBATON_FMS_REPO_NAME}" "Fault Management System (FMS)" "src/main/resources/${OPENBATON_FMS_CONFIG_FILE}" "${OPENBATON_FMS_CONFIG_FILE}" "${openbaton_fms}" "1.2.4" "${openbaton_fms_version}"
+    src_checkout_additional_component "${OPENBATON_FMS_REPO_URL}" "${OPENBATON_FMS_REPO_NAME}" "Fault Management System (FMS)" "src/main/resources/application.properties" "${OPENBATON_FMS_CONFIG_FILE}" "${openbaton_fms}" "1.2.4" "${openbaton_fms_version}"
     if [ "${installed}" = "0" ]; then
         create_service "fms" "${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}"
         src_configure_fms
@@ -632,7 +632,7 @@ src_bootstrap () {
     fi
 
     # Auto Scaling Engine
-    src_checkout_additional_component "${OPENBATON_ASE_REPO_URL}" "${OPENBATON_ASE_REPO_NAME}" "Auto Scaling Engine (ASE)" "src/main/resources/${OPENBATON_ASE_CONFIG_FILE}" "${OPENBATON_ASE_CONFIG_FILE}" "${openbaton_ase}" "1.2.2" "${openbaton_ase_version}"
+    src_checkout_additional_component "${OPENBATON_ASE_REPO_URL}" "${OPENBATON_ASE_REPO_NAME}" "Auto Scaling Engine (ASE)" "src/main/resources/application.properties" "${OPENBATON_ASE_CONFIG_FILE}" "${openbaton_ase}" "1.2.2" "${openbaton_ase_version}"
     if [ "${installed}" = "0" ]; then
         create_service "ase" "${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}"
         src_configure_ase
@@ -640,7 +640,7 @@ src_bootstrap () {
     fi
 
     # Network Slicing Engine
-    src_checkout_additional_component "${OPENBATON_NSE_REPO_URL}" "${OPENBATON_NSE_REPO_NAME}" "Network Slicing Engine (NSE)" "src/main/resources/${OPENBATON_NSE_CONFIG_FILE}" "${OPENBATON_NSE_CONFIG_FILE}" "${openbaton_nse}" "1.1.2" "${openbaton_nse_version}"
+    src_checkout_additional_component "${OPENBATON_NSE_REPO_URL}" "${OPENBATON_NSE_REPO_NAME}" "Network Slicing Engine (NSE)" "src/main/resources/application.properties" "${OPENBATON_NSE_CONFIG_FILE}" "${openbaton_nse}" "1.1.2" "${openbaton_nse_version}"
     if [ "${installed}" = "0" ]; then
         create_service "nse" "${OPENBATON_NSE_CONFIG_FILE_ABSOLUTE}"
         src_deploy_additional_component "network-slicing-engine" "Network Slicing Engine" "network-slicing-engine.sh"
