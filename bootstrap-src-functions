@@ -607,7 +607,9 @@ src_bootstrap () {
         pip install .
     fi
 
-    #sleep 30
+    # Plugins configuration for NFVO
+    configure_plugins_logs_dir
+
     wait_for_nfvo_up
 
     export OPENBATON_BASE_CONFIG_DIR=${OPENBATON_BASE_CONFIG_DIR}

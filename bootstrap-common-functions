@@ -66,6 +66,8 @@ OPENBATON_ASE_CONFIG_FILE_ABSOLUTE="${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_ASE
 OPENBATON_NSE_CONFIG_FILE="openbaton-nse.properties"
 OPENBATON_NSE_CONFIG_FILE_ABSOLUTE="${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_NSE_CONFIG_FILE}"
 
+OPENBATON_PLUGINS_LOG_DIR="/plugins"
+
 OPENBATON_PLUGIN_VIMDRIVER_TEST_DEFAULT=yes
 OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_DEFAULT=yes
 OPENBATON_VNFM_GENERIC_DEFAULT=yes
@@ -414,6 +416,22 @@ create_service () {
     # Set service key in properties file
     log_success_msg "Setting Service key: ${service_key}"
     $_ex 'sed -i "s|${service_name}\.service\.key\s*=.*|${service_name}\.service\.key=${service_key}|g" ${service_properties_file_name_absolute}'
+}
+
+
+#################
+#### Plugins ####
+#################
+
+configure_plugins_logs_dir () {
+    export OPENBATON_PLUGINS_LOG_DIR=${OPENBATON_PLUGINS_LOG_DIR}
+
+    # Get the directory where the NFVO log file is saved
+    export openbaton_base_log_dir=$(dirname "$( awk '$0 ~ "logging.file[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )")
+    export openbaton_plugins_log_dir_absolute="${openbaton_base_log_dir}/${OPENBATON_PLUGINS_LOG_DIR}"
+
+    $_ex 'mkdir ${openbaton_base_log_dir}/${OPENBATON_PLUGINS_LOG_DIR}'
+    $_ex 'sed -i "s|nfvo.plugin.log.path\s*=\s*.*|nfvo.plugin.log.path=${openbaton_plugins_log_dir_absolute}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
 }
 
 
