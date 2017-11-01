@@ -44,16 +44,26 @@ deb_install_nfvo () {
     export nfvo_version="${3}"
 
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
+        available_tags=$(curl -s GET https://api.github.com/repos/openbaton/${OPENBATON_NFVO_REPO_NAME}/tags | grep "name\":" | awk -F':' '{print $2}' | awk -F'"' '{print $2}' | awk -v oldest="${oldest_nfvo_version_supported}" '$1 >= oldest')
+
         valid_version=false
         while [ "${valid_version}" = "false" ]; do
             # Ask for the NFVO version to be installed
-            read -p " * Which VERSION of the Open Baton NFVO do you want to install (Version Format is X.Y.Z - ** ${oldest_nfvo_version_supported} is the oldest version supported ** - Check the list of available VERSIONs at: ${OPENBATON_NFVO_REPO_URL}/tags )? (latest): " nfvo_version
+            #read -p " * Which VERSION of the Open Baton NFVO do you want to install (Version Format is X.Y.Z - ** ${oldest_nfvo_version_supported} is the oldest version supported ** - Check the list of available VERSIONs at: ${OPENBATON_NFVO_REPO_URL}/tags )? (latest): " nfvo_version
+            nfvo_version=$(whiptail --inputbox "Which VERSION of the Open Baton NFVO do you want to install?\nThe available choices installable with this bootstrap are the following:\n\n$(echo "latest\n${available_tags}")" 25 140 latest --title "Open Baton NFVO installation" 3>&1 1>&2 2>&3)
+            exit_status="$?"
+            if [ ${exit_status} != 0 ]; then
+                echo ""
+                log_warning_msg "Aborting Open Baton installation"
+                exit 1
+            fi
 
             if [ "${nfvo_version}" = "" -o "${nfvo_version}" = "latest" ]; then
                 valid_version=true
                 continue
             else
-                result=$( echo ${nfvo_version} | grep "^[0-9]\{1,\}\.[0-9]\{1,\}\.[0-9]\{1,\}$" | wc -l )
+                #result=$( echo ${nfvo_version} | grep "^[0-9]\{1,\}\.[0-9]\{1,\}\.[0-9]\{1,\}$" | wc -l )
+                result="1"
                 if [ "${result}" != "0" ]; then
                     valid_version=true
                     continue
@@ -117,32 +127,74 @@ deb_install_additional_component () {
 
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         # Ask for the specified Additional Component installation
-        read -p " * Do you want to install also the Open Baton ${component_name_fancy}? ( if you do not, then you can still install it later with: sudo apt-get install openbaton-${component_name} ) (Y/n): " ac
+        #read -p " * Do you want to install also the Open Baton ${component_name_fancy}? ( if you do not, then you can still install it later with: sudo apt-get install openbaton-${component_name} ) (Y/n): " ac
 
-        # Print correct warning message
-        if [ "${ac}" = "n" -o "${ac}" = "N" -o "${ac}" = "no" -o "${ac}" = "NO" ]; then
-            echo " * Open Baton ${component_name_fancy} not installed"
-            if [ "${release_nightly}" = "release" ]; then
-                echo " * To install the latest release package:"
-                echo " *     sudo apt-get install openbaton-${component_name}"
-            else
-                echo " * To install the latest nightly-build package:"
-                echo " *     sudo apt-get install openbaton-${component_name}-nightly"
+        ## Print correct warning message
+        #if [ "${ac}" = "n" -o "${ac}" = "N" -o "${ac}" = "no" -o "${ac}" = "NO" ]; then
+        #    echo " * Open Baton ${component_name_fancy} not installed"
+        #    if [ "${release_nightly}" = "release" ]; then
+        #        echo " * To install the latest release package:"
+        #        echo " *     sudo apt-get install openbaton-${component_name}"
+        #    else
+        #        echo " * To install the latest nightly-build package:"
+        #        echo " *     sudo apt-get install openbaton-${component_name}-nightly"
+        #    fi
+        #    return
+        #else
+        #    # Install the correct Additional Component package according to the given input parameter
+        #    if [ ${force_component_version} != "true" ]; then 
+        #        valid_version=false
+        #        while [ "${valid_version}" = "false" ]; do
+        #            # Ask for the Additional Component version to be installed
+        #            read -p " * Which VERSION of the Open Baton ${component_name_fancy} do you want to install (Version Format is X.Y.Z - *** ${oldest_component_version_supported} is the oldest version supported ** - Check the list of available VERSIONs at: ${component_repo_url}/tags )? (latest): " component_version
+
+        #            if [ "${component_version}" = "" -o "${component_version}" = "latest" ]; then
+        #                valid_version=true
+        #                continue
+        #            else
+        #                result=$( echo ${component_version} | grep "^[0-9]\{1,\}\.[0-9]\{1,\}\.[0-9]\{1,\}$" | wc -l )
+        #                if [ "${result}" != "0" ]; then
+        #                    valid_version=true
+        #                    continue
+        #                fi
+        #            fi
+        #        done
+        #    fi
+
+        #    deb_install_additional_component_versioned
+        #fi
+
+        if (whiptail --title "${component_name_fancy} installation" --yesno "Do you want to install also the ${component_name_fancy}?\nIf you do not, then you can still install it later with:\n sudo apt-get install openbaton-${component_name}" 15 140) then
+            exit_status="$?"
+            if [ ${exit_status} != 0 ]; then
+                echo ""
+                log_warning_msg "Aborting Open Baton installation"
+                exit 1
             fi
-            return
-        else
+
             # Install the correct Additional Component package according to the given input parameter
             if [ ${force_component_version} != "true" ]; then 
+                available_tags=$(curl -s GET ${component_repo_url}/tags | grep "name\":" | awk -F':' '{print $2}' | awk -F'"' '{print $2}' | awk -v oldest="${oldest_component_version_supported}" '$1 >= oldest')
+
                 valid_version=false
                 while [ "${valid_version}" = "false" ]; do
                     # Ask for the Additional Component version to be installed
-                    read -p " * Which VERSION of the Open Baton ${component_name_fancy} do you want to install (Version Format is X.Y.Z - *** ${oldest_component_version_supported} is the oldest version supported ** - Check the list of available VERSIONs at: ${component_repo_url}/tags )? (latest): " component_version
+                    #read -p " * Which VERSION of the Open Baton ${component_name_fancy} do you want to install (Version Format is X.Y.Z - *** ${oldest_component_version_supported} is the oldest version supported ** - Check the list of available VERSIONs at: ${component_repo_url}/tags )? (latest): " component_version
+
+                    component_version=$(whiptail --inputbox "Which VERSION of the Open Baton ${component_name_fancy} do you want to install?\nThe available choices installable with this bootstrap are the following:\n\n$(echo "develop\n${available_tags}")" 25 140 latest --title "Open Baton ${component_name_fancy} installation" 3>&1 1>&2 2>&3)
+                    exit_status="$?"
+                    if [ ${exit_status} != 0 ]; then
+                        echo ""
+                        log_warning_msg "Aborting Open Baton installation"
+                        exit 1
+                    fi
 
                     if [ "${component_version}" = "" -o "${component_version}" = "latest" ]; then
                         valid_version=true
                         continue
                     else
-                        result=$( echo ${component_version} | grep "^[0-9]\{1,\}\.[0-9]\{1,\}\.[0-9]\{1,\}$" | wc -l )
+                        #result=$( echo ${component_version} | grep "^[0-9]\{1,\}\.[0-9]\{1,\}\.[0-9]\{1,\}$" | wc -l )
+                        result="1"
                         if [ "${result}" != "0" ]; then
                             valid_version=true
                             continue
@@ -152,6 +204,16 @@ deb_install_additional_component () {
             fi
 
             deb_install_additional_component_versioned
+        else
+            echo " * Open Baton ${component_name_fancy} not installed"
+            if [ "${release_nightly}" = "release" ]; then
+                echo " * To install the latest release package:"
+                echo " *     sudo apt-get install openbaton-${component_name}"
+            else
+                echo " * To install the latest nightly-build package:"
+                echo " *     sudo apt-get install openbaton-${component_name}-nightly"
+            fi
+            return
         fi
     else
         if [ "${install_during_noninteractive_installation}" = "y" -o "${install_during_noninteractive_installation}" = "Y" -o "${install_during_noninteractive_installation}" = "yes" ]; then
