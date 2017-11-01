@@ -400,7 +400,12 @@ create_service () {
     export nfvo_user="admin"
     export nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
     export nfvo_ip=$( awk '$0 ~ "nfvo.rabbit.brokerIp[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
-    export nfvo_port="8080"
+    https_enabled=$(cat ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE} | grep "nfvo.https=true" | wc -l)
+    if [ "${https_enabled}" = "1" ]; then
+        export nfvo_port=$( awk '$0 ~ "server.port[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
+    else
+        export nfvo_port="8080"
+    fi
     log_success_msg "NFVO_USER: ${nfvo_user}"
     log_success_msg "NFVO_ADMIN_PASSWORD: ****"
     log_success_msg "NFVO_USER: ${nfvo_ip}"
