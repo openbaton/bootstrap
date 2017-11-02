@@ -564,3 +564,56 @@ prereq_openbaton_cli () {
     $_ex 'apt-get update; apt-get install -y python-pip;'
 }
 
+upgrade () {
+    # Check Open Baton installed
+    openbaton_components_installed_num=$( dpkg -l | grep "openbaton-" | wc -l )
+    if [ "${openbaton_components_installed_num}" = "0" ]; then
+        log_warning_msg "Open Baton seems to not be installed: Upgrade procedure not possible."
+        log_warning_msg "If you installed Open Baton through the SOURCE CODE then the Upgrade procedure is not supported."
+        log_warning_msg "Exiting.."
+        exit 1
+    fi
+
+    openbaton_components=${openbaton_components:-"none"}
+
+    # If no component is specified at invocation time
+    if [ "${openbaton_components}" = "none" ]; then
+        if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
+            openbaton_components_installed=$( dpkg -l | grep openbaton)
+            echo ""
+            log_success_msg "The  Open Baton components installed in this system are the following:"
+            echo "${openbaton_components_installed}"
+            echo ""
+            read -p " * Please, insert the components which you want to upgrade (separated by a comma if many) (comp1,comp2,etc.) [all]: " openbaton_components
+        fi
+
+        # In case of "noninteractive" FRONTEND the default value will remain valid (all components will be upgraded)
+        openbaton_components=${openbaton_components:-"all"}
+    fi
+
+    if [ "${openbaton_components}" = "all" ]; then
+        # List all the components installed
+        dpkg -l | grep "openbaton-" | while read -r line ; do
+            component=$( echo ${line} | awk '{print $2}' )
+            echo ""
+            log_success_msg "Upgrading Open Baton '${component}' component"
+            $_ex "apt-get install -y ${component}"
+        done
+    else
+        echo "${openbaton_components}" | awk -F',' '{ for(i = 1; i <= NF; i++) { print $i; } }' | while read -r component ; do
+            echo ""
+            log_success_msg "Upgrading Open Baton '${component}' component"
+            component_installed=$( dpkg -l | grep "${component}" | wc -l )
+            if [ "${component_installed}" = "0" ]; then
+                log_warning_msg "The Open Baton '${component}' component is not be installed: Upgrade procedure not possible."
+                log_warning_msg "If you installed this Open Baton component through the SOURCE CODE then the Upgrade procedure is not supported."
+                continue
+            fi
+            $_ex "apt-get install -y ${component}"
+        done
+    fi
+
+    echo ""
+    log_success_msg "Open Baton Upgrade complete."
+}
+

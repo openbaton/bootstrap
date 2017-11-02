@@ -1,7 +1,7 @@
 # This is a configuration file for the Open Baton bootstrap. 
 # It allows you to specify the parameters needed during the bootstrap for the configuration of the Open Baton projects.
 #
-# Usage: sh <(curl -s http://get.openbaton.org/bootstrap) [help | clean | enable-persistence | configure-remote-rabbitmq] | [[release | develop] [--openbaton-bootstrap-version=X.Y.Z (with X.Y.Z >= 3.2.0)] [--config-file=<absolute path to configuration file>]]
+# Usage: sh <(curl -s http://get.openbaton.org/bootstrap) [help | clean | enable-persistence | configure-remote-rabbitmq] | [[upgrade] [--openbaton-components=<all | openbaton-xxx,openbaton-yyy,...>]] | [[release | develop] [--openbaton-bootstrap-version=X.Y.Z (with X.Y.Z >= 3.2.0)] [--config-file=<absolute path to configuration file>]]
 #
 # IMPORTANT NOTE: Avoid spaces before and after the '=': i.e. a parameter needs to be specified as 'parameter=value'
 
