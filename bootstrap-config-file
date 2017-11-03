@@ -41,7 +41,6 @@ openbaton_vnfm_generic=yes                                  # Default is 'YES' t
 openbaton_fms=yes                                           # Default is 'NO' therefore if left empty ('openbaton_fms=') or commented the 'openbaton_fms' debian package will NOT be installed
 openbaton_ase=yes                                           # Default is 'NO' therefore if left empty ('openbaton_ase=') or commented the 'openbaton_ase' debian package will NOT be installed
 openbaton_nse=yes                                           # Default is 'NO' therefore if left empty ('openbaton_nse=') or commented the 'openbaton_nse' debian package will NOT be installed
-openbaton_cli=yes                                           # Default is 'NO' therefore if left empty ('openbaton_cli=') or commented the 'openbaton_cli' debian package will NOT be installed
 
 # NOTE: The VERSION is to be interptreted as "debian package version" or "source TAG" respectively for RELEASE / DEVELOP installation
 # Possible values are: 'latest' (only for RELEASE), 'develop' (only for DEVELOP), 'X.Y.Z' (for both types of installation)

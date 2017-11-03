@@ -204,9 +204,6 @@ deb_bootstrap () {
     prereq_openbaton_cli
     $_ex 'pip install openbaton-cli'
 
-    # Plugins configuration for NFVO
-    configure_plugins_logs_dir
-
     #
     # Arguments of "deb_install_additional_component": ${1} component-name component-name-fancy install_during_noninteractive_installation force_component_version oldest_component_version_supported component_version
     #

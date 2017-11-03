@@ -394,7 +394,7 @@ create_service () {
     export service_properties_file_name_absolute="${2}"
     export OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE=${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}
 
-    echo "Creating new Service '${service_name}'"
+    log_success_msg "Creating new Service '${service_name}'"
     echo "{ \"name\":\"${service_name}\", \"roles\":[\"default\"] }" > /tmp/create_service_body
 
     export nfvo_user="admin"
@@ -412,8 +412,21 @@ create_service () {
     log_success_msg "NFVO_PORT: ${nfvo_port}"
 
     # Get project id of 'default' project
-    export project_id=$(openbaton -u "${nfvo_user}" -p "${nfvo_admin_password}" -ip "${nfvo_ip}" --nfvo-port "${nfvo_port}" -pid "" project list 2>/dev/null | grep default | sed s/\ //g | awk -F'|' '{print $2 }')
-    export service_key=$(openbaton -u "${nfvo_user}" -p "${nfvo_admin_password}" -ip "${nfvo_ip}" --nfvo-port "${nfvo_port}" -pid "${project_id}" service create /tmp/create_service_body)
+    project_id=$(openbaton -u "${nfvo_user}" -p "${nfvo_admin_password}" -ip "${nfvo_ip}" --nfvo-port "${nfvo_port}" -pid "" project list 2>/dev/null | grep default | sed s/\ //g | awk -F'|' '{print $2 }')
+    if [ -z "${project_id}" ]; then
+        log_failure_msg "Problems while creating  Service '${service_name}'"
+        log_failure_msg "Skipping this Service registration. Please try to do it manually."
+        return
+    fi
+    export project_id=${project_id}
+
+    service_key=$(openbaton -u "${nfvo_user}" -p "${nfvo_admin_password}" -ip "${nfvo_ip}" --nfvo-port "${nfvo_port}" -pid "${project_id}" service create /tmp/create_service_body)
+    if [ -z "${service_key}" ]; then
+        log_failure_msg "Problems while creating  Service '${service_name}'"
+        log_failure_msg "Skipping this Service registration. Please try to do it manually."
+        return
+    fi
+    export service_key=${service_key}
 
     # Clean environment
     rm /tmp/create_service_body
@@ -421,22 +434,6 @@ create_service () {
     # Set service key in properties file
     log_success_msg "Setting Service key: ${service_key}"
     $_ex 'sed -i "s|${service_name}\.service\.key\s*=.*|${service_name}\.service\.key=${service_key}|g" ${service_properties_file_name_absolute}'
-}
-
-
-#################
-#### Plugins ####
-#################
-
-configure_plugins_logs_dir () {
-    export OPENBATON_PLUGINS_LOG_DIR=${OPENBATON_PLUGINS_LOG_DIR}
-
-    # Get the directory where the NFVO log file is saved
-    export openbaton_base_log_dir=$(dirname "$( awk '$0 ~ "logging.file[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )")
-    export openbaton_plugins_log_dir_absolute="${openbaton_base_log_dir}/${OPENBATON_PLUGINS_LOG_DIR}"
-
-    $_ex 'mkdir ${openbaton_base_log_dir}/${OPENBATON_PLUGINS_LOG_DIR}'
-    $_ex 'sed -i "s|nfvo.plugin.log.path\s*=\s*.*|nfvo.plugin.log.path=${openbaton_plugins_log_dir_absolute}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
 }
 
 

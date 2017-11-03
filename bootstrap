@@ -51,7 +51,7 @@ case "${OS_TYPE}" in
         ;;
 esac
 
-if [ ${OS_DISTRIBUTION_RELEASE} != 'undefined' ]; then
+if [ ${OS_DISTRIBUTION_RELEASE} != "undefined" ]; then
     OS_DISTRIBUTION_RELEASE_MAJOR=$( echo ${OS_DISTRIBUTION_RELEASE} | awk -F'.' '{ print $1 }' )
 else
     OS_DISTRIBUTION_RELEASE_MAJOR=undefined
