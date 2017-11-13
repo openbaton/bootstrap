@@ -646,7 +646,7 @@ src_plugin_monitoring_zabbix_configure_nfvo () {
     fi
 }
 
-src_plugin_monitoring_zabbix_configure () {
+src_configure_plugin_monitoring_zabbix () {
     src_plugin_monitoring_zabbix_configure_zabbix
     src_plugin_monitoring_zabbix_configure_nfvo
 }
@@ -691,7 +691,7 @@ src_bootstrap () {
     # Zabbix monitoring Plugin
     src_checkout_additional_component "${OPENBATON_PLUGINS_MONITORING_ZABBIX_REPO_URL}" "${OPENBATON_PLUGINS_MONITORING_ZABBIX_REPO_NAME}" "Zabbix monitoring Plugin" "src/main/resources/plugin.conf.properties" "${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE}" "${openbaton_plugin_monitoring_zabbix}" "3.2.0" "${openbaton_plugin_monitoring_zabbix_version}"
     if [ -d "${OPENBATON_BASE_DIR}/zabbix-plugin" ]; then
-        src_plugin_monitoring_zabbix_configure
+        src_configure_plugin_monitoring_zabbix
         src_deploy_plugin_vimdriver "zabbix-plugin" "Zabbix monitoring Plugin"
     fi
 
