@@ -174,7 +174,11 @@ src_compile_plugin () {
 
     echo " * Compiling the ${component_name_fancy} .."
     cd "${OPENBATON_BASE_DIR}/${component_name}"
-    ./gradlew clean build
+    if [ "${component_name}" = "${OPENBATON_PLUGINS_MONITORING_ZABBIX_REPO_NAME}" ]; then
+        ./gradlew clean build -x test
+    else
+        ./gradlew clean build
+    fi
     if [ $? -ne 0 ]; then
         echo " * ERROR: The compilation of the ${2} failed"
         exit 1
