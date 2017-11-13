@@ -582,6 +582,76 @@ src_configure_fms () {
 }
 
 
+#######################
+#### Zabbix Plugin ####
+#######################
+
+src_plugin_monitoring_zabbix_configure_zabbix () {
+    # In case of "noninteractive" FRONTEND the default value will remain valid (user: admin ; password: openbaton)
+    if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
+        read -p " * Please, provide the IP of the Zabbix plugin host [localhost]: " zabbix_plugin_ip
+
+        read -p " * Please, provide the ZABBIX server IP [localhost]: " zabbix_server_ip
+
+        read -p " * Please, provide the ZABBIX user [Admin]: " zabbix_user
+
+        # Turning echo on and off between password reading
+        stty -echo
+        read -p " * Please, provide the ZABBIX user's password [zabbix]: " zabbix_user_password ; echo
+        stty echo
+    fi
+
+    # Set the Zabbix Plugin host IP
+    export zabbix_plugin_ip=${zabbix_plugin_ip}
+    if [ -z ${zabbix_plugin_ip} ] ; then # The empty string is considered as unset
+        zabbix_plugin_ip=${ZABBIX_PLUGIN_IP_DEFAULT}
+    fi
+    log_success_msg "Setting the ZABBIX plugin host IP: ${zabbix_plugin_ip}"
+    sed -i "s|zabbix-plugin-ip\s*=.*|zabbix-plugin-ip=${zabbix_plugin_ip}|g" ${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE}
+
+    # Set the Zabbix server IP
+    export zabbix_server_ip=${zabbix_server_ip}
+    if [ -z ${zabbix_server_ip} ] ; then # The empty string is considered as unset
+        zabbix_server_ip=${ZABBIX_SERVER_IP_DEFAULT}
+    fi
+    log_success_msg "Setting the ZABBIX server IP: ${zabbix_server_ip}"
+    sed -i "s|zabbix-host\s*=\s*localhost|zabbix-host=${zabbix_server_ip}|g" ${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE}
+
+    # Set the zabbix user
+    export zabbix_user=${zabbix_user}
+    if [ -z ${zabbix_user} ] ; then # The empty string is considered as unset
+        zabbix_user=${ZABBIX_USER_DEFAULT}
+    fi
+    log_success_msg "Setting the ZABBIX user: ${zabbix_user}"
+    sed -i "s|user-zbx\s*=\s*admin|user-zbx=${zabbix_user}|g" ${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE}
+
+    # Set the zabbix user's password
+    export zabbix_user_password=${zabbix_user_password}
+    if [ -z ${zabbix_user_password} ] ; then # The empty string is considered as unset
+        zabbix_user_password=${ZABBIX_USER_PASSWORD_DEFAULT}
+    fi
+    log_success_msg "Setting the ZABBIX user's password: ${zabbix_user_password}"
+    sed -i "s|password-zbx\s*=\s*zabbix|password-zbx=${zabbix_user_password}|g" ${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE}
+}
+
+src_plugin_monitoring_zabbix_configure_nfvo () {
+    # Set the Zabbix Server IP in the NFVO "nfvo.monitoring.ip" property
+    if [ -f ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE} ]; then
+        zabbix_server_ip=$( awk '$0 ~ "zabbix-host[[:space:]]*="' "${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
+        if [ ! -z ${zabbix_server_ip+x} ] ; then # The empty string is considered as unset
+            log_success_msg "Setting Zabbix Server IP into NFVO: ${zabbix_server_ip}"
+            export zabbix_server_ip=${zabbix_server_ip}
+            sed -i "s|#nfvo.monitoring.ip\s*=.*|nfvo.monitoring.ip=${zabbix_server_ip}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}
+        fi
+    fi
+}
+
+src_plugin_monitoring_zabbix_configure () {
+    src_plugin_monitoring_zabbix_configure_zabbix
+    src_plugin_monitoring_zabbix_configure_nfvo
+}
+
+
 ##############
 #### Main ####
 ##############
@@ -621,6 +691,7 @@ src_bootstrap () {
     # Zabbix monitoring Plugin
     src_checkout_additional_component "${OPENBATON_PLUGINS_MONITORING_ZABBIX_REPO_URL}" "${OPENBATON_PLUGINS_MONITORING_ZABBIX_REPO_NAME}" "Zabbix monitoring Plugin" "src/main/resources/plugin.conf.properties" "${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE}" "${openbaton_plugin_monitoring_zabbix}" "3.2.0" "${openbaton_plugin_monitoring_zabbix_version}"
     if [ -d "${OPENBATON_BASE_DIR}/zabbix-plugin" ]; then
+        src_plugin_monitoring_zabbix_configure
         src_deploy_plugin_vimdriver "zabbix-plugin" "Zabbix monitoring Plugin"
     fi
 
