@@ -352,7 +352,7 @@ src_do_checkout () {
 
     cd "${OPENBATON_BASE_DIR}"
     echo "Downloading ${component_name_fancy} .."
-    git clone --recursive "${component_repo_url}.git" "${component_name}"
+    git clone --recursive "${component_repo_url}" "${component_name}"
     cd "${component_name}"
 
     git checkout ${component_version}
@@ -612,6 +612,12 @@ src_bootstrap () {
     src_checkout_additional_component "${OPENBATON_PLUGINS_VIMDRIVERS_OPENSTACK_4J_REPO_URL}" "${OPENBATON_PLUGINS_VIMDRIVERS_OPENSTACK_4J_REPO_NAME}" "OpenStack VIM Driver Plugin" "" "" "${openbaton_plugin_vimdriver_openstack}" "3.2.0" "${openbaton_plugin_vimdriver_openstack_version}"
     if [ -d "${OPENBATON_BASE_DIR}/openstack4j-plugin" ]; then
         src_deploy_plugin_vimdriver "openstack4j-plugin" "OpenStack VIM Driver Plugin"
+    fi
+
+    # Zabbix monitoring Plugin
+    src_checkout_additional_component "${OPENBATON_PLUGINS_MONITORING_ZABBIX_REPO_URL}" "${OPENBATON_PLUGINS_MONITORING_ZABBIX_REPO_NAME}" "Zabbix monitoring Plugin" "src/main/resources/plugin.conf.properties" "${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE}" "${openbaton_plugin_monitoring_zabbix}" "3.2.0" "${openbaton_plugin_monitoring_zabbix_version}"
+    if [ -d "${OPENBATON_BASE_DIR}/zabbix-plugin" ]; then
+        src_deploy_plugin_vimdriver "zabbix-plugin" "Zabbix monitoring Plugin"
     fi
 
     enable_https
