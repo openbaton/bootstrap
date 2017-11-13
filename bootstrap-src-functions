@@ -522,11 +522,11 @@ src_fms_configure_nfvo () {
     fi
     # Set the NFVO IP
     export openbaton_nfvo_ip=${openbaton_nfvo_ip:-$OPENBATON_NFVO_IP_DEFAULT}
-    $_ex 'sed -i "s|nfvo.ip\s*=*|nfvo.ip=${openbaton_nfvo_ip}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
+    $_ex 'sed -i "s|nfvo.ip\s*=.*|nfvo.ip=${openbaton_nfvo_ip}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
 
     # Set the NFVO credentials
     export nfvo_admin_user="admin"
-    $_ex 'sed -i "s|nfvo-usr\s*=*|nfvo-usr=${nfvo_admin_user}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
+    $_ex 'sed -i "s|nfvo-usr\s*=.*|nfvo-usr=${nfvo_admin_user}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
 
     nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${nfvo_admin_password+x} ] ; then # The empty string is considered as unset
