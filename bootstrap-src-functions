@@ -288,6 +288,7 @@ src_checkout_nfvo () {
     git submodule update
 
     $_ex 'rm -rf '"${OPENBATON_BASE_CONFIG_DIR}; mkdir -p ${OPENBATON_BASE_CONFIG_DIR}"
+    $_ex 'chown -R '"${USER}:${USER} ${OPENBATON_BASE_CONFIG_DIR}"
     $_ex 'cp '"${OPENBATON_NFVO_DIR}/main/src/main/resources/application.properties ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_NFVO_CONFIG_FILE}"
     $_ex 'cp '"${OPENBATON_NFVO_DIR}/etc/keystore.p12 ${OPENBATON_BASE_CONFIG_DIR}/keystore.p12"
 }
@@ -587,6 +588,8 @@ src_configure_fms () {
 #######################
 
 src_plugin_monitoring_zabbix_configure_zabbix () {
+    export OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE=${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE}
+
     # In case of "noninteractive" FRONTEND the default value will remain valid (user: admin ; password: openbaton)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         read -p " * Please, provide the IP of the Zabbix plugin host [localhost]: " zabbix_plugin_ip
@@ -607,7 +610,7 @@ src_plugin_monitoring_zabbix_configure_zabbix () {
         zabbix_plugin_ip=${ZABBIX_PLUGIN_IP_DEFAULT}
     fi
     log_success_msg "Setting the ZABBIX plugin host IP: ${zabbix_plugin_ip}"
-    sed -i "s|zabbix-plugin-ip\s*=.*|zabbix-plugin-ip=${zabbix_plugin_ip}|g" ${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE}
+    $_ex 'sed -i "s|zabbix-plugin-ip\s*=.*|zabbix-plugin-ip=${zabbix_plugin_ip}|g" ${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE}'
 
     # Set the Zabbix server IP
     export zabbix_server_ip=${zabbix_server_ip}
@@ -615,7 +618,7 @@ src_plugin_monitoring_zabbix_configure_zabbix () {
         zabbix_server_ip=${ZABBIX_SERVER_IP_DEFAULT}
     fi
     log_success_msg "Setting the ZABBIX server IP: ${zabbix_server_ip}"
-    sed -i "s|zabbix-host\s*=\s*localhost|zabbix-host=${zabbix_server_ip}|g" ${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE}
+    $_ex 'sed -i "s|zabbix-host\s*=\s*localhost|zabbix-host=${zabbix_server_ip}|g" ${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE}'
 
     # Set the zabbix user
     export zabbix_user=${zabbix_user}
@@ -623,7 +626,7 @@ src_plugin_monitoring_zabbix_configure_zabbix () {
         zabbix_user=${ZABBIX_USER_DEFAULT}
     fi
     log_success_msg "Setting the ZABBIX user: ${zabbix_user}"
-    sed -i "s|user-zbx\s*=\s*admin|user-zbx=${zabbix_user}|g" ${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE}
+    $_ex 'sed -i "s|user-zbx\s*=\s*admin|user-zbx=${zabbix_user}|g" ${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE}'
 
     # Set the zabbix user's password
     export zabbix_user_password=${zabbix_user_password}
@@ -631,17 +634,19 @@ src_plugin_monitoring_zabbix_configure_zabbix () {
         zabbix_user_password=${ZABBIX_USER_PASSWORD_DEFAULT}
     fi
     log_success_msg "Setting the ZABBIX user's password: ${zabbix_user_password}"
-    sed -i "s|password-zbx\s*=\s*zabbix|password-zbx=${zabbix_user_password}|g" ${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE}
+    $_ex 'sed -i "s|password-zbx\s*=\s*zabbix|password-zbx=${zabbix_user_password}|g" ${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE}'
 }
 
 src_plugin_monitoring_zabbix_configure_nfvo () {
+    export OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE=${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}
+
     # Set the Zabbix Server IP in the NFVO "nfvo.monitoring.ip" property
     if [ -f ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE} ]; then
         zabbix_server_ip=$( awk '$0 ~ "zabbix-host[[:space:]]*="' "${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
         if [ ! -z ${zabbix_server_ip+x} ] ; then # The empty string is considered as unset
             log_success_msg "Setting Zabbix Server IP into NFVO: ${zabbix_server_ip}"
             export zabbix_server_ip=${zabbix_server_ip}
-            sed -i "s|#nfvo.monitoring.ip\s*=.*|nfvo.monitoring.ip=${zabbix_server_ip}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}
+            $_ex 'sed -i "s|#nfvo.monitoring.ip\s*=.*|nfvo.monitoring.ip=${zabbix_server_ip}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
         fi
     fi
 }
