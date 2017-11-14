@@ -106,6 +106,11 @@ openbaton_fms_version=${openbaton_fms_version:-$OPENBATON_FMS_VERSION_DEFAULT}
 openbaton_ase_version=${openbaton_ase_version:-$OPENBATON_ASE_VERSION_DEFAULT}
 openbaton_nse_version=${openbaton_nse_version:-$OPENBATON_NSE_VERSION_DEFAULT}
 
+ZABBIX_PLUGIN_IP_DEFAULT=localhost
+ZABBIX_SERVER_IP_DEFAULT=localhost
+ZABBIX_USER_DEFAULT=Admin
+ZABBIX_USER_PASSWORD_DEFAULT=zabbix
+
 
 ###############
 #### Utils ####
