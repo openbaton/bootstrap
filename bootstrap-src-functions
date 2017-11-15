@@ -472,13 +472,21 @@ src_ase_configure_rabbitmq () {
         export ase_rabbitmq_management_port=${ase_rabbitmq_management_port}
         $_ex 'sed -i "s|autoscaling.rabbitmq.management.port\s*=\s*15672|autoscaling.rabbitmq.management.port=${ase_rabbitmq_management_port}|g" ${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}'
     fi
+
+    # Set the RabbitMQ password
+    ase_rabbitmq_password=$( awk '$0 ~ "spring.rabbitmq.password[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
+    if [ ! -z ${ase_rabbitmq_password+x} ] ; then # The empty string is considered as unset
+        log_success_msg "Setting RabbitMQ password into Autoscaling Engine: ****"
+        export ase_rabbitmq_password=${ase_rabbitmq_password}
+        $_ex 'sed -i "s|spring.rabbitmq.password\s*=\s*.*|spring.rabbitmq.password=${ase_rabbitmq_password}|g" ${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}'
+    fi
 }
 
 src_ase_configure_nfvo_admin_credentials () {
     # Set the NFVO admin's password
     ase_nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${ase_nfvo_admin_password+x} ] ; then # The empty string is considered as unset
-        log_success_msg "Setting NFVO admin's password into Auto Scaling Engine: ${ase_nfvo_admin_password}"
+        log_success_msg "Setting NFVO admin's password into Auto Scaling Engine: ****"
         export ase_nfvo_admin_password=${ase_nfvo_admin_password}
         $_ex 'sed -i "s|nfvo.password\s*=\s*openbaton|nfvo.password=${ase_nfvo_admin_password}|g" ${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}'
     fi
@@ -498,19 +506,27 @@ src_fms_configure_rabbitmq () {
     export OPENBATON_FMS_CONFIG_FILE_ABSOLUTE=${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}
 
     # Set the RabbitMQ IP
-    rabbitmq_broker_ip=$( awk '$0 ~ "nfvo.rabbit.brokerIp[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
-    if [ ! -z ${rabbitmq_broker_ip+x} ] ; then # The empty string is considered as unset
-        log_success_msg "Setting RabbitMQ IP into Fault Management System: ${rabbitmq_broker_ip}"
-        export rabbitmq_broker_ip=${rabbitmq_broker_ip}
-        $_ex 'sed -i "s|spring.rabbitmq.host\s*=.*|spring.rabbitmq.host=${rabbitmq_broker_ip}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
+    fms_rabbitmq_broker_ip=$( awk '$0 ~ "nfvo.rabbit.brokerIp[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
+    if [ ! -z ${fms_rabbitmq_broker_ip+x} ] ; then # The empty string is considered as unset
+        log_success_msg "Setting RabbitMQ IP into Fault Management System: ${fms_rabbitmq_broker_ip}"
+        export fms_rabbitmq_broker_ip=${fms_rabbitmq_broker_ip}
+        $_ex 'sed -i "s|spring.rabbitmq.host\s*=.*|spring.rabbitmq.host=${fms_rabbitmq_broker_ip}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
     fi
 
     # Set the RabbitMQ Management port
-    rabbitmq_management_port=$( awk '$0 ~ "nfvo.rabbit.management.port[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
-    if [ ! -z ${rabbitmq_management_port+x} ] ; then # The empty string is considered as unset
-        log_success_msg "Setting RabbitMQ Management port into Fault Management System: ${rabbitmq_management_port}"
-        export rabbitmq_management_port=${rabbitmq_management_port}
-        $_ex 'sed -i "s|spring.rabbitmq.port\s*=\s*15672|spring.rabbitmq.port=${rabbitmq_management_port}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
+    fms_rabbitmq_management_port=$( awk '$0 ~ "nfvo.rabbit.management.port[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
+    if [ ! -z ${fms_rabbitmq_management_port+x} ] ; then # The empty string is considered as unset
+        log_success_msg "Setting RabbitMQ Management port into Fault Management System: ${fms_rabbitmq_management_port}"
+        export fms_rabbitmq_management_port=${fms_rabbitmq_management_port}
+        $_ex 'sed -i "s|spring.rabbitmq.management.port\s*=\s*15672|spring.rabbitmq.management.port=${fms_rabbitmq_management_port}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
+    fi
+
+    # Set the RabbitMQ password
+    fms_rabbitmq_password=$( awk '$0 ~ "spring.rabbitmq.password[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
+    if [ ! -z ${fms_rabbitmq_password+x} ] ; then # The empty string is considered as unset
+        log_success_msg "Setting RabbitMQ password into Fault Management System: ****"
+        export fms_rabbitmq_password=${fms_rabbitmq_password}
+        $_ex 'sed -i "s|spring.rabbitmq.password\s*=\s*.*|spring.rabbitmq.password=${fms_rabbitmq_password}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
     fi
 }
 
@@ -519,21 +535,21 @@ src_fms_configure_nfvo () {
 
     # In case of "noninteractive" FRONTEND the default value will remain valid (openbaton_nfvo_ip: localhost)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-       read -p " * Please, provide the IP of the NFVO [localhost]: " openbaton_nfvo_ip
+       read -p " * Please, provide the IP of the NFVO [localhost]: " fms_openbaton_nfvo_ip
     fi
     # Set the NFVO IP
-    export openbaton_nfvo_ip=${openbaton_nfvo_ip:-$OPENBATON_NFVO_IP_DEFAULT}
-    $_ex 'sed -i "s|nfvo.ip\s*=.*|nfvo.ip=${openbaton_nfvo_ip}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
+    export fms_openbaton_nfvo_ip=${fms_openbaton_nfvo_ip:-$OPENBATON_NFVO_IP_DEFAULT}
+    $_ex 'sed -i "s|nfvo.ip\s*=.*|nfvo.ip=${fms_openbaton_nfvo_ip}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
 
     # Set the NFVO credentials
-    export nfvo_admin_user="admin"
-    $_ex 'sed -i "s|nfvo-usr\s*=.*|nfvo-usr=${nfvo_admin_user}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
+    export fms_nfvo_admin_user="admin"
+    $_ex 'sed -i "s|nfvo-usr\s*=.*|nfvo-usr=${fms_nfvo_admin_user}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
 
-    nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
-    if [ ! -z ${nfvo_admin_password+x} ] ; then # The empty string is considered as unset
-        log_success_msg "Setting NFVO admin's password into Fault Management System: ${nfvo_admin_password}"
-        export nfvo_admin_password=${nfvo_admin_password}
-        $_ex 'sed -i "s|nfvo-pwd\s*=.*|nfvo-pwd=${nfvo_admin_password}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
+    fms_nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
+    if [ ! -z ${fms_nfvo_admin_password+x} ] ; then # The empty string is considered as unset
+        log_success_msg "Setting NFVO admin's password into Fault Management System: ****"
+        export fms_nfvo_admin_password=${fms_nfvo_admin_password}
+        $_ex 'sed -i "s|nfvo-pwd\s*=.*|nfvo-pwd=${fms_nfvo_admin_password}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
     fi
 }
 
@@ -580,6 +596,35 @@ src_configure_fms () {
     src_fms_configure_mysql
     src_fms_configure_rabbitmq
     src_fms_configure_nfvo
+}
+
+
+#############
+#### NSE ####
+#############
+
+src_nse_configure_rabbitmq () {
+    export OPENBATON_NSE_CONFIG_FILE_ABSOLUTE=${OPENBATON_NSE_CONFIG_FILE_ABSOLUTE}
+
+    # Set the RabbitMQ IP
+    nse_rabbitmq_broker_ip=$( awk '$0 ~ "nfvo.rabbit.brokerIp[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
+    if [ ! -z ${nse_rabbitmq_broker_ip+x} ] ; then # The empty string is considered as unset
+        log_success_msg "Setting RabbitMQ IP into Network Slicing Engine: ${nse_rabbitmq_broker_ip}"
+        export nse_rabbitmq_broker_ip=${nse_rabbitmq_broker_ip}
+        $_ex 'sed -i "s|rabbitmq.host\s*=.*|rabbitmq.host=${nse_rabbitmq_broker_ip}|g" ${OPENBATON_NSE_CONFIG_FILE_ABSOLUTE}'
+    fi
+
+    # Set the RabbitMQ password
+    nse_rabbitmq_password=$( awk '$0 ~ "spring.rabbitmq.password[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
+    if [ ! -z ${nse_rabbitmq_password+x} ] ; then # The empty string is considered as unset
+        log_success_msg "Setting RabbitMQ password into Network Slicing Engine: ****"
+        export nse_rabbitmq_password=${nse_rabbitmq_password}
+        $_ex 'sed -i "s|rabbitmq.password\s*=\s*.*|rabbitmq.password=${nse_rabbitmq_password}|g" ${OPENBATON_NSE_CONFIG_FILE_ABSOLUTE}'
+    fi
+}
+
+src_configure_nse () {
+    src_nse_configure_rabbitmq
 }
 
 
@@ -744,6 +789,7 @@ src_bootstrap () {
     src_checkout_additional_component "${OPENBATON_NSE_REPO_URL}" "${OPENBATON_NSE_REPO_NAME}" "Network Slicing Engine (NSE)" "src/main/resources/application.properties" "${OPENBATON_NSE_CONFIG_FILE}" "${openbaton_nse}" "1.1.2" "${openbaton_nse_version}"
     if [ "${installed}" = "0" ]; then
         create_service "nse" "${OPENBATON_NSE_CONFIG_FILE_ABSOLUTE}"
+        src_configure_nse
         src_deploy_additional_component "network-slicing-engine" "Network Slicing Engine" "network-slicing-engine.sh"
     fi
 
