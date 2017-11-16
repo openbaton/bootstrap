@@ -403,8 +403,9 @@ configure_remote_rabbitmq () {
 ##################
 
 create_service () {
-    export service_name="${1}"
-    export service_properties_file_name_absolute="${2}"
+    export component_name="${1}"
+    export service_name="${2}"
+    export service_properties_file_name_absolute="${3}"
     export OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE=${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}
 
     log_success_msg "Creating new Service '${service_name}'"
@@ -427,7 +428,7 @@ create_service () {
     # Get project id of 'default' project
     project_id=$(openbaton -u "${nfvo_user}" -p "${nfvo_admin_password}" -ip "${nfvo_ip}" --nfvo-port "${nfvo_port}" -pid "" project list 2>/dev/null | grep default | sed s/\ //g | awk -F'|' '{print $2 }')
     if [ -z "${project_id}" ]; then
-        log_failure_msg "Problems while creating  Service '${service_name}'"
+        log_failure_msg "Problems while creating Service '${service_name}'"
         log_failure_msg "Skipping this Service registration. Please try to do it manually."
         return
     fi
@@ -435,7 +436,7 @@ create_service () {
 
     service_key=$(openbaton -u "${nfvo_user}" -p "${nfvo_admin_password}" -ip "${nfvo_ip}" --nfvo-port "${nfvo_port}" -pid "${project_id}" service create /tmp/create_service_body)
     if [ -z "${service_key}" ]; then
-        log_failure_msg "Problems while creating  Service '${service_name}'"
+        log_failure_msg "Problems while creating Service '${service_name}'"
         log_failure_msg "Skipping this Service registration. Please try to do it manually."
         return
     fi
@@ -446,7 +447,7 @@ create_service () {
 
     # Set service key in properties file
     log_success_msg "Setting Service key: ${service_key}"
-    $_ex 'sed -i "s|${service_name}\.service\.key\s*=.*|${service_name}\.service\.key=${service_key}|g" ${service_properties_file_name_absolute}'
+    $_ex 'sed -i "s|${component_name}\.service\.key\s*=.*|${component_name}\.service\.key=${service_key}|g" ${service_properties_file_name_absolute}'
 }
 
 
@@ -457,6 +458,7 @@ create_service () {
 wait_for_nfvo_up () {
     max_wait=300
     i_wait=${max_wait}
+    echo " * Waiting for the NFVO to be up .."
 
     while ! nc -z localhost 8080; do
         sleep 1 # wait for 1 second before check again

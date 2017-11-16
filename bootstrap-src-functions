@@ -380,11 +380,12 @@ src_checkout_additional_component () {
 
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         # Ask for the specified Additional Component installation
-        read -p " * Do you want to install also the ${component_name_fancy}? ( if you do not, then you can still install it later with: cd ${OPENBATON_BASE_DIR} && git clone ${component_repo_url}.git ) (Y/n): " ac
+        read -p " * Do you want to install also the ${component_name_fancy}? ( if you do not, then you can still install it later with: cd ${OPENBATON_BASE_DIR} && git clone ${component_repo_url} ) (Y/n): " ac
 
         if [ "${ac}" = "" -o "${ac}" = "y" -o "${ac}" = "Y" -o "${ac}" = "yes" -o "${ac}" = "YES" ]; then
             valid_version=false
             while [ "${valid_version}" = "false" ]; do
+                # Ask for the Additional Component version to be installed
                 echo " * You can install a specific TAG of the Open Baton ${component_name_fancy} or the latest source code of the 'develop' branch of the repository."
                 echo " * For the latest code of the 'develop' branch type 'develop'"
                 echo " * For a specific TAG, the format is X.Y.Z and the available TAGs installable with this bootstrap are the following: "
@@ -462,7 +463,7 @@ src_ase_configure_rabbitmq () {
     if [ ! -z ${ase_rabbitmq_broker_ip+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting RabbitMQ IP into Auto Scaling Engine: ${ase_rabbitmq_broker_ip}"
         export ase_rabbitmq_broker_ip=${ase_rabbitmq_broker_ip}
-        $_ex 'sed -i "s|autoscaling.rabbitmq.brokerIp\s*=\s*localhost|autoscaling.rabbitmq.brokerIp=${ase_rabbitmq_broker_ip}|g" ${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}'
+        $_ex 'sed -i "s|ase.rabbitmq.brokerIp\s*=\s*localhost|ase.rabbitmq.brokerIp=${ase_rabbitmq_broker_ip}|g" ${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}'
     fi
 
     # Set the RabbitMQ Management port
@@ -470,7 +471,7 @@ src_ase_configure_rabbitmq () {
     if [ ! -z ${ase_rabbitmq_management_port+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting RabbitMQ Management port into Auto Scaling Engine: ${ase_rabbitmq_management_port}"
         export ase_rabbitmq_management_port=${ase_rabbitmq_management_port}
-        $_ex 'sed -i "s|autoscaling.rabbitmq.management.port\s*=\s*15672|autoscaling.rabbitmq.management.port=${ase_rabbitmq_management_port}|g" ${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}'
+        $_ex 'sed -i "s|ase.rabbitmq.management.port\s*=\s*15672|ase.rabbitmq.management.port=${ase_rabbitmq_management_port}|g" ${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}'
     fi
 
     # Set the RabbitMQ password
@@ -482,7 +483,17 @@ src_ase_configure_rabbitmq () {
     fi
 }
 
-src_ase_configure_nfvo_admin_credentials () {
+src_ase_configure_nfvo () {
+    export OPENBATON_ASE_CONFIG_FILE_ABSOLUTE=${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}
+
+    # In case of "noninteractive" FRONTEND the default value will remain valid (openbaton_nfvo_ip: localhost)
+    if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
+       read -p " * Please, provide the IP of the NFVO [localhost]: " ase_openbaton_nfvo_ip
+    fi
+    # Set the NFVO IP
+    export ase_openbaton_nfvo_ip=${ase_openbaton_nfvo_ip:-$OPENBATON_NFVO_IP_DEFAULT}
+    $_ex 'sed -i "s|nfvo.ip\s*=.*|nfvo.ip=${ase_openbaton_nfvo_ip}|g" ${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}'
+
     # Set the NFVO admin's password
     ase_nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${ase_nfvo_admin_password+x} ] ; then # The empty string is considered as unset
@@ -494,7 +505,14 @@ src_ase_configure_nfvo_admin_credentials () {
 
 src_configure_ase () {
     src_ase_configure_rabbitmq
-    src_ase_configure_nfvo_admin_credentials
+    src_ase_configure_nfvo
+}
+
+disable_plugins_startup () {
+    export OPENBATON_ASE_CONFIG_FILE_ABSOLUTE=${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}
+
+    log_warning_msg "Disabling plugins startup executed by the Auto Scaling Engine: the NFVO should take care to do it during the bootstrap."
+    $_ex 'sed -i "s|ase.plugin.startup\s*=\s*true|ase.plugin.startup=false|g" ${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}'
 }
 
 
@@ -755,10 +773,8 @@ src_bootstrap () {
     if [ -d "${OPENBATON_BASE_DIR}/${OPENBATON_CLI_REPO_NAME}" ]; then
         cd "${OPENBATON_BASE_DIR}/${OPENBATON_CLI_REPO_NAME}"
         git checkout develop
-        pip install .
+        $_ex 'pip install .'
     fi
-
-    wait_for_nfvo_up
 
     export OPENBATON_BASE_CONFIG_DIR=${OPENBATON_BASE_CONFIG_DIR}
    
@@ -769,10 +785,13 @@ src_bootstrap () {
         src_deploy_additional_component "generic-vnfm" "Generic VNFM" "generic-vnfm.sh"
     fi
 
+    # To be sure that the NFVO is up before trying to create the services
+    wait_for_nfvo_up
+
     # Fault Management System
     src_checkout_additional_component "${OPENBATON_FMS_REPO_URL}" "${OPENBATON_FMS_REPO_NAME}" "Fault Management System (FMS)" "src/main/resources/application.properties" "${OPENBATON_FMS_CONFIG_FILE}" "${openbaton_fms}" "1.2.4" "${openbaton_fms_version}"
     if [ "${installed}" = "0" ]; then
-        create_service "fms" "${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}"
+        create_service "fms" "fms" "${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}"
         src_configure_fms
         src_deploy_additional_component "fm-system" "Fault Management System (FMS)" "openbaton-fms.sh"
     fi
@@ -780,15 +799,16 @@ src_bootstrap () {
     # Auto Scaling Engine
     src_checkout_additional_component "${OPENBATON_ASE_REPO_URL}" "${OPENBATON_ASE_REPO_NAME}" "Auto Scaling Engine (ASE)" "src/main/resources/application.properties" "${OPENBATON_ASE_CONFIG_FILE}" "${openbaton_ase}" "1.2.2" "${openbaton_ase_version}"
     if [ "${installed}" = "0" ]; then
-        create_service "ase" "${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}"
+        create_service "ase" "autoscaling-engine" "${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}"
         src_configure_ase
+        disable_plugins_startup
         src_deploy_additional_component "autoscaling-engine" "Auto Scaling Engine (ASE)" "autoscaling-engine.sh"
     fi
 
     # Network Slicing Engine
     src_checkout_additional_component "${OPENBATON_NSE_REPO_URL}" "${OPENBATON_NSE_REPO_NAME}" "Network Slicing Engine (NSE)" "src/main/resources/application.properties" "${OPENBATON_NSE_CONFIG_FILE}" "${openbaton_nse}" "1.1.2" "${openbaton_nse_version}"
     if [ "${installed}" = "0" ]; then
-        create_service "nse" "${OPENBATON_NSE_CONFIG_FILE_ABSOLUTE}"
+        create_service "nse" "nse" "${OPENBATON_NSE_CONFIG_FILE_ABSOLUTE}"
         src_configure_nse
         src_deploy_additional_component "network-slicing-engine" "Network Slicing Engine" "network-slicing-engine.sh"
     fi
