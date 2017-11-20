@@ -70,7 +70,9 @@ OPENBATON_ASE_CONFIG_FILE_ABSOLUTE="${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_ASE
 OPENBATON_NSE_CONFIG_FILE="openbaton-nse.properties"
 OPENBATON_NSE_CONFIG_FILE_ABSOLUTE="${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_NSE_CONFIG_FILE}"
 
+OPENBATON_LOG_DIR="/var/log/openbaton"
 OPENBATON_PLUGINS_LOG_DIR="plugins"
+OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE="${OPENBATON_LOG_DIR}/${OPENBATON_PLUGINS_LOG_DIR}"
 
 OPENBATON_PLUGIN_VIMDRIVER_TEST_DEFAULT=yes
 OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_DEFAULT=yes
@@ -144,7 +146,18 @@ enable_https () {
 
     # In case of "noninteractive" FRONTEND the default value will remain valid (see in lines below)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-        read -p " * Do you want to enable HTTPS? [N/y]: " https
+        #read -p " * Do you want to enable HTTPS? [N/y]: " https
+        if (whiptail --title "Open Baton NFV Orchestrator (NFVO) configuration" --yesno "Do you want to enable HTTPS?" 8 140) then
+            https="yes"
+        else
+            https="no"
+        fi
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
     fi
 
     https=${https:-$HTTPS_DEFAULT}
@@ -223,17 +236,37 @@ configure_mysql () {
 
     # In case of "noninteractive" FRONTEND the default value will remain valid (openbaton_nfvo_mysql_user: admin ; openbaton_nfvo_mysql_user_password: changeme)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-        read -p " * Please, type the name of the MySQL user you would like the Open Baton NFVO to use [admin]: " openbaton_nfvo_mysql_user
+        #read -p " * Please, type the name of the MySQL user you would like the Open Baton NFVO to use [admin]: " openbaton_nfvo_mysql_user
+        openbaton_nfvo_mysql_user=$(whiptail --inputbox "\nPlease, type the name of the MySQL user you would like the Open Baton NFVO to use [admin]:" 8 140 admin --title "Open Baton NFV Orchestrator (NFVO) configuration" 3>&1 1>&2 2>&3)
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
 
         # Turning echo ON and OFF between password reading
-        stty -echo
-        read -p " * Please, provide the password for this user [changeme]: " openbaton_nfvo_mysql_user_password ; echo
-        stty echo
+        #stty -echo
+        #read -p " * Please, provide the password for this user [changeme]: " openbaton_nfvo_mysql_user_password ; echo
+        #stty echo
+        openbaton_nfvo_mysql_user_password=$(whiptail --passwordbox "\nPlease, provide the password for this user [changeme]:" 8 140 changeme --title "Open Baton NFV Orchestrator (NFVO) configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
 
         # Turning echo ON and OFF batween password reading
-        stty -echo
-        read -p " * Please, provide the password of the 'root' user of MySQL [root]: " mysql_root_password ; echo
-        stty echo
+        #stty -echo
+        #read -p " * Please, provide the password of the 'root' user of MySQL [root]: " mysql_root_password ; echo
+        #stty echo
+        mysql_root_password=$(whiptail --passwordbox "\nPlease, provide the password of the 'root' user of MySQL [root]:" 8 140 root --title "Open Baton NFV Orchestrator (NFVO) configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
     fi
 
     # Set the mysql user
@@ -262,7 +295,18 @@ install_mysql () {
 
     # In case of "noninteractive" FRONTEND the default value will remain valid (mysql: yes)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-        read -p " * Do you want to enable the Open Baton persistence through MySQL? [Y/n]: " mysql
+        #read -p " * Do you want to enable the Open Baton persistence through MySQL? [Y/n]: " mysql
+        if (whiptail --title "Open Baton NFV Orchestrator (NFVO) configuration" --yesno "Do you want to enable the Open Baton persistence through MySQL?" 8 140) then
+            mysql="yes"
+        else
+            mysql="no"
+        fi
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
     else
         if [ "${mysql}" = "" -o "${mysql}" = "y" -o "${mysql}" = "Y" -o "${mysql}" = "yes" ]; then
             export mysql_root_password=${mysql_root_password:-$MYSQL_ROOT_PASSWORD_DEFAULT}
@@ -310,24 +354,77 @@ configure_remote_rabbitmq () {
 
     log_success_msg "Configuring remote RabbitMQ for Open Baton"
 
-    read -p " * Please provide the Open Baton NFVO version for which you want to configure the RabbitMQ Broker? (version format: 1) X.Y.Z for specific debian release/source tag, 2) 'latest' if the develop source code branch is installed) [latest]: " openbaton_nfvo_version
+    #read -p " * Please provide the Open Baton NFVO version for which you want to configure the RabbitMQ Broker? (version format: 1) X.Y.Z for specific debian release/source tag, 2) 'latest' if the develop source code branch is installed) [latest]: " openbaton_nfvo_version
+    openbaton_nfvo_version=$(whiptail --inputbox "\nPlease, provide the Open Baton NFVO version for which you want to configure the RabbitMQ Broker [latest]:\nVersion format:\n 1) X.Y.Z for specific debian release/source tag\n 2) 'latest' if the develop source code branch is installed)" 25 140 latest --title "Open Baton NFV Orchestrator (NFVO) configuration" 3>&1 1>&2 2>&3)
+    exit_status="$?"
+    if [ ${exit_status} != 0 ]; then
+        echo ""
+        log_warning_msg "Aborting remote RabbitMQ configuration"
+        exit 1
+    fi
     openbaton_nfvo_version=${openbaton_nfvo_version:-$OPENBATON_NFVO_VERSION_DEFAULT}
 
-    read -p " * Please provide the IP of the remote RabbitMQ Broker? [localhost]: " rabbitmq_broker_ip
-    read -p " * Please provide the 'management port' of the remote RabbitMQ Broker? [15672]: " rabbitmq_management_port
-
+    #read -p " * Please provide the IP of the remote RabbitMQ Broker? [localhost]: " rabbitmq_broker_ip
+    #read -p " * Please provide the 'management port' of the remote RabbitMQ Broker? [15672]: " rabbitmq_management_port
+    rabbitmq_broker_ip=$(whiptail --inputbox "\nPlease, provide the IP of the remote RabbitMQ Broker [localhost]:" 8 140 localhost --title "Open Baton NFV Orchestrator (NFVO) configuration" 3>&1 1>&2 2>&3)
+    exit_status="$?"
+    if [ ${exit_status} != 0 ]; then
+        echo ""
+        log_warning_msg "Aborting remote RabbitMQ configuration"
+        exit 1
+    fi
+    rabbitmq_management_port=$(whiptail --inputbox "\nPlease, provide the 'management port' of the remote RabbitMQ Broker [15672]:" 8 140 15672 --title "Open Baton NFV Orchestrator (NFVO) configuration" 3>&1 1>&2 2>&3)
+    exit_status="$?"
+    if [ ${exit_status} != 0 ]; then
+        echo ""
+        log_warning_msg "Aborting remote RabbitMQ configuration"
+        exit 1
+    fi
     rabbitmq_broker_ip=${rabbitmq_broker_ip:-$RABBITMQ_BROKER_IP_DEFAULT}
     rabbitmq_management_port=${rabbitmq_management_port:-$RABBITMQ_MANAGEMENT_PORT_DEFAULT}
+
     retrieve_rabbitmqadmin_cli ${rabbitmq_broker_ip} ${rabbitmq_management_port}
 
     #### NFVO configuration
-    read -p " * Does an 'admin' user exist in the remote RabbitMQ Broker on the '${rabbitmq_broker_ip}' host? [Y/n]: " rabbitmq_admin_user
+    #read -p " * Does an 'admin' user exist in the remote RabbitMQ Broker on the '${rabbitmq_broker_ip}' host? [Y/n]: " rabbitmq_admin_user
+    if (whiptail --title "Open Baton NFV Orchestrator (NFVO) configuration" --yesno "Does an 'admin' user exist in the remote RabbitMQ Broker on the '${rabbitmq_broker_ip}' host?" 8 140) then
+        rabbitmq_admin_user="yes"
+    else
+        rabbitmq_admin_user="no"
+    fi
+    exit_status="$?"
+    if [ ${exit_status} != 0 ]; then
+        echo ""
+        log_warning_msg "Aborting Open Baton installation"
+        exit 1
+    fi
 
     if [ "${rabbitmq_admin_user}" = "" -o "${rabbitmq_admin_user}" = "y" -o "${rabbitmq_admin_user}" = "Y" -o "${rabbitmq_admin_user}" = "yes" ]; then
-        read -p " * Please provide the 'admin' password of the remote RabbitMQ Broker on the '${rabbitmq_broker_ip}' host?: " rabbitmq_admin_password
+        #read -p " * Please provide the 'admin' password of the remote RabbitMQ Broker on the '${rabbitmq_broker_ip}' host?: " rabbitmq_admin_password
+        rabbitmq_admin_password=$(whiptail --passwordbox "\nPlease, provide the 'admin' password of the remote RabbitMQ Broker on the '${rabbitmq_broker_ip}' host:" 8 140 --title "Open Baton NFV Orchestrator (NFVO) configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting remote RabbitMQ configuration"
+            exit 1
+        fi
     else
-        read -p " * Please provide the username of an user of the remote RabbitMQ Broker on the '${rabbitmq_broker_ip}' host?: " rabbitmq_user_username
-        read -p " * Please provide the password of the '${rabbitmq_user_username}' user of the remote RabbitMQ Broker on the '${rabbitmq_broker_ip}' host?: " rabbitmq_user_password
+        #read -p " * Please provide the username of an user of the remote RabbitMQ Broker on the '${rabbitmq_broker_ip}' host?: " rabbitmq_user_username
+        #read -p " * Please provide the password of the '${rabbitmq_user_username}' user of the remote RabbitMQ Broker on the '${rabbitmq_broker_ip}' host?: " rabbitmq_user_password
+        rabbitmq_user_username=$(whiptail --inputbox "\nPlease, provide the username of an existing user of the remote RabbitMQ Broker on the '${rabbitmq_broker_ip}' host:" 8 140 --title "Open Baton NFV Orchestrator (NFVO) configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting remote RabbitMQ configuration"
+            exit 1
+        fi
+        rabbitmq_user_password=$(whiptail --passwordbox "\nPlease, provide the password of the '${rabbitmq_user_username}' user of the remote RabbitMQ Broker on the '${rabbitmq_broker_ip}' host:" 8 140 --title "Open Baton NFV Orchestrator (NFVO) configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting remote RabbitMQ configuration"
+            exit 1
+        fi
 
         # Generate the password and creates the 'admin' user if not already existing
         # Check the NFVO version being installed: the new RabbitMQ configuration is required only from version >= 4.0.1
@@ -395,6 +492,22 @@ configure_remote_rabbitmq () {
     # Set the rabbitmq broker ip for the Generic VNFM retrieving its value from the NFVO properties file
     log_success_msg "Setting new broker IP: ${rabbitmq_broker_ip}"
     $_ex 'sed -i "s|vnfm.rabbitmq.brokerIp\s*=\s*.*|vnfm.rabbitmq.brokerIp=${rabbitmq_broker_ip}|g" ${OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE}'
+}
+
+
+############################
+#### VIM-Driver Plugins ####
+############################
+
+configure_plugins_log_directory () {
+    export OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE=${OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE}
+
+    log_success_msg "Creating directory for Plugins logs"
+    $_ex 'mkdir -p ${OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE}'
+    $_ex 'chown -R '"${USER}:${USER} ${OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE}"
+
+    log_success_msg "Configuring directory for Plugins logs"
+    $_ex 'sed -i "s|nfvo.plugin.log.path\s*=\s*.*|nfvo.plugin.log.path=${OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
 }
 
 
@@ -478,11 +591,26 @@ clean_db () {
     # Clean MySQL for Components
     component_mysql_user=${component_mysql_user:-"undefined"}
     if [ "${component_mysql_user}" != "undefined" ]; then
-        read -p " * Do you want to delete the Open Baton ${component_name_fancy} database: '${component_db_name}' (this will also delete the associated user: '${component_mysql_user}')? (if you skip this step then you won't be able, later on, to delete this database and its user using this script) [Y/n]: " mysql
-        if [ "${mysql}" = "" -o "${mysql}" = "y" -o "${mysql}" = "Y" -o "${mysql}" = "yes" ]; then
-            stty -echo
-            read -p " * Please, provide the password of the 'root' user of mysql [root]: " mysql_root_password ; echo
-            stty echo
+        #read -p " * Do you want to delete the Open Baton ${component_name_fancy} database: '${component_db_name}' (this will also delete the associated user: '${component_mysql_user}')? (if you skip this step then you won't be able, later on, to delete this database and its user using this script) [Y/n]: " mysql
+        #if [ "${mysql}" = "" -o "${mysql}" = "y" -o "${mysql}" = "Y" -o "${mysql}" = "yes" ]; then
+        if (whiptail --title "\nOpen Baton ${component_name_fancy} installation cleaning" --yesno "Do you want to delete the Open Baton ${component_name_fancy} database: '${component_db_name}' (this will also delete the associated user: '${component_mysql_user}')?\n(if you skip this step then you won't be able, later on, to delete this database and its user using this script):" 8 140) then
+            exit_status="$?"
+            if [ ${exit_status} != 0 ]; then
+                echo ""
+                log_warning_msg "Aborting Open Baton ${component_name_fancy} installation cleaning"
+                exit 1
+            fi
+
+            #stty -echo
+            #read -p " * Please, provide the password of the 'root' user of mysql [root]: " mysql_root_password ; echo
+            #stty echo
+            mysql_root_password=$(whiptail --passwordbox "\nPlease, provide the password of the 'root' user of mysql [root]:" 8 140 root --title "Open Baton ${component_name_fancy} installation cleaning" 3>&1 1>&2 2>&3)
+            exit_status="$?"
+            if [ ${exit_status} != 0 ]; then
+                echo ""
+                log_warning_msg "Aborting Open Baton ${component_name_fancy} installation cleaning"
+                exit 1
+            fi
 
             echo " * Deleting Open Baton ${component_name_fancy} database and its associated user."
             mysql_root_password=${mysql_root_password:-$MYSQL_ROOT_PASSWORD_DEFAULT}

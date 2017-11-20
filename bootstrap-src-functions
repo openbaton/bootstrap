@@ -19,10 +19,6 @@ OPENBATON_TMP_FOLDER=`mktemp -d`
 
 OPENBATON_INSTALLATION_BASE_DIR=/opt
 OPENBATON_BASE_DIR="${OPENBATON_INSTALLATION_BASE_DIR}/openbaton"
-OPENBATON_BASE_CONFIG_DIR="/etc/openbaton"
-OPENBATON_LOG_DIR="/var/log/openbaton"
-OPENBATON_PLUGINS_LOG_DIR="plugins"
-OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE="${OPENBATON_LOG_DIR}/${OPENBATON_PLUGINS_LOG_DIR}"
 OPENBATON_NFVO_DIR="${OPENBATON_BASE_DIR}/nfvo"
 OPENBATON_PLUGINS_DIR="${OPENBATON_NFVO_DIR}/plugins"
 OPENBATON_PLUGINS_VIMDRIVERS_DIR="${OPENBATON_PLUGINS_DIR}/vim-drivers"
@@ -90,8 +86,22 @@ src_configure_rabbitmq_for_nfvo () {
 
     # In case of "noninteractive" FRONTEND either the value from the configuration file or the default value will be used (DEFAULT: rabbitmq_broker_ip=localhost ; rabbitmq_management_port=15672)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-        read -p " * Enter the rabbitmq broker ip [localhost]: " rabbitmq_broker_ip
-        read -p " * Enter the rabbitmq management port [15672]: " rabbitmq_management_port
+        #read -p " * Enter the rabbitmq broker ip [localhost]: " rabbitmq_broker_ip
+        #read -p " * Enter the rabbitmq management port [15672]: " rabbitmq_management_port
+        rabbitmq_broker_ip=$(whiptail --inputbox "\nEnter the RabbitMQ broker IP:" 8 140 localhost --title "Open Baton NFV Orchestrator (NFVO) configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+        echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
+        rabbitmq_management_port=$(whiptail --inputbox "\nEnter the RabbitMQ management port:" 8 140 15672 --title "Open Baton NFV Orchestrator (NFVO) configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
     fi
 
     export OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE=${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}
@@ -156,17 +166,6 @@ src_configure_rabbitmq_for_vnfm_generic () {
 ############################
 #### VIM-Driver Plugins ####
 ############################
-
-src_set_plugins_log_folder () {
-    export OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE=${OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE}
-
-    log_success_msg "Creating directory for Plugins logs"
-    $_ex 'mkdir -p ${OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE}'
-    $_ex 'chown -R '"${USER}:${USER} ${OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE}"
-
-    log_success_msg "Configuring directory for Plugins logs"
-    $_ex 'sed -i "s|nfvo.plugin.log.path\s*=\s*.*|nfvo.plugin.log.path=${OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
-}
 
 src_compile_plugin () {
     component_name="${1}"                       # the directory on which the repo has been cloned
@@ -254,14 +253,24 @@ src_checkout_nfvo () {
     export nfvo_version="${2}"
 
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
+	    export OPENBATON_NFVO_REPO_NAME
+	    available_tags=$(curl -s GET https://api.github.com/repos/openbaton/${OPENBATON_NFVO_REPO_NAME}/tags | grep "name\":" | awk -F':' '{print $2}' | awk -F'"' '{print $2}' | awk -v oldest="${oldest_nfvo_version_supported}" '$1 >= oldest' | grep "^[0-9]\{1,\}\.[0-9]\{1,\}\.[0-9]\{1,\}$")
+
         valid_version=false
         while [ "${valid_version}" = "false" ]; do
             # Ask for the NFVO version to be installed
-            echo " * You can install a specific TAG of the Open Baton NFVO or the latest source code of the 'develop' branch of the repository."
-            echo " * For the latest code of the 'develop' branch type 'develop'"
-            echo " * For a specific TAG, the format is X.Y.Z and the available TAGs installable with this bootstrap are the following:"
-            curl -s GET https://api.github.com/repos/openbaton/${OPENBATON_NFVO_REPO_NAME}/tags | grep "name\":" | awk -F':' '{print $2}' | awk -F'"' '{print $2}' | awk -v oldest="${oldest_nfvo_version_supported}" '$1 >= oldest' | grep "^[0-9]\{1,\}\.[0-9]\{1,\}\.[0-9]\{1,\}$"
-            read -p " * Which VERSION of the Open Baton NFVO do you want to install? (develop): " nfvo_version
+            #echo " * You can install a specific TAG of the Open Baton NFVO or the latest source code of the 'develop' branch of the repository."
+            #echo " * For the latest code of the 'develop' branch type 'develop'"
+            #echo " * For a specific TAG, the format is X.Y.Z and the available TAGs installable with this bootstrap are the following:"
+            #curl -s GET https://api.github.com/repos/openbaton/${OPENBATON_NFVO_REPO_NAME}/tags | grep "name\":" | awk -F':' '{print $2}' | awk -F'"' '{print $2}' | awk -v oldest="${oldest_nfvo_version_supported}" '$1 >= oldest'
+            #read -p " * Which VERSION of the Open Baton NFVO do you want to install? (develop): " nfvo_version
+            nfvo_version=$(whiptail --inputbox "\nYou can install a specific TAG of the Open Baton NFVO or the latest source code of the 'develop' branch of the repository.\nThe available choices installable with this bootstrap are the following:\n\n$(echo "develop\n${available_tags}")\n\nWhich VERSION of the Open Baton NFVO do you want to install?" 25 140 develop --title "Open Baton NFV Orchestrator (NFVO) installation" 3>&1 1>&2 2>&3)
+            exit_status="$?"
+            if [ ${exit_status} != 0 ]; then
+                echo ""
+                log_warning_msg "Aborting Open Baton installation"
+                exit 1
+            fi
 
             if [ "${nfvo_version}" = "" -o "${nfvo_version}" = "develop" ]; then
                 valid_version=true
@@ -275,12 +284,14 @@ src_checkout_nfvo () {
             fi
         done
     fi
+
+    # Needed in case of Noninteractive installation
     if [ "${nfvo_version}" = "" -o "${nfvo_version}" = "latest" ]; then
         nfvo_version="develop"
     fi
 
     echo " * Downloading Open Baton NFVO .."
-    git clone --recursive "${OPENBATON_NFVO_REPO_URL}.git" "${OPENBATON_NFVO_DIR}"
+    git clone --recursive "${OPENBATON_NFVO_REPO_URL}" "${OPENBATON_NFVO_DIR}"
     cd "${OPENBATON_NFVO_DIR}"
 
     git checkout ${nfvo_version}
@@ -319,15 +330,31 @@ src_set_nfvo_admin_credentials () {
     # In case of "noninteractive" FRONTEND the default value will remain valid (user: admin ; password: openbaton)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         # Turning echo ON and OFF between password reading
-        stty -echo
-        read -p " * Provide the new password for 'admin' user of Open Baton [openbaton]: " openbaton_admin_password ; echo
-        stty echo
+        #stty -echo
+        #read -p " * Provide the new password for 'admin' user of Open Baton [openbaton]: " openbaton_admin_password ; echo
+        #stty echo
+
+        openbaton_admin_password=$(whiptail --passwordbox "\nProvide the new password for 'admin' user of open baton [openbaton]:" 8 140 openbaton --title "Open Baton NFV Orchestrator (NFVO) configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
 
         if [ "${openbaton_admin_password}" != "" ]; then
             # Turning echo ON and OFF between password reading
-            stty -echo
-            read -p " * Repeat the 'admin' password: " openbaton_admin_password_again ; echo
-            stty echo
+            #stty -echo
+            #read -p " * Repeat the 'admin' password: " openbaton_admin_password_again ; echo
+            #stty echo
+            openbaton_admin_password_again=$(whiptail --passwordbox "\nRepeat the 'admin' password:" 8 140 --title "Open Baton NFV Orchestrator (NFVO) configuration" 3>&1 1>&2 2>&3)
+            exit_status="$?"
+            if [ ${exit_status} != 0 ]; then
+                echo ""
+                log_warning_msg "Aborting open baton installation"
+                exit 1
+            fi
+
             if [ "${openbaton_admin_password}" != "${openbaton_admin_password_again}" ]; then
                 src_set_nfvo_admin_credentials
             fi
@@ -380,17 +407,35 @@ src_checkout_additional_component () {
 
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         # Ask for the specified Additional Component installation
-        read -p " * Do you want to install also the ${component_name_fancy}? ( if you do not, then you can still install it later with: cd ${OPENBATON_BASE_DIR} && git clone ${component_repo_url} ) (Y/n): " ac
+        #read -p " * Do you want to install also the ${component_name_fancy}? ( if you do not, then you can still install it later with: cd ${OPENBATON_BASE_DIR} && git clone ${component_repo_url}.git ) (Y/n): " ac
+        #if [ "${ac}" = "" -o "${ac}" = "y" -o "${ac}" = "Y" -o "${ac}" = "yes" -o "${ac}" = "YES" ]; then
+        if (whiptail --title "Open Baton ${component_name_fancy} installation" --yesno "Do you want to install also the ${component_name_fancy}?\nIf you do not, then you can still install it later with:\n cd ${OPENBATON_BASE_DIR} && git clone ${component_repo_url}" 15 140) then
+            exit_status="$?"
+            if [ ${exit_status} != 0 ]; then
+                echo ""
+                log_warning_msg "Aborting Open Baton installation"
+                exit 1
+            fi
 
-        if [ "${ac}" = "" -o "${ac}" = "y" -o "${ac}" = "Y" -o "${ac}" = "yes" -o "${ac}" = "YES" ]; then
             valid_version=false
             while [ "${valid_version}" = "false" ]; do
-                # Ask for the Additional Component version to be installed
-                echo " * You can install a specific TAG of the Open Baton ${component_name_fancy} or the latest source code of the 'develop' branch of the repository."
-                echo " * For the latest code of the 'develop' branch type 'develop'"
-                echo " * For a specific TAG, the format is X.Y.Z and the available TAGs installable with this bootstrap are the following: "
-                curl -s GET https://api.github.com/repos/openbaton/${component_name}/tags | grep "name\":" | awk -F':' '{print $2}' | awk -F'"' '{print $2}' | awk -v oldest="${oldest_component_version_supported}" '$1 >= oldest' | grep "^[0-9]\{1,\}\.[0-9]\{1,\}\.[0-9]\{1,\}$"
-                read -p " * Which VERSION of the Open Baton ${component_name_fancy} do you want to install? (develop): " component_version
+                export component_name
+                export component_name_fancy
+                export oldest_component_version_supported
+
+                available_tags=$(curl -s GET https://api.github.com/repos/openbaton/${component_name}/tags | grep "name\":" | awk -F':' '{print $2}' | awk -F'"' '{print $2}' | awk -v oldest="${oldest_component_version_supported}" '$1 >= oldest' | grep "^[0-9]\{1,\}\.[0-9]\{1,\}\.[0-9]\{1,\}$")
+                #echo " * You can install a specific TAG of the Open Baton ${component_name_fancy} or the latest source code of the 'develop' branch of the repository."
+                #echo " * For the latest code of the 'develop' branch type 'develop'"
+                #echo " * For a specific TAG, the format is X.Y.Z and the available TAGs installable with this bootstrap are the following: "
+                #curl -s GET https://api.github.com/repos/openbaton/${component_name}/tags | grep "name\":" | awk -F':' '{print $2}' | awk -F'"' '{print $2}' | awk -v oldest="${oldest_component_version_supported}" '$1 >= oldest'
+                #read -p " * Which VERSION of the Open Baton ${component_name_fancy} do you want to install? (develop): " component_version
+                component_version=$(whiptail --inputbox "\nYou can install a specific TAG of the Open Baton ${component_name_fancy} or the latest source code of the 'develop' branch of the repository.\nThe available choices installable with this bootstrap are the following:\n\n$(echo "develop\n${available_tags}")\n\nWhich VERSION of the Open Baton ${component_name_fancy} do you want to install?" 25 140 develop --title "Open Baton ${component_name_fancy} installation" 3>&1 1>&2 2>&3)
+                exit_status="$?"
+                if [ ${exit_status} != 0 ]; then
+                    echo ""
+                    log_warning_msg "Aborting Open Baton installation"
+                    exit 1
+                fi
 
                 if [ "${component_version}" = "" -o "${component_version}" = "develop" ]; then
                     valid_version=true
@@ -488,7 +533,14 @@ src_ase_configure_nfvo () {
 
     # In case of "noninteractive" FRONTEND the default value will remain valid (openbaton_nfvo_ip: localhost)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-       read -p " * Please, provide the IP of the NFVO [localhost]: " ase_openbaton_nfvo_ip
+       #read -p " * Please, provide the IP of the NFVO [localhost]: " ase_openbaton_nfvo_ip
+       openbaton_nfvo_ip=$(whiptail --inputbox "\nEnter the IP of the NFVO:" 8 140 localhost --title "Open Baton ${OPENBATON_COMPONENT_NAME_FANCY} configuration" 3>&1 1>&2 2>&3)
+       exit_status="$?"
+       if [ ${exit_status} != 0 ]; then
+           echo ""
+           log_warning_msg "Aborting Open Baton installation"
+           exit 1
+       fi
     fi
     # Set the NFVO IP
     export ase_openbaton_nfvo_ip=${ase_openbaton_nfvo_ip:-$OPENBATON_NFVO_IP_DEFAULT}
@@ -553,7 +605,14 @@ src_fms_configure_nfvo () {
 
     # In case of "noninteractive" FRONTEND the default value will remain valid (openbaton_nfvo_ip: localhost)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-       read -p " * Please, provide the IP of the NFVO [localhost]: " fms_openbaton_nfvo_ip
+        #read -p " * Please, provide the IP of the NFVO [localhost]: " openbaton_nfvo_ip
+        fms_openbaton_nfvo_ip=$(whiptail --inputbox "\nEnter the IP of the NFVO:" 8 140 localhost --title "Open Baton Fault Management System (FMS) configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
     fi
     # Set the NFVO IP
     export fms_openbaton_nfvo_ip=${fms_openbaton_nfvo_ip:-$OPENBATON_NFVO_IP_DEFAULT}
@@ -576,17 +635,38 @@ src_fms_configure_mysql () {
 
     # In case of "noninteractive" FRONTEND the default value will remain valid (openbaton_fms_mysql_user: fmsuser ; openbaton_fms_mysql_user_password: changeme)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-        read -p " * Please, type the name of the MySQL user you would like the Open Baton FMS to use [fmsuser]: " openbaton_fms_mysql_user
+        #read -p " * Please, type the name of the MySQL user you would like the Open Baton FMS to use [fmsuser]: " openbaton_fms_mysql_user
+        openbaton_fms_mysql_user=$(whiptail --inputbox "\nPlease, type the name of the MySQL user you would like the Open Baton FMS to use:" 8 140 fmsuser --title "Open Baton Fault Management System (FMS) configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
 
         # Turning echo ON and OFF between password reading
-        stty -echo
-        read -p " * Please, provide the password for this user [changeme]: " openbaton_fms_mysql_user_password ; echo
-        stty echo
+        #stty -echo
+        #read -p " * Please, provide the password for this user [changeme]: " openbaton_fms_mysql_user_password ; echo
+        #stty echo
+        openbaton_fms_mysql_user_password=$(whiptail --passwordbox "\nPlease, provide the password for this user [changeme]:" 8 140 changeme --title "Open Baton Fault Management System (FMS) configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
 
         # Turning echo ON and OFF batween password reading
-        stty -echo
-        read -p " * Please, provide the password of the 'root' user of MySQL [root]: " mysql_root_password ; echo
-        stty echo
+        #stty -echo
+        #read -p " * Please, provide the password of the 'root' user of MySQL [root]: " mysql_root_password ; echo
+        #stty echo
+        mysql_root_password=$(whiptail --passwordbox "\nPlease, provide the password of the 'root' user of MySQL [root]:" 8 140 root --title "Open Baton Fault Management System (FMS) configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
     fi
 
     # Set the MySQL user
@@ -655,16 +735,44 @@ src_plugin_monitoring_zabbix_configure_zabbix () {
 
     # In case of "noninteractive" FRONTEND the default value will remain valid (user: admin ; password: openbaton)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-        read -p " * Please, provide the IP of the Zabbix plugin host [localhost]: " zabbix_plugin_ip
+        #read -p " * Please, provide the IP of the Zabbix plugin host [localhost]: " zabbix_plugin_ip
+        zabbix_plugin_ip=$(whiptail --inputbox "\nEnter the Zabbix plugin host IP:" 8 140 localhost --title "Open Baton ZABBIX Monitoring Plugin configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
 
-        read -p " * Please, provide the ZABBIX server IP [localhost]: " zabbix_server_ip
+        #read -p " * Please, provide the ZABBIX server IP [localhost]: " zabbix_server_ip
+        zabbix_server_ip=$(whiptail --inputbox "\nEnter the Zabbix server IP:" 8 140 localhost --title "Open Baton ZABBIX Monitoring Plugin configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
 
-        read -p " * Please, provide the ZABBIX user [Admin]: " zabbix_user
+        #read -p " * Please, provide the ZABBIX user [Admin]: " zabbix_user
+        zabbix_user=$(whiptail --inputbox "\nEnter the Zabbix user:" 8 140 Admin --title "Open Baton ZABBIX Monitoring Plugin configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
 
         # Turning echo on and off between password reading
-        stty -echo
-        read -p " * Please, provide the ZABBIX user's password [zabbix]: " zabbix_user_password ; echo
-        stty echo
+        #stty -echo
+        #read -p " * Please, provide the ZABBIX user's password [zabbix]: " zabbix_user_password ; echo
+        #stty echo
+        zabbix_user_password=$(whiptail --passwordbox "\nProvide the password for the Zabbix '${zabbix_user}' user:" 8 140 zabbix --title "Open Baton ZABBIX Monitoring Plugin configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
     fi
 
     # Set the Zabbix Plugin host IP
@@ -738,7 +846,7 @@ src_bootstrap () {
     install_mysql
 
     # Plugins configuration for NFVO
-    src_set_plugins_log_folder
+    configure_plugins_log_directory
 
     #
     # Arguments of "src_checkout_additional_component": component_repo_url component_name(the directory on which the repo will be locally cloned) component_name_fancy component_properties_file_src component_properties_file_dest install_during_noninteractive_installation oldest_component_version_supported component_version
@@ -757,10 +865,10 @@ src_bootstrap () {
     fi
 
     # Zabbix monitoring Plugin
-    src_checkout_additional_component "${OPENBATON_PLUGINS_MONITORING_ZABBIX_REPO_URL}" "${OPENBATON_PLUGINS_MONITORING_ZABBIX_REPO_NAME}" "Zabbix monitoring Plugin" "src/main/resources/plugin.conf.properties" "${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE}" "${openbaton_plugin_monitoring_zabbix}" "3.2.0" "${openbaton_plugin_monitoring_zabbix_version}"
+    src_checkout_additional_component "${OPENBATON_PLUGINS_MONITORING_ZABBIX_REPO_URL}" "${OPENBATON_PLUGINS_MONITORING_ZABBIX_REPO_NAME}" "ZABBIX Monitoring Plugin" "src/main/resources/plugin.conf.properties" "${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE}" "${openbaton_plugin_monitoring_zabbix}" "3.2.0" "${openbaton_plugin_monitoring_zabbix_version}"
     if [ -d "${OPENBATON_BASE_DIR}/zabbix-plugin" ]; then
         src_configure_plugin_monitoring_zabbix
-        src_deploy_plugin_vimdriver "zabbix-plugin" "Zabbix monitoring Plugin"
+        src_deploy_plugin_vimdriver "zabbix-plugin" "ZABBIX Monitoring Plugin"
     fi
 
     enable_https
@@ -779,10 +887,10 @@ src_bootstrap () {
     export OPENBATON_BASE_CONFIG_DIR=${OPENBATON_BASE_CONFIG_DIR}
    
     # Generic VNFM
-    src_checkout_additional_component "${OPENBATON_VNFM_GENERIC_REPO_URL}" "${OPENBATON_VNFM_GENERIC_REPO_NAME}" "Generic VNFM" "src/main/resources/application.properties" "${OPENBATON_VNFM_GENERIC_CONFIG_FILE}" "${openbaton_vnfm_generic}" "3.2.0" "${openbaton_vnfm_generic_version}"
+    src_checkout_additional_component "${OPENBATON_VNFM_GENERIC_REPO_URL}" "${OPENBATON_VNFM_GENERIC_REPO_NAME}" "VNFM Generic (VNFMG)" "src/main/resources/application.properties" "${OPENBATON_VNFM_GENERIC_CONFIG_FILE}" "${openbaton_vnfm_generic}" "3.2.0" "${openbaton_vnfm_generic_version}"
     if [ "${installed}" = "0" ]; then
         src_configure_rabbitmq_for_vnfm_generic "${openbaton_vnfm_generic_version}"
-        src_deploy_additional_component "generic-vnfm" "Generic VNFM" "generic-vnfm.sh"
+        src_deploy_additional_component "generic-vnfm" "VNFM Generic (VNFMG)" "generic-vnfm.sh"
     fi
 
     # To be sure that the NFVO is up before trying to create the services
@@ -810,7 +918,7 @@ src_bootstrap () {
     if [ "${installed}" = "0" ]; then
         create_service "nse" "nse" "${OPENBATON_NSE_CONFIG_FILE_ABSOLUTE}"
         src_configure_nse
-        src_deploy_additional_component "network-slicing-engine" "Network Slicing Engine" "network-slicing-engine.sh"
+        src_deploy_additional_component "network-slicing-engine" "Network Slicing Engine (NSE)" "network-slicing-engine.sh"
     fi
 
     echo " * Waiting for Open Baton to be up..."
