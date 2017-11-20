@@ -701,7 +701,12 @@ upgrade () {
             log_success_msg "The  Open Baton components installed in this system are the following:"
             echo "${openbaton_components_installed}"
             echo ""
-            read -p " * Please, insert the components which you want to upgrade (separated by a comma if many) (comp1,comp2,etc.) [all]: " openbaton_components
+            openbaton_components=$(whiptail --inputbox "\nPlease, insert the components which you want to upgrade (separated by a comma if many) (comp1,comp2,etc.) [all]:" 8 140 all --title "Open Baton upgrade" 3>&1 1>&2 2>&3)
+            if [ ${exit_status} != 0 ]; then
+                echo ""
+                log_warning_msg "Aborting Open Baton upgrade"
+                exit 1
+            fi
         fi
 
         # In case of "noninteractive" FRONTEND the default value will remain valid (all components will be upgraded)
