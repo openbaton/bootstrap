@@ -113,6 +113,19 @@ prereq () {
     . ./bootstrap-common-functions
 }
 
+check_jre_8_installed () {
+    jre_8_available=$($_ex 'apt-cache search openjdk-8-jre | wc -l')
+    if [ "${jre_8_available}" != "0" ]; then
+        return
+    fi
+
+    jre_8_installed=$(dpkg -l | grep "openjdk-8-jre:" | awk -F' ' '{print $1}' | wc -l)
+    if [ "${jre_8_installed}" = "0" ]; then
+        log_failure_msg "The 'openjdk-8-jre' package is a required dependency and it seems to be not installed and not available"
+        exit 1
+    fi
+}
+
 main_src () {
     prereq
 
@@ -122,6 +135,8 @@ main_src () {
 }
 
 main_deb () {
+    check_jre_8_installed
+
     prereq
 
     wget -O bootstrap-deb-functions "${OPENBATON_BOOTSTRAP_FUNCTIONS_BASE_URL}/${openbaton_bootstrap_version}/bootstrap-deb-functions"
