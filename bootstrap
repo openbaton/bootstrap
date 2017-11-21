@@ -19,6 +19,33 @@ set -u
 . /lib/lsb/init-functions
 
 
+##############################
+#### Execution privileges ####
+##############################
+
+USER="$(id -un 2>/dev/null || true)"
+
+check_binary () {
+  echo -n " * Checking for '${1}' ... "
+  if command -v ${1} >/dev/null 2>&1; then
+     echo "OK"
+     return 0
+  else
+     echo >&2 "FAILED"
+     return 1
+  fi
+}
+
+_ex='sh -c'
+if [ "${USER}" != "root" ]; then
+    if check_binary sudo; then
+        _ex='sudo -E sh -c'
+    elif check_binary su; then
+        _ex='su -c'
+    fi
+fi
+
+
 ##########################
 #### Global Variables ####
 ##########################
@@ -30,8 +57,6 @@ OPENBATON_BOOTSTRAP_ENV_FILE="/tmp/bootstrap_env"
 
 OPENBATON_BOOTSTRAP_FUNCTIONS_BASE_URL=http://get.openbaton.org/bootstraps/
 
-USER="$(id -un 2>/dev/null || true)"
-
 DEBIAN_FRONTEND_DEFAULT="dialog"
 export DEBIAN_FRONTEND=${DEBIAN_FRONTEND:-$DEBIAN_FRONTEND_DEFAULT}
 
@@ -40,6 +65,7 @@ OS_TYPE=$(uname -a | awk -F' ' '{ print $1 }')
 
 case "${OS_TYPE}" in
     'Linux')
+        $_ex 'apt-get update && apt-get install -y lsb-core'
         OS_DISTRIBUTION_ID=$( lsb_release -a 2>/dev/null | grep "Distributor ID" | sed "s/[ \t]*//g" | awk -F':' '{ print $2 }')
         OS_DISTRIBUTION_RELEASE=$( lsb_release -a 2>/dev/null | grep "Release" | sed "s/[ \t]*//g" | awk -F':' '{ print $2 }' )
         OS_DISTRIBUTION_CODENAME=$( lsb_release -a 2>/dev/null | grep "Codename" | sed "s/[ \t]*//g" | awk -F':' '{ print $2 }' )
@@ -75,31 +101,6 @@ usage () {
     echo ""
     echo " * If you need support, get in contact with us at: info@openbaton.org"
 }
-
-
-##############################
-#### Execution privileges ####
-##############################
-
-check_binary () {
-  echo -n " * Checking for '${1}' ... "
-  if command -v ${1} >/dev/null 2>&1; then
-     echo "OK"
-     return 0
-  else
-     echo >&2 "FAILED"
-     return 1
-  fi
-}
-
-_ex='sh -c'
-if [ "${USER}" != "root" ]; then
-    if check_binary sudo; then
-        _ex='sudo -E sh -c'
-    elif check_binary su; then
-        _ex='su -c'
-    fi
-fi
 
 
 ##############
