@@ -679,6 +679,10 @@ clean () {
 
 prereq_openbaton_cli () {
     $_ex 'apt-get update; apt-get install -y python-pip;'
+
+    # To fix an unset LC_ALL variable which cause the failure of the installation of packages through 'pip'
+    language=$(locale 2>/dev/null | grep "LANG=" | awk -F'=' '{ print $2 }')
+    export LC_ALL=${language}
 }
 
 upgrade () {
