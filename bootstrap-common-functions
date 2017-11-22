@@ -477,22 +477,6 @@ configure_remote_rabbitmq () {
 }
 
 
-############################
-#### VIM-Driver Plugins ####
-############################
-
-configure_plugins_log_directory () {
-    export OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE=${OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE}
-
-    log_success_msg "Creating directory for Plugins logs"
-    $_ex 'mkdir -p ${OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE}'
-    $_ex 'chown -R '"${USER}:${USER} ${OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE}"
-
-    log_success_msg "Configuring directory for Plugins logs"
-    $_ex 'sed -i "s|nfvo.plugin.log.path\s*=\s*.*|nfvo.plugin.log.path=${OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
-}
-
-
 ##################
 #### Services ####
 ##################

@@ -165,6 +165,17 @@ src_configure_rabbitmq_for_vnfm_generic () {
 #### VIM-Driver Plugins ####
 ############################
 
+src_configure_plugins_log_directory () {
+    export OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE=${OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE}
+
+    log_success_msg "Creating directory for Plugins logs"
+    $_ex 'mkdir -p ${OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE}'
+    $_ex 'chown -R '"${USER}:${USER} ${OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE}"
+
+    log_success_msg "Configuring directory for Plugins logs"
+    $_ex 'sed -i "s|nfvo.plugin.log.path\s*=\s*.*|nfvo.plugin.log.path=${OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
+}
+
 src_compile_plugin () {
     component_name="${1}"                       # the directory on which the repo has been cloned
     component_name_fancy="${2}"
@@ -805,7 +816,7 @@ src_bootstrap () {
     install_mysql
 
     # Plugins configuration for NFVO
-    configure_plugins_log_directory
+    src_configure_plugins_log_directory
 
     #
     # Arguments of "src_checkout_additional_component": component_repo_url component_name(the directory on which the repo will be locally cloned) component_name_fancy component_properties_file_src component_properties_file_dest install_during_noninteractive_installation oldest_component_version_supported component_version
