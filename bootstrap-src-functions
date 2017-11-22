@@ -510,7 +510,7 @@ src_ase_configure_rabbitmq () {
     # Set the RabbitMQ password
     ase_rabbitmq_password=$( awk '$0 ~ "spring.rabbitmq.password[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${ase_rabbitmq_password+x} ] ; then # The empty string is considered as unset
-        log_success_msg "Setting RabbitMQ password into Autoscaling Engine: ****"
+        log_success_msg "Setting RabbitMQ password into Auto Scaling Engine: ****"
         export ase_rabbitmq_password=${ase_rabbitmq_password}
         $_ex 'sed -i "s|spring.rabbitmq.password\s*=\s*.*|spring.rabbitmq.password=${ase_rabbitmq_password}|g" ${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}'
     fi
@@ -521,7 +521,7 @@ src_ase_configure_nfvo () {
 
     # In case of "noninteractive" FRONTEND the default value will remain valid (openbaton_nfvo_ip: localhost)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-       openbaton_nfvo_ip=$(whiptail --inputbox "\nEnter the IP of the NFVO:" 8 140 localhost --title "Open Baton ${OPENBATON_COMPONENT_NAME_FANCY} configuration" 3>&1 1>&2 2>&3)
+       openbaton_nfvo_ip=$(whiptail --inputbox "\nEnter the IP of the NFVO:" 8 140 localhost --title "Open Baton Auto Scaling Engine configuration" 3>&1 1>&2 2>&3)
        exit_status="$?"
        if [ ${exit_status} != 0 ]; then
            echo ""
