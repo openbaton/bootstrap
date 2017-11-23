@@ -576,7 +576,7 @@ clean_db () {
     # Clean MySQL for Components
     component_mysql_user=${component_mysql_user:-"undefined"}
     if [ "${component_mysql_user}" != "undefined" ]; then
-        if (whiptail --title "\nOpen Baton ${component_name_fancy} installation cleaning" --yesno "Do you want to delete the Open Baton ${component_name_fancy} database: '${component_db_name}' (this will also delete the associated user: '${component_mysql_user}')?\n(if you skip this step then you won't be able, later on, to delete this database and its user using this script):" 8 140) then
+        if (whiptail --title "Open Baton ${component_name_fancy} installation cleaning" --yesno "Do you want to delete the Open Baton ${component_name_fancy} database: '${component_db_name}' (this will also delete the associated user: '${component_mysql_user}')?\n(if you skip this step then you won't be able, later on, to delete this database and its user using this script):" 8 140) then
             exit_status="$?"
             if [ ${exit_status} != 0 ]; then
                 echo ""
@@ -673,8 +673,11 @@ clean () {
         ./rabbitmqadmin delete exchange name="plugin-exchange"
     fi
 
-    # Delete rabbitmqadmin cli
+    # Delete rabbitmqadmin CLI
     $_ex "rm ./rabbitmqadmin"
+
+    # Delete openbaton CLI
+    pip uninstall -y openbaton-cli
 
     1>$(tty)
     echo " * Cleaning of Open Baton installation completed"
