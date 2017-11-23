@@ -505,7 +505,12 @@ create_service () {
     log_success_msg "NFVO_PORT: ${nfvo_port}"
 
     # Get project id of 'default' project
-    project_id=$(openbaton -u "${nfvo_user}" -p "${nfvo_admin_password}" -ip "${nfvo_ip}" --nfvo-port "${nfvo_port}" -pid "" project list 2>/dev/null | grep default | sed s/\ //g | awk -F'|' '{print $2 }')
+    if [ "${https_enabled}" = "1" ]; then
+        log_warning_msg "Using openbaton CLI with SSL mode enabled"
+        project_id=$(openbaton -s -u "${nfvo_user}" -p "${nfvo_admin_password}" -ip "${nfvo_ip}" --nfvo-port "${nfvo_port}" -pid "" project list 2>/dev/null | grep default | sed s/\ //g | awk -F'|' '{print $2 }')
+    else
+        project_id=$(openbaton -u "${nfvo_user}" -p "${nfvo_admin_password}" -ip "${nfvo_ip}" --nfvo-port "${nfvo_port}" -pid "" project list 2>/dev/null | grep default | sed s/\ //g | awk -F'|' '{print $2 }')
+    fi
     if [ -z "${project_id}" ]; then
         log_failure_msg "Problems while creating Service '${service_name}'"
         log_failure_msg "Skipping this Service registration. Please try to do it manually."
@@ -513,7 +518,12 @@ create_service () {
     fi
     export project_id=${project_id}
 
-    service_key=$(openbaton -u "${nfvo_user}" -p "${nfvo_admin_password}" -ip "${nfvo_ip}" --nfvo-port "${nfvo_port}" -pid "${project_id}" service create /tmp/create_service_body)
+    if [ "${https_enabled}" = "1" ]; then
+        log_warning_msg "Using openbaton CLI with SSL mode enabled"
+        service_key=$(openbaton -s -u "${nfvo_user}" -p "${nfvo_admin_password}" -ip "${nfvo_ip}" --nfvo-port "${nfvo_port}" -pid "${project_id}" service create /tmp/create_service_body 2>/dev/null)
+    else
+        service_key=$(openbaton -u "${nfvo_user}" -p "${nfvo_admin_password}" -ip "${nfvo_ip}" --nfvo-port "${nfvo_port}" -pid "${project_id}" service create /tmp/create_service_body 2>/dev/null)
+    fi
     if [ -z "${service_key}" ]; then
         log_failure_msg "Problems while creating Service '${service_name}'"
         log_failure_msg "Skipping this Service registration. Please try to do it manually."
@@ -535,11 +545,20 @@ create_service () {
 ##############
 
 wait_for_nfvo_up () {
+    export OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE=${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}
     max_wait=300
     i_wait=${max_wait}
-    echo " * Waiting for the NFVO to be up .."
 
-    while ! nc -z localhost 8080; do
+    # Find the port where the NFVO is running
+    https_enabled=$(cat ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE} | grep "nfvo.https=true" | wc -l)
+    if [ "${https_enabled}" = "1" ]; then
+        export nfvo_port=$( awk '$0 ~ "server.port[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
+    else
+        export nfvo_port="8080"
+    fi
+
+    echo " * Waiting for the NFVO to be up on port ${nfvo_port} .."
+    while ! nc -z localhost ${nfvo_port}; do
         sleep 1 # wait for 1 second before check again
         i_wait=$((${i_wait}-1))
         if [ ${i_wait} -eq 0 ]; then

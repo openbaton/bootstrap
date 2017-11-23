@@ -199,7 +199,6 @@ src_deploy_plugin_vimdriver () {
 
     src_compile_plugin "${component_name}" "${component_name_fancy}"
 
-    mkdir -p ${OPENBATON_PLUGINS_VIMDRIVERS_DIR}
     cp ${OPENBATON_BASE_DIR}/${component_name}/build/libs/*.jar ${OPENBATON_PLUGINS_VIMDRIVERS_DIR}
 }
 
@@ -245,8 +244,8 @@ src_create_openbaton_base () {
     echo " * Creating the Open Baton base folder .."
     # removing it if exists
     $_ex 'rm -rf '"${OPENBATON_BASE_DIR}"
-    $_ex 'mkdir -p '"${OPENBATON_NFVO_DIR}"
-    $_ex 'chown -R '"${USER}:${USER} $OPENBATON_BASE_DIR"
+    $_ex 'mkdir -p '"${OPENBATON_BASE_DIR}"
+    $_ex 'chown -R '"${USER}:${USER} ${OPENBATON_BASE_DIR}"
 }
 
 src_create_openbaton_log () {
@@ -306,6 +305,7 @@ src_checkout_nfvo () {
     $_ex 'chown -R '"${USER}:${USER} ${OPENBATON_BASE_CONFIG_DIR}"
     $_ex 'cp '"${OPENBATON_NFVO_DIR}/main/src/main/resources/application.properties ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_NFVO_CONFIG_FILE}"
     $_ex 'cp '"${OPENBATON_NFVO_DIR}/etc/keystore.p12 ${OPENBATON_BASE_CONFIG_DIR}/keystore.p12"
+    $_ex 'mkdir -p ${OPENBATON_PLUGINS_VIMDRIVERS_DIR}'
 }
 
 src_compile_nfvo () {
@@ -814,6 +814,7 @@ src_bootstrap () {
     src_install_rabbitmq
     src_configure_rabbitmq_for_nfvo "${openbaton_nfvo_version}"
     install_mysql
+    enable_https
 
     # Plugins configuration for NFVO
     src_configure_plugins_log_directory
@@ -841,17 +842,16 @@ src_bootstrap () {
         src_deploy_plugin_vimdriver "zabbix-plugin" "ZABBIX Monitoring Plugin"
     fi
 
-    enable_https
-
     src_deploy_nfvo
 
     # Command Line Interface
     prereq_openbaton_cli
-    src_do_checkout "${OPENBATON_CLI_REPO_URL}" "${OPENBATON_CLI_REPO_NAME}" "Open Baton CLI" "" "" "develop" #"${openbaton_nfvo_version}"
+    openbaton_cli_version="5.0"
+    src_do_checkout "${OPENBATON_CLI_REPO_URL}" "${OPENBATON_CLI_REPO_NAME}" "Open Baton CLI" "" "" "${openbaton_cli_version}" #"${openbaton_nfvo_version}"
     if [ -d "${OPENBATON_BASE_DIR}/${OPENBATON_CLI_REPO_NAME}" ]; then
         cd "${OPENBATON_BASE_DIR}/${OPENBATON_CLI_REPO_NAME}"
-        git checkout develop
-        $_ex 'pip install .'
+        git checkout "${openbaton_cli_version}"
+        pip install .
     fi
 
     export OPENBATON_BASE_CONFIG_DIR=${OPENBATON_BASE_CONFIG_DIR}
