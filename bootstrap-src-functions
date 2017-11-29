@@ -305,7 +305,7 @@ src_checkout_nfvo () {
     $_ex 'chown -R '"${USER}:${USER} ${OPENBATON_BASE_CONFIG_DIR}"
     $_ex 'cp '"${OPENBATON_NFVO_DIR}/main/src/main/resources/application.properties ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_NFVO_CONFIG_FILE}"
     $_ex 'cp '"${OPENBATON_NFVO_DIR}/etc/keystore.p12 ${OPENBATON_BASE_CONFIG_DIR}/keystore.p12"
-    $_ex 'mkdir -p ${OPENBATON_PLUGINS_VIMDRIVERS_DIR}'
+    mkdir -p ${OPENBATON_PLUGINS_VIMDRIVERS_DIR}
 }
 
 src_compile_nfvo () {
