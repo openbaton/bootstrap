@@ -52,7 +52,7 @@ services:
       - MYSQL_USER=admin
       - MYSQL_PASSWORD=changeme
     volumes:
-      - db-data:/var/lib/mysql
+      - ./db-data:/var/lib/mysql
   rabbitmq_broker:
     image: rabbitmq:3-management-alpine
     hostname: openbaton-rabbitmq
@@ -63,5 +63,5 @@ services:
       - "5672:5672"
       - "15672:15672"
     volumes:
-      - rabbit-data:/var/lib/rabbitmq
+      - ./rabbit-data:/var/lib/rabbitmq
 
