@@ -1,0 +1,114 @@
+version: '3'
+services:
+  nfvo:
+    image: openbaton/nfvo:5.0
+    depends_on:
+      - rabbitmq_broker
+      - nfvo_database
+    restart: always
+    environment: 
+      - NFVO_RABBIT_BROKERIP=${HOST_IP} # for use in userdata.sh in vnfm-generic
+      - NFVO_MONITORING_IP=${ZABBIX_IP}
+      - NFVO_QUOTA_CHECK=false
+      - NFVO_PLUGIN_INSTALLATION-DIR=/dev/null
+      - SPRING_RABBITMQ_HOST=rabbitmq_broker
+      - SPRING_DATASOURCE_URL=jdbc:mysql://nfvo_database:3306/openbaton
+      - SPRING_DATASOURCE_DRIVER-CLASS-NAME=org.mariadb.jdbc.Driver
+      - SPRING_JPA_DATABASE-PLATFORM=org.hibernate.dialect.MySQLDialect
+      - SPRING_JPA_HIBERNATE_DDL-AUTO=update
+    ports:
+      - "8080:8080"
+  vnfm-generic:
+    image: openbaton/vnfm-generic:5.0
+    depends_on:
+      - nfvo
+    restart: always
+    environment: 
+      - VNFM_RABBITMQ_BROKERIP=rabbitmq_broker
+  plugin-vimdriver-test:
+    image: openbaton/plugin-vimdriver-test:5.0
+    depends_on:
+      - nfvo
+    restart: always
+    environment:
+      - RABBITMQ=rabbitmq_broker
+  plugin-vimdriver-openstack-4j:
+    image: openbaton/plugin-vimdriver-openstack-4j:5.0
+    depends_on:
+      - nfvo
+    restart: always
+    environment:
+      - RABBITMQ=rabbitmq_broker
+  plugin-monitoring-zabbix:
+    image: openbaton/plugin-monitoring-zabbix:latest
+    depends_on:
+      - nfvo
+    restart: always
+    environment:
+      - ZABBIX_PLUGIN_IP=zabbix-plugin
+      - ZABBIX_HOST=${ZABBIX_IP}
+      - RABBITMQ_BROKERIP=rabbitmq_broker
+      - ZABBIX_ENDPOINT=/zabbix/api_jsonrpc.php
+      - ZABBIX_PORT=80
+    ports:
+      - "8010:8010"
+  fault-management-system:
+    image: openbaton/fms:latest
+    depends_on:
+      - nfvo
+      - plugin-monitoring-zabbix
+      - fms_database
+    restart: always
+    environment:
+      - SPRING_RABBITMQ_HOST=rabbitmq_broker
+      - NFVO_IP=nfvo
+      - PLUGIN_IP=zabbix-plugin
+      - SPRING_DATASOURCE_URL=jdbc:mysql://fms_database:3306/faultmanagement
+  autoscaling-engine:
+    image: openbaton/ase:latest
+    depends_on:
+      - nfvo
+      - plugin-monitoring-zabbix
+    restart: always
+    environment:
+      - ASE_RABBITMQ_BROKERIP=rabbitmq_broker
+      - ASE_SERVER_IP=autoscaling-engine
+      - NFVO_IP=nfvo
+      - PLUGIN_IP=zabbix-plugin
+  network-slicing-engine:
+    image: openbaton/nse:latest
+    depends_on:
+      - nfvo
+    restart: always
+    environment:
+      - RABBITMQ_HOST=rabbitmq_broker
+      - NFVO_IP=nfvo
+  rabbitmq_broker:
+    image: rabbitmq:3-management-alpine
+    hostname: openbaton-rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=openbaton
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - /opt/compose-setup/rabbitdata:/var/lib/rabbitmq
+  nfvo_database:
+    image: mysql/mysql-server
+    environment:
+      - MYSQL_RANDOM_ROOT_PASSWORD=true
+      - MYSQL_DATABASE=openbaton
+      - MYSQL_USER=admin
+      - MYSQL_PASSWORD=changeme
+    volumes:
+      - /opt/compose-setup/dbdata_nfvo:/var/lib/mysql
+  fms_database:
+    image: mysql/mysql-server
+    environment:
+      - MYSQL_RANDOM_ROOT_PASSWORD=true
+      - MYSQL_DATABASE=faultmanagement
+      - MYSQL_USER=fmsuser
+      - MYSQL_PASSWORD=changeme
+    volumes:
+      - /opt/compose-setup/dbdata_fms:/var/lib/mysql
