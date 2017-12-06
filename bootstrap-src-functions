@@ -289,8 +289,8 @@ src_checkout_nfvo () {
     fi
 
     # Needed in case of Noninteractive installation
-    if [ "${nfvo_version}" = "" -o "${nfvo_version}" = "latest" ]; then
-        nfvo_version="develop"
+    if [ "${nfvo_version}" = "" -o "${nfvo_version}" = "develop" -o "${nfvo_version}" = "latest" ]; then
+        nfvo_version="master"
     fi
 
     echo " * Downloading Open Baton NFVO .."
@@ -373,8 +373,8 @@ src_do_checkout () {
     component_properties_file_dest="${5}"
     component_version="${6}"
 
-    if [ "${component_version}" = "" ]; then
-        component_version="develop"
+    if [ "${component_version}" = "" -o "${component_version}" = "develop" ]; then
+        component_version="master"
     fi
 
     cd "${OPENBATON_BASE_DIR}"
@@ -441,8 +441,8 @@ src_checkout_additional_component () {
             return
         fi
     else
-        if [ "${component_version}" = "" -o "${component_version}" = "latest" ]; then
-            component_version="develop"
+        if [ "${component_version}" = "" -o "${component_version}" = "develop" -o "${component_version}" = "latest" ]; then
+            component_version="master"
         fi
 
         # Install the correct Additional Component according to the given input parameters
