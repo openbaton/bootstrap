@@ -12,9 +12,6 @@ set -u
 #### Global Variables ####
 ##########################
 
-DEBIAN_FRONTEND_DEFAULT=dialog
-DEBIAN_FRONTEND=${openbaton_installation_mode:-$DEBIAN_FRONTEND_DEFAULT}
-
 BOOTSTRAP_DIR=$(pwd)
 
 OPENBATON_NFVO_REPO_NAME="NFVO"

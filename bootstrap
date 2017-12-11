@@ -128,8 +128,6 @@ check_jre_8_installed () {
 }
 
 main_src () {
-    prereq
-
     wget -O bootstrap-src-functions "${OPENBATON_BOOTSTRAP_FUNCTIONS_BASE_URL}/${openbaton_bootstrap_version}/bootstrap-src-functions"
     . ./bootstrap-src-functions
     src_bootstrap
@@ -137,8 +135,6 @@ main_src () {
 
 main_deb () {
     check_jre_8_installed
-
-    prereq
 
     wget -O bootstrap-deb-functions "${OPENBATON_BOOTSTRAP_FUNCTIONS_BASE_URL}/${openbaton_bootstrap_version}/bootstrap-deb-functions"
     . ./bootstrap-deb-functions
@@ -182,9 +178,11 @@ main () {
                 "2" "DEVELOP: it will be executed the download of the SOURCE code for the desired components (which will be run in screens)" 3>&1 1>&2 2>&3 )
             case ${install_type} in
                 1 )
+                    prereq
                     main_deb release "${OS_DISTRIBUTION_CODENAME}"
                     ;;
                 2 )
+                    prereq
                     main_src
                     ;;
                 #3 )
@@ -200,6 +198,7 @@ main () {
         fi
     else
         # Non interactive debian release installation with the default values (when non interactive installation and no config file has been passed)
+        prereq
         main_deb release "${OS_DISTRIBUTION_CODENAME}"
     fi
 
@@ -216,6 +215,7 @@ exec_bootstrap_subcommand () {
             ;;
         "release" )
             echo " * Installing the latest RELEASE package"
+            prereq
             main_deb release "${OS_DISTRIBUTION_CODENAME}"
             ;;
         "develop" )
@@ -227,6 +227,7 @@ exec_bootstrap_subcommand () {
             fi
 
             echo " * Installing the latest source code"
+            prereq
             main_src
             ;;
         "clean" )
@@ -274,7 +275,7 @@ if [ -n "${1+1}" ]; then
         arg_key=${arg}
         arg_value=
 
-        if [ ${arg_id} != "--" ]; then
+        if [ ${arg_id} != "--" ]; then # Subcommands
             case ${arg} in
                 "release" | "develop" | "clean" | "enable-persistence" | "configure-remote-rabbitmq" | "upgrade" )
                     bootstrap_subcommand=${arg}
@@ -291,7 +292,6 @@ if [ -n "${1+1}" ]; then
                             echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
                             cat ${arg_value}
                             echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-                            export DEBIAN_FRONTEND=noninteractive
                             set -a # Mark the variables set in the configuration file for export to the environment of subsequent commands
                             . ${arg_value}
                         else
@@ -305,7 +305,7 @@ if [ -n "${1+1}" ]; then
                     exit 1
                     ;;
             esac
-        else
+        else # Arguments
             arg_key=$( echo ${arg} | cut -c3-  | awk -F'=' '{ print $1}' )
             arg_value=$( echo ${arg} | cut -c3- | awk -F'=' '{ print $2}' )
 
@@ -315,7 +315,6 @@ if [ -n "${1+1}" ]; then
                     echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
                     cat ${arg_value}
                     echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-                    export DEBIAN_FRONTEND=noninteractive
                     set -a # Mark the variables set in the configuration file for export to the environment of subsequent commands
                     . ${arg_value}
                 else
@@ -333,6 +332,15 @@ if [ -n "${1+1}" ]; then
         . ${OPENBATON_BOOTSTRAP_ENV_FILE}
     fi
 
+    #export DEBIAN_FRONTEND=${openbaton_installation_mode:-$DEBIAN_FRONTEND_DEFAULT}
+    # TODO: temporary fix
+    #########################################################################################################################################
+    export DEBIAN_FRONTEND=${openbaton_installation_mode:-"try_old_param"}
+    if [ "${DEBIAN_FRONTEND}" = "try_old_param" ]; then
+        export DEBIAN_FRONTEND=${openbaton_installation_manner:-$DEBIAN_FRONTEND_DEFAULT}
+    fi
+    #########################################################################################################################################
+
     echo ""
     echo " *******************************************"
     echo " * System Details:"
@@ -344,6 +352,7 @@ if [ -n "${1+1}" ]; then
     echo " *******************************************"
     echo ""
 
+    # When invoked with only arguments passed by command line (no subcommands passed)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         if [ -z "${bootstrap_subcommand}" ]; then
             main
