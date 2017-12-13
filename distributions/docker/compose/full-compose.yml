@@ -1,7 +1,7 @@
 version: '3'
 services:
   nfvo:
-    image: openbaton/nfvo:5.0
+    image: openbaton/nfvo:5.1.1
     depends_on:
       - rabbitmq_broker
       - nfvo_database
@@ -19,33 +19,34 @@ services:
     ports:
       - "8080:8080"
   vnfm-generic:
-    image: openbaton/vnfm-generic:5.0
+    image: openbaton/vnfm-generic:5.1.0
     depends_on:
       - nfvo
     restart: always
     environment: 
       - VNFM_RABBITMQ_BROKERIP=rabbitmq_broker
   plugin-vimdriver-test:
-    image: openbaton/plugin-vimdriver-test:5.0
+    image: openbaton/plugin-vimdriver-test:5.1.0
     depends_on:
       - nfvo
     restart: always
     environment:
       - RABBITMQ=rabbitmq_broker
   plugin-vimdriver-openstack-4j:
-    image: openbaton/plugin-vimdriver-openstack-4j:5.0
+    image: openbaton/plugin-vimdriver-openstack-4j:5.1.0
     depends_on:
       - nfvo
     restart: always
     environment:
       - RABBITMQ=rabbitmq_broker
   plugin-monitoring-zabbix:
-    image: openbaton/plugin-monitoring-zabbix:latest
+    image: openbaton/plugin-monitoring-zabbix:5.1.1
     depends_on:
       - nfvo
     restart: always
     environment:
       - ZABBIX_PLUGIN_IP=zabbix-plugin
+      - FAULTS_CONSUMER_ENDPOINT=http://fault-management-system:9000/alarm/vr
       - ZABBIX_HOST=${ZABBIX_IP}
       - RABBITMQ_BROKERIP=rabbitmq_broker
       - ZABBIX_ENDPOINT=/zabbix/api_jsonrpc.php
@@ -53,7 +54,7 @@ services:
     ports:
       - "8010:8010"
   fault-management-system:
-    image: openbaton/fms:latest
+    image: openbaton/fms:1.4.0
     depends_on:
       - nfvo
       - plugin-monitoring-zabbix
@@ -93,7 +94,7 @@ services:
       - "5672:5672"
       - "15672:15672"
     volumes:
-      - /opt/compose-setup/rabbitdata:/var/lib/rabbitmq
+      - /opt/openbaton/bootstrap/distributions/docker/compose/rabbitdata:/var/lib/rabbitmq
   nfvo_database:
     image: mysql/mysql-server
     environment:
@@ -102,7 +103,7 @@ services:
       - MYSQL_USER=admin
       - MYSQL_PASSWORD=changeme
     volumes:
-      - /opt/compose-setup/dbdata_nfvo:/var/lib/mysql
+      - /opt/openbaton/bootstrap/distributions/docker/compose/dbdata_nfvo:/var/lib/mysql
   fms_database:
     image: mysql/mysql-server
     environment:
@@ -111,4 +112,4 @@ services:
       - MYSQL_USER=fmsuser
       - MYSQL_PASSWORD=changeme
     volumes:
-      - /opt/compose-setup/dbdata_fms:/var/lib/mysql
+      - /opt/openbaton/bootstrap/distributions/docker/compose/dbdata_fms:/var/lib/mysql
