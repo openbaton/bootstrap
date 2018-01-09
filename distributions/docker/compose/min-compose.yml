@@ -14,6 +14,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:mysql://nfvo_database:3306/openbaton
       - SPRING_DATASOURCE_DRIVER-CLASS-NAME=org.mariadb.jdbc.Driver
       - SPRING_JPA_DATABASE-PLATFORM=org.hibernate.dialect.MySQLDialect
+      - SPRING_JPA_HIBERNATE_DDL-AUTO=update
     ports:
       - "8080:8080"
   vnfm-generic:
@@ -52,7 +53,7 @@ services:
       - MYSQL_USER=admin
       - MYSQL_PASSWORD=changeme
     volumes:
-      - ./db-data:/var/lib/mysql
+      - ./dbdata_nfvo:/var/lib/mysql
   rabbitmq_broker:
     image: rabbitmq:3-management-alpine
     hostname: openbaton-rabbitmq
@@ -63,5 +64,5 @@ services:
       - "5672:5672"
       - "15672:15672"
     volumes:
-      - ./rabbit-data:/var/lib/rabbitmq
+      - ./dbdata_rabbit:/var/lib/rabbitmq
 
