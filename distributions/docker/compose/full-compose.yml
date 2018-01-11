@@ -1,7 +1,7 @@
 version: '3'
 services:
   nfvo:
-    image: openbaton/nfvo:5.1.1
+    image: openbaton/nfvo:latest
     depends_on:
       - rabbitmq_broker
       - nfvo_database
@@ -19,28 +19,28 @@ services:
     ports:
       - "8080:8080"
   vnfm-generic:
-    image: openbaton/vnfm-generic:5.1.0
+    image: openbaton/vnfm-generic:latest
     depends_on:
       - nfvo
     restart: always
     environment: 
       - VNFM_RABBITMQ_BROKERIP=rabbitmq_broker
   plugin-vimdriver-test:
-    image: openbaton/plugin-vimdriver-test:5.1.0
+    image: openbaton/plugin-vimdriver-test:latest
     depends_on:
       - nfvo
     restart: always
     environment:
       - RABBITMQ=rabbitmq_broker
   plugin-vimdriver-openstack-4j:
-    image: openbaton/plugin-vimdriver-openstack-4j:5.1.0
+    image: openbaton/plugin-vimdriver-openstack-4j:latest
     depends_on:
       - nfvo
     restart: always
     environment:
       - RABBITMQ=rabbitmq_broker
   plugin-monitoring-zabbix:
-    image: openbaton/plugin-monitoring-zabbix:5.1.1
+    image: openbaton/plugin-monitoring-zabbix:latest
     depends_on:
       - nfvo
     restart: always
@@ -54,7 +54,7 @@ services:
     ports:
       - "8010:8010"
   fault-management-system:
-    image: openbaton/fms:1.4.0
+    image: openbaton/fms:latest
     depends_on:
       - nfvo
       - plugin-monitoring-zabbix
