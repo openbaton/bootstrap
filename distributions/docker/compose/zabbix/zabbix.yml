@@ -1,0 +1,33 @@
+version: '3'
+services:
+  zbx_frontend:
+    image: zabbix/zabbix-web-apache-mysql:alpine-3.0-latest
+    depends_on:
+      - zbx_server
+    environment:
+      - ZBX_SERVER_HOST=zbx_server
+      - DB_SERVER_HOST=zbx_database
+      - MYSQL_USER=zabbix
+      - MYSQL_PASSWORD=zabbix
+      - MYSQL_DATABASE=zabbix
+    ports:
+      - "8088:80"
+  zbx_server:
+    image: zabbix/zabbix-server-mysql:alpine-3.0-latest
+    depends_on:
+      - zbx_database
+    environment:
+      - DB_SERVER_HOST=zbx_database
+      - MYSQL_USER=zabbix
+      - MYSQL_PASSWORD=zabbix
+      - MYSQL_DATABASE=zabbix
+    ports:
+      - "10051:10051"
+  zbx_database:
+    image: mysql/mysql-server
+    environment:
+      - MYSQL_RANDOM_ROOT_PASSWORD=true
+      - MYSQL_DATABASE=zabbix
+      - MYSQL_USER=zabbix
+      - MYSQL_PASSWORD=zabbix
+

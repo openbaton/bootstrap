@@ -4,7 +4,6 @@
 #### General Settings ####
 ##########################
 
-set -e
 set -u
 #set -x # only for DEBUG
 
@@ -13,20 +12,18 @@ set -u
 #### Global Variables ####
 ##########################
 
-OPENBATON_PLUGINS_VIMDRIVERS_STABLE_URL="http://get.openbaton.org/plugins/stable/"
+
+OPENBATON_PLUGINS_VIMDRIVERS_URL="http://get.openbaton.org/plugins/"
 
 OPENBATON_TMP_FOLDER=`mktemp -d`
 
 OPENBATON_INSTALLATION_BASE_DIR=/opt
 OPENBATON_BASE_DIR="${OPENBATON_INSTALLATION_BASE_DIR}/openbaton"
-OPENBATON_BASE_CONFIG_DIR="/etc/openbaton"
-OPENBATON_LOG="/var/log/openbaton"
 OPENBATON_NFVO_DIR="${OPENBATON_BASE_DIR}/nfvo"
 OPENBATON_PLUGINS_DIR="${OPENBATON_NFVO_DIR}/plugins"
 OPENBATON_PLUGINS_VIMDRIVERS_DIR="${OPENBATON_PLUGINS_DIR}/vim-drivers"
 
-OPENBATON_SRC_NFVO_CONFIG_FILE_NAME="openbaton.properties"
-OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE="${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_SRC_NFVO_CONFIG_FILE_NAME}"
+OPENBATON_SRC_INTERNAL_PLUGIN_CONF_FILE="src/main/resources/plugin.conf.properties"
 
 RABBITMQ_BROKER_IP_DEFAULT=localhost
 RABBITMQ_MANAGEMENT_PORT_DEFAULT=15672
@@ -47,43 +44,120 @@ src_install_rabbitmq () {
     echo " * Configuring RabbitMQ for Open Baton .."
     $_ex 'apt-get install -y rabbitmq-server'
     ulimit -S -n 4096
-    src_configure_rabbitmq
 }
 
-src_configure_rabbitmq () {
+src_configure_rabbitmq_for_nfvo () {
+    openbaton_nfvo_version="${1}"
+
+    log_success_msg "Configuring RabbitMQ for the Open Baton NFVO"
+
     result=$(ps aux | grep -v 'grep' | grep 'rabbitmq' | wc -l)
-    if [ ${result} -gt 0 ]; then
-        result=$($_ex 'rabbitmqctl list_users' | grep '^admin' | wc -l)
-        if [ ${result} -eq 0 ]; then
-            $_ex 'rabbitmqctl add_user admin openbaton'
-            $_ex 'rabbitmqctl set_user_tags admin administrator'
-            $_ex 'rabbitmqctl set_permissions -p / admin ".*" ".*" ".*"'
-            $_ex 'rabbitmq-plugins enable rabbitmq_management'
-            $_ex 'service rabbitmq-server restart'
-            if [ "$?" != "0" ]; then
-                echo " * ERROR: RabbitMQ is NOT running properly (check the problem in /var/log/rabbitmq)"
-                exit 1
-            fi
+    if [ ${result} -eq 0 ]; then
+        $_ex 'rabbitmq-server start -detached'
+    fi
+
+    result=$($_ex 'rabbitmqctl list_users' | grep '^admin' | wc -l)
+    if [ ${result} -eq 0 ]; then
+        # Check the NFVO version being installed: the new RabbitMQ configuration is required only from version >= 4.0.1
+        compare_version_strings "4.0.0" "${openbaton_nfvo_version}"
+        result=$?
+        if [ ${result} -eq 1 ]; then
+            export rabbitmq_admin_password=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
+
+            # Set the rabbitmq 'admin' password if different from the default one which is 'openbaton'
+            export OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE=${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}
+            log_success_msg "Setting new 'admin' password: ${rabbitmq_admin_password}"
+            log_warning_msg "The 'admin' password has been randomly generated and you can find it in the '${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}' properties file as the value of the 'spring.rabbitmq.password' property"
+            $_ex 'sed -i "s|spring.rabbitmq.password\s*=\s*.*|spring.rabbitmq.password=${rabbitmq_admin_password}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
+        else
+            export rabbitmq_admin_password="openbaton"
+        fi
+
+        $_ex 'rabbitmqctl add_user admin ${rabbitmq_admin_password}'
+        $_ex 'rabbitmqctl set_user_tags admin administrator'
+        $_ex 'rabbitmqctl set_permissions -p / admin ".*" ".*" ".*"'
+        $_ex 'rabbitmq-plugins enable rabbitmq_management'
+        $_ex 'service rabbitmq-server restart'
+        if [ "$?" != "0" ]; then
+            echo " * ERROR: RabbitMQ is NOT running properly (check the problem in /var/log/rabbitmq)"
+            exit 1
         fi
     fi
 
     # In case of "noninteractive" FRONTEND either the value from the configuration file or the default value will be used (DEFAULT: rabbitmq_broker_ip=localhost ; rabbitmq_management_port=15672)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-        read -p " * Enter the rabbitmq broker ip [localhost]: " rabbitmq_broker_ip
-        read -p " * Enter the rabbitmq management port [15672]: " rabbitmq_management_port
+        rabbitmq_broker_ip=$(whiptail --inputbox "\nEnter the RabbitMQ broker IP:" 8 140 localhost --title "Open Baton NFV Orchestrator (NFVO) configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+        echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
+        rabbitmq_management_port=$(whiptail --inputbox "\nEnter the RabbitMQ management port:" 8 140 15672 --title "Open Baton NFV Orchestrator (NFVO) configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
     fi
 
-    export OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE=${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}
+    export OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE=${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}
 
     # Set the rabbitmq broker ip
     export rabbitmq_broker_ip=${rabbitmq_broker_ip:-$RABBITMQ_BROKER_IP_DEFAULT}
+    export rabbitmq_broker_ip=${rabbitmq_broker_ip:-$RABBITMQ_BROKER_IP_DEFAULT}
     echo " * Setting new broker IP: ${rabbitmq_broker_ip}"
-    $_ex 'sed -i "s|nfvo.rabbit.brokerIp\s*=\s*localhost|nfvo.rabbit.brokerIp=${rabbitmq_broker_ip}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
+    $_ex 'sed -i "s|nfvo.rabbit.brokerIp\s*=\s*localhost|nfvo.rabbit.brokerIp=${rabbitmq_broker_ip}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
 
     # Set the rabbitmq management port
     export rabbitmq_management_port=${rabbitmq_management_port:-$RABBITMQ_MANAGEMENT_PORT_DEFAULT}
     echo " * Setting new management port: ${rabbitmq_management_port}"
-    $_ex 'sed -i "s|nfvo.rabbit.management.port\s*=\s*15672|nfvo.rabbit.management.port=${rabbitmq_management_port}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
+    $_ex 'sed -i "s|nfvo.rabbit.management.port\s*=\s*15672|nfvo.rabbit.management.port=${rabbitmq_management_port}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
+}
+
+src_configure_rabbitmq_for_vnfm_generic () {
+    openbaton_vnfm_generic_version="${1}"
+    export OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE=${OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE}
+
+    log_success_msg "Configuring RabbitMQ for the Open Baton Generic VNFM"
+    result=$(ps aux | grep -v 'grep' | grep 'rabbitmq' | wc -l)
+    if [ ${result} -gt 0 ]; then
+        result=$($_ex 'rabbitmqctl list_users' | grep "^${RABBITMQ_EMS_USER}" | wc -l)
+        if [ ${result} -eq 0 ]; then
+            # Check the NFVO version being installed: the new RabbitMQ configuration is required only from version >= 4.0.1
+            compare_version_strings "4.0.0" "${openbaton_vnfm_generic_version}"
+            result=$?
+            if [ ${result} -eq 1 ]; then
+                export RABBITMQ_EMS_USER=${RABBITMQ_EMS_USER}
+                export rabbitmq_ems_user_password=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
+
+                $_ex 'rabbitmqctl add_user ${RABBITMQ_EMS_USER} ${rabbitmq_ems_user_password}'
+                $_ex 'rabbitmqctl set_user_tags ${RABBITMQ_EMS_USER} administrator'
+                $_ex 'rabbitmqctl set_permissions -p / ${RABBITMQ_EMS_USER} ".*" ".*" ".*"'
+                $_ex 'service rabbitmq-server restart'
+                if [ "$?" != "0" ]; then
+                    log_failure_msg "rabbitmq is not running properly (check the problem in /var/log/rabbitmq)"
+                    exit 1
+                fi
+
+                # Set the rabbitmq 'RABBITMQ_EMS_USER' username
+                log_success_msg "Setting the username for the RabbitMQ EMS user: ${RABBITMQ_EMS_USER}"
+                $_ex 'sed -i "s|vnfm.ems.username\s*=\s*.*|vnfm.ems.username=${RABBITMQ_EMS_USER}|g" ${OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE}'
+
+                # Set the rabbitmq 'RABBITMQ_EMS_USER' password
+                export rabbitmq_ems_user_password=${rabbitmq_ems_user_password}
+                log_success_msg "Setting new '${RABBITMQ_EMS_USER}' password: ${rabbitmq_ems_user_password}"
+                log_warning_msg "The '${RABBITMQ_EMS_USER}' password has been randomly generated and you can find it in the '${OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE}' properties file as the value of the 'spring.rabbitmq.password' property"
+                $_ex 'sed -i "s|vnfm.ems.password\s*=\s*.*|vnfm.ems.password=${rabbitmq_ems_user_password}|g" ${OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE}'
+            fi
+       fi
+
+       # Set the rabbitmq broker ip retrieving its value from the NFVO properties file
+       export rabbitmq_broker_ip=$(cat "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | grep "nfvo.rabbit.brokerIp" | head -1 | awk -F'=' '{ print $2}' | sed s/\ //g)
+       log_success_msg "Setting new broker IP: ${rabbitmq_broker_ip}"
+       $_ex 'sed -i "s|vnfm.rabbitmq.brokerIp\s*=\s*.*|vnfm.rabbitmq.brokerIp=${rabbitmq_broker_ip}|g" ${OPENBATON_VNFM_GENERIC_CONFIG_FILE_ABSOLUTE}'
+    fi
 }
 
 
@@ -91,11 +165,41 @@ src_configure_rabbitmq () {
 #### VIM-Driver Plugins ####
 ############################
 
-src_download_plugins () {
-    echo " * Downloading the Open Baton VIM Driver Plugins .."
-    wget -nH --cut-dirs 2 -r --no-parent  --reject "index.html*" "${OPENBATON_PLUGINS_VIMDRIVERS_STABLE_URL}" -P "${OPENBATON_TMP_FOLDER}"
-    mkdir -p ${OPENBATON_PLUGINS_VIMDRIVERS_DIR}
-    cp -r ${OPENBATON_TMP_FOLDER}/* "${OPENBATON_PLUGINS_VIMDRIVERS_DIR}"
+src_configure_plugins_log_directory () {
+    export OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE=${OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE}
+
+    log_success_msg "Creating directory for Plugins logs"
+    $_ex 'mkdir -p ${OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE}'
+    $_ex 'chown -R '"${USER}:${USER} ${OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE}"
+
+    log_success_msg "Configuring directory for Plugins logs"
+    $_ex 'sed -i "s|nfvo.plugin.log.path\s*=\s*.*|nfvo.plugin.log.path=${OPENBATON_PLUGINS_LOG_DIR_ABSOLUTE}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
+}
+
+src_compile_plugin () {
+    component_name="${1}"                       # the directory on which the repo has been cloned
+    component_name_fancy="${2}"
+
+    echo " * Compiling the ${component_name_fancy} .."
+    cd "${OPENBATON_BASE_DIR}/${component_name}"
+    if [ "${component_name}" = "${OPENBATON_PLUGINS_MONITORING_ZABBIX_REPO_NAME}" ]; then
+        ./gradlew clean build -x test
+    else
+        ./gradlew clean build
+    fi
+    if [ $? -ne 0 ]; then
+        echo " * ERROR: The compilation of the ${2} failed"
+        exit 1
+    fi
+}
+
+src_deploy_plugin_vimdriver () {
+    component_name="${1}"                       # the directory on which the repo has been cloned
+    component_name_fancy="${2}"
+
+    src_compile_plugin "${component_name}" "${component_name_fancy}"
+
+    cp ${OPENBATON_BASE_DIR}/${component_name}/build/libs/*.jar ${OPENBATON_PLUGINS_VIMDRIVERS_DIR}
 }
 
 
@@ -140,16 +244,16 @@ src_create_openbaton_base () {
     echo " * Creating the Open Baton base folder .."
     # removing it if exists
     $_ex 'rm -rf '"${OPENBATON_BASE_DIR}"
-    $_ex 'mkdir -p '"${OPENBATON_NFVO_DIR}"
-    $_ex 'chown -R '"${USER} $OPENBATON_BASE_DIR"
+    $_ex 'mkdir -p '"${OPENBATON_BASE_DIR}"
+    $_ex 'chown -R '"${USER}:${USER} ${OPENBATON_BASE_DIR}"
 }
 
 src_create_openbaton_log () {
     echo " * Creating the Open Baton log folder .."
     # removing it if exists
-    $_ex 'rm -rf '"${OPENBATON_LOG}"
-    $_ex 'mkdir -p '"${OPENBATON_LOG}"
-    $_ex 'chown -R '"${USER} ${OPENBATON_LOG}"
+    $_ex 'rm -rf '"${OPENBATON_LOG_DIR}"
+    $_ex 'mkdir -p '"${OPENBATON_LOG_DIR}"
+    $_ex 'chown -R '"${USER}:${USER} ${OPENBATON_LOG_DIR}"
 }
 
 src_checkout_nfvo () {
@@ -157,10 +261,19 @@ src_checkout_nfvo () {
     export nfvo_version="${2}"
 
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
+	    export OPENBATON_NFVO_REPO_NAME
+	    available_tags=$(curl -s GET https://api.github.com/repos/openbaton/${OPENBATON_NFVO_REPO_NAME}/tags | grep "name\":" | awk -F':' '{print $2}' | awk -F'"' '{print $2}' | awk -v oldest="${oldest_nfvo_version_supported}" '$1 >= oldest' | grep "^[0-9]\{1,\}\.[0-9]\{1,\}\.[0-9]\{1,\}$")
+
         valid_version=false
         while [ "${valid_version}" = "false" ]; do
             # Ask for the NFVO version to be installed
-            read -p " * Which VERSION of the Open Baton NFVO do you want to install? ( Version Format is: X.Y.Z - ${oldest_nfvo_version_supported} is the oldest version installable - Check the list of available VERSIONs at: ${OPENBATON_NFVO_REPO_URL}/tags ) (develop): " nfvo_version
+            nfvo_version=$(whiptail --inputbox "\nYou can install a specific TAG of the Open Baton NFVO or the latest source code of the 'develop' branch of the repository.\nThe available choices installable with this bootstrap are the following:\n\n$(echo "develop\n${available_tags}")\n\nWhich VERSION of the Open Baton NFVO do you want to install?" 25 140 develop --title "Open Baton NFV Orchestrator (NFVO) installation" 3>&1 1>&2 2>&3)
+            exit_status="$?"
+            if [ ${exit_status} != 0 ]; then
+                echo ""
+                log_warning_msg "Aborting Open Baton installation"
+                exit 1
+            fi
 
             if [ "${nfvo_version}" = "" -o "${nfvo_version}" = "develop" ]; then
                 valid_version=true
@@ -174,19 +287,25 @@ src_checkout_nfvo () {
             fi
         done
     fi
-    if [ "${nfvo_version}" = "" ]; then
-        nfvo_version="develop"
+
+    # Needed in case of Noninteractive installation
+    if [ "${nfvo_version}" = "" -o "${nfvo_version}" = "develop" -o "${nfvo_version}" = "latest" ]; then
+        nfvo_version="master"
     fi
 
     echo " * Downloading Open Baton NFVO .."
-    git clone --recursive "${OPENBATON_NFVO_REPO_URL}.git" "${OPENBATON_NFVO_DIR}"
+    git clone --recursive "${OPENBATON_NFVO_REPO_URL}" "${OPENBATON_NFVO_DIR}"
     cd "${OPENBATON_NFVO_DIR}"
 
     git checkout ${nfvo_version}
-    
+    git submodule init
+    git submodule update
+
     $_ex 'rm -rf '"${OPENBATON_BASE_CONFIG_DIR}; mkdir -p ${OPENBATON_BASE_CONFIG_DIR}"
-    $_ex 'cp '"${OPENBATON_NFVO_DIR}/etc/openbaton.properties ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}"
+    $_ex 'chown -R '"${USER}:${USER} ${OPENBATON_BASE_CONFIG_DIR}"
+    $_ex 'cp '"${OPENBATON_NFVO_DIR}/main/src/main/resources/application.properties ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_NFVO_CONFIG_FILE}"
     $_ex 'cp '"${OPENBATON_NFVO_DIR}/etc/keystore.p12 ${OPENBATON_BASE_CONFIG_DIR}/keystore.p12"
+    mkdir -p ${OPENBATON_PLUGINS_VIMDRIVERS_DIR}
 }
 
 src_compile_nfvo () {
@@ -207,7 +326,6 @@ src_start_nfvo () {
 
 src_deploy_nfvo () {
     src_compile_nfvo
-    install_mysql "${OPENBATON_SRC_NFVO_CONFIG_FILE_NAME}"
     src_set_nfvo_admin_credentials
     src_start_nfvo
 }
@@ -215,16 +333,23 @@ src_deploy_nfvo () {
 src_set_nfvo_admin_credentials () {
     # In case of "noninteractive" FRONTEND the default value will remain valid (user: admin ; password: openbaton)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-        # Turning echo ON and OFF between password reading
-        stty -echo
-        read -p " * Provide the new password for 'admin' user of Open Baton [openbaton]: " openbaton_admin_password ; echo
-        stty echo
+        openbaton_admin_password=$(whiptail --passwordbox "\nProvide the new password for 'admin' user of open baton [openbaton]:" 8 140 openbaton --title "Open Baton NFV Orchestrator (NFVO) configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
 
         if [ "${openbaton_admin_password}" != "" ]; then
-            # Turning echo ON and OFF between password reading
-            stty -echo
-            read -p " * Repeat the 'admin' password: " openbaton_admin_password_again ; echo
-            stty echo
+            openbaton_admin_password_again=$(whiptail --passwordbox "\nRepeat the 'admin' password:" 8 140 --title "Open Baton NFV Orchestrator (NFVO) configuration" 3>&1 1>&2 2>&3)
+            exit_status="$?"
+            if [ ${exit_status} != 0 ]; then
+                echo ""
+                log_warning_msg "Aborting open baton installation"
+                exit 1
+            fi
+
             if [ "${openbaton_admin_password}" != "${openbaton_admin_password_again}" ]; then
                 src_set_nfvo_admin_credentials
             fi
@@ -233,7 +358,7 @@ src_set_nfvo_admin_credentials () {
 
     # Set the openbaton admin password
     export openbaton_admin_password=${openbaton_admin_password:-$OPENBATON_ADMIN_PASSWORD_DEFAULT}
-    $_ex 'sed -i "s|nfvo.security.admin.password\s*=\s*openbaton|nfvo.security.admin.password=${openbaton_admin_password}|g" ${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}'
+    $_ex 'sed -i "s|nfvo.security.admin.password\s*=\s*openbaton|nfvo.security.admin.password=${openbaton_admin_password}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
 }
 
 
@@ -248,24 +373,26 @@ src_do_checkout () {
     component_properties_file_dest="${5}"
     component_version="${6}"
 
-    if [ "${component_version}" = "" ]; then
-        component_version="develop"
+    if [ "${component_version}" = "" -o "${component_version}" = "develop" ]; then
+        component_version="master"
     fi
 
     cd "${OPENBATON_BASE_DIR}"
     echo "Downloading ${component_name_fancy} .."
-    git clone --recursive "${component_repo_url}.git" "${component_name}"
+    git clone --recursive "${component_repo_url}" "${component_name}"
     cd "${component_name}"
 
     git checkout ${component_version}
 
-    $_ex 'cp '"${component_properties_file_src} ${OPENBATON_BASE_CONFIG_DIR}/${component_properties_file_dest}"
+    if [ "${component_properties_file_src}" != "" -a "${component_properties_file_dest}" != "" ]; then
+        $_ex 'cp '"${component_properties_file_src} ${OPENBATON_BASE_CONFIG_DIR}/${component_properties_file_dest}"
+    fi
     installed=0
 }
 
 src_checkout_additional_component () {
     component_repo_url="${1}"
-    component_name="${2}"                       # the directory on which the repo will be locally cloned
+    component_name="${2}"                                   # the directory on which the repo will be locally cloned
     component_name_fancy="${3}"
     component_properties_file_src="${4}"
     component_properties_file_dest="${5}"
@@ -275,12 +402,28 @@ src_checkout_additional_component () {
 
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
         # Ask for the specified Additional Component installation
-        read -p " * Do you want to install also the ${component_name_fancy}? ( if you do not, then you can still install it later with: cd ${OPENBATON_BASE_DIR} && git clone ${component_repo_url}.git ) (Y/n): " ac
+        if (whiptail --title "Open Baton ${component_name_fancy} installation" --yesno "Do you want to install also the ${component_name_fancy}?\nIf you do not, then you can still install it later with:\n cd ${OPENBATON_BASE_DIR} && git clone ${component_repo_url}" 15 140) then
+            exit_status="$?"
+            if [ ${exit_status} != 0 ]; then
+                echo ""
+                log_warning_msg "Aborting Open Baton installation"
+                exit 1
+            fi
 
-        if [ "${ac}" = "" -o "${ac}" = "y" -o "${ac}" = "Y" -o "${ac}" = "yes" -o "${ac}" = "YES" ]; then
             valid_version=false
             while [ "${valid_version}" = "false" ]; do
-                read -p " * Which VERSION of the Open Baton ${component_name_fancy} do you want to install? ( Version Format is: X.Y.Z - ${oldest_component_version_supported} is the oldest version installable - Check the list of available VERSIONs at: ${component_repo_url}/tags ) (develop): " component_version
+                export component_name
+                export component_name_fancy
+                export oldest_component_version_supported
+
+                available_tags=$(curl -s GET https://api.github.com/repos/openbaton/${component_name}/tags | grep "name\":" | awk -F':' '{print $2}' | awk -F'"' '{print $2}' | awk -v oldest="${oldest_component_version_supported}" '$1 >= oldest' | grep "^[0-9]\{1,\}\.[0-9]\{1,\}\.[0-9]\{1,\}$")
+                component_version=$(whiptail --inputbox "\nYou can install a specific TAG of the Open Baton ${component_name_fancy} or the latest source code of the 'develop' branch of the repository.\nThe available choices installable with this bootstrap are the following:\n\n$(echo "develop\n${available_tags}")\n\nWhich VERSION of the Open Baton ${component_name_fancy} do you want to install?" 25 140 develop --title "Open Baton ${component_name_fancy} installation" 3>&1 1>&2 2>&3)
+                exit_status="$?"
+                if [ ${exit_status} != 0 ]; then
+                    echo ""
+                    log_warning_msg "Aborting Open Baton installation"
+                    exit 1
+                fi
 
                 if [ "${component_version}" = "" -o "${component_version}" = "develop" ]; then
                     valid_version=true
@@ -298,6 +441,10 @@ src_checkout_additional_component () {
             return
         fi
     else
+        if [ "${component_version}" = "" -o "${component_version}" = "develop" -o "${component_version}" = "latest" ]; then
+            component_version="master"
+        fi
+
         # Install the correct Additional Component according to the given input parameters
         if [ "${install_during_noninteractive_installation}" = "y" -o "${install_during_noninteractive_installation}" = "Y" -o "${install_during_noninteractive_installation}" = "yes" ]; then
             src_do_checkout "${component_repo_url}" "${component_name}" "${component_name_fancy}" "${component_properties_file_src}" "${component_properties_file_dest}" "${component_version}"
@@ -310,10 +457,11 @@ src_checkout_additional_component () {
 src_compile_additional_component () {
     component_name="${1}"                       # the directory on which the repo has been cloned
     component_name_fancy="${2}"
+    component_start_script_name="${3}"
 
     echo " * Compiling the ${component_name_fancy} .."
     cd "${OPENBATON_BASE_DIR}/${component_name}"
-    ./${component_name}.sh compile
+    ./${component_start_script_name} compile
     if [ $? -ne 0 ]; then
         echo " * ERROR: The compilation of the ${2} failed"
         exit 1
@@ -323,15 +471,16 @@ src_compile_additional_component () {
 src_start_additional_component () {
     component_name="${1}"                       # the directory on which the repo has been cloned
     component_name_fancy="${2}"
-    
+    component_start_script_name="${3}"
+
     echo " * Starting the ${component_name_fancy} .."
     cd "${OPENBATON_BASE_DIR}/${component_name}"
-    ./${component_name}.sh start
+    ./${component_start_script_name} start
 }
 
 src_deploy_additional_component () {
-    src_compile_additional_component "${1}" "${2}"
-    src_start_additional_component "${1}" "${2}"
+    src_compile_additional_component "${1}" "${2}" "${3}"
+    src_start_additional_component "${1}" "${2}" "${3}"
 }
 
 
@@ -340,36 +489,69 @@ src_deploy_additional_component () {
 #############
 
 src_ase_configure_rabbitmq () {
+    export OPENBATON_ASE_CONFIG_FILE_ABSOLUTE=${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}
+
     # Set the RabbitMQ IP
-    ase_rabbitmq_broker_ip=$( awk '$0 ~ "nfvo.rabbit.brokerIp[[:space:]]*="' "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | awk -F'=' '{print $2}' )
+    ase_rabbitmq_broker_ip=$( awk '$0 ~ "nfvo.rabbit.brokerIp[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${ase_rabbitmq_broker_ip+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting RabbitMQ IP into Auto Scaling Engine: ${ase_rabbitmq_broker_ip}"
         export ase_rabbitmq_broker_ip=${ase_rabbitmq_broker_ip}
-        $_ex 'sed -i "s|autoscaling.rabbitmq.brokerIp\s*=\s*localhost|autoscaling.rabbitmq.brokerIp=${ase_rabbitmq_broker_ip}|g" ${OPENBATON_BASE_CONFIG_DIR}/ase.properties'
+        $_ex 'sed -i "s|ase.rabbitmq.brokerIp\s*=\s*localhost|ase.rabbitmq.brokerIp=${ase_rabbitmq_broker_ip}|g" ${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}'
     fi
 
     # Set the RabbitMQ Management port
-    ase_rabbitmq_management_port=$( awk '$0 ~ "nfvo.rabbit.management.port[[:space:]]*="' "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | awk -F'=' '{print $2}' )
+    ase_rabbitmq_management_port=$( awk '$0 ~ "nfvo.rabbit.management.port[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${ase_rabbitmq_management_port+x} ] ; then # The empty string is considered as unset
         log_success_msg "Setting RabbitMQ Management port into Auto Scaling Engine: ${ase_rabbitmq_management_port}"
         export ase_rabbitmq_management_port=${ase_rabbitmq_management_port}
-        $_ex 'sed -i "s|autoscaling.rabbitmq.management.port\s*=\s*15672|autoscaling.rabbitmq.management.port=${ase_rabbitmq_management_port}|g" ${OPENBATON_BASE_CONFIG_DIR}/ase.properties'
+        $_ex 'sed -i "s|ase.rabbitmq.management.port\s*=\s*15672|ase.rabbitmq.management.port=${ase_rabbitmq_management_port}|g" ${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}'
+    fi
+
+    # Set the RabbitMQ password
+    ase_rabbitmq_password=$( awk '$0 ~ "spring.rabbitmq.password[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
+    if [ ! -z ${ase_rabbitmq_password+x} ] ; then # The empty string is considered as unset
+        log_success_msg "Setting RabbitMQ password into Auto Scaling Engine: ****"
+        export ase_rabbitmq_password=${ase_rabbitmq_password}
+        $_ex 'sed -i "s|spring.rabbitmq.password\s*=\s*.*|spring.rabbitmq.password=${ase_rabbitmq_password}|g" ${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}'
     fi
 }
 
-src_ase_configure_nfvo_admin_credentials () {
+src_ase_configure_nfvo () {
+    export OPENBATON_ASE_CONFIG_FILE_ABSOLUTE=${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}
+
+    # In case of "noninteractive" FRONTEND the default value will remain valid (openbaton_nfvo_ip: localhost)
+    if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
+       openbaton_nfvo_ip=$(whiptail --inputbox "\nEnter the IP of the NFVO:" 8 140 localhost --title "Open Baton Auto Scaling Engine configuration" 3>&1 1>&2 2>&3)
+       exit_status="$?"
+       if [ ${exit_status} != 0 ]; then
+           echo ""
+           log_warning_msg "Aborting Open Baton installation"
+           exit 1
+       fi
+    fi
+    # Set the NFVO IP
+    export ase_openbaton_nfvo_ip=${ase_openbaton_nfvo_ip:-$OPENBATON_NFVO_IP_DEFAULT}
+    $_ex 'sed -i "s|nfvo.ip\s*=.*|nfvo.ip=${ase_openbaton_nfvo_ip}|g" ${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}'
+
     # Set the NFVO admin's password
-    ase_nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password[[:space:]]*="' "${OPENBATON_SRC_NFVO_CONFIG_FILE_ABSOLUTHE}" | awk -F'=' '{print $2}' )
+    ase_nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
     if [ ! -z ${ase_nfvo_admin_password+x} ] ; then # The empty string is considered as unset
-        log_success_msg "Setting NFVO admin's password into Auto Scaling Engine: ${ase_nfvo_admin_password}"
+        log_success_msg "Setting NFVO admin's password into Auto Scaling Engine: ****"
         export ase_nfvo_admin_password=${ase_nfvo_admin_password}
-        $_ex 'sed -i "s|nfvo.password\s*=\s*openbaton|nfvo.password=${ase_nfvo_admin_password}|g" ${OPENBATON_BASE_CONFIG_DIR}/ase.properties'
+        $_ex 'sed -i "s|nfvo.password\s*=\s*openbaton|nfvo.password=${ase_nfvo_admin_password}|g" ${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}'
     fi
 }
 
 src_configure_ase () {
     src_ase_configure_rabbitmq
-    src_ase_configure_nfvo_admin_credentials
+    src_ase_configure_nfvo
+}
+
+disable_plugins_startup () {
+    export OPENBATON_ASE_CONFIG_FILE_ABSOLUTE=${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}
+
+    log_warning_msg "Disabling plugins startup executed by the Auto Scaling Engine: the NFVO should take care to do it during the bootstrap."
+    $_ex 'sed -i "s|ase.plugin.startup\s*=\s*true|ase.plugin.startup=false|g" ${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}'
 }
 
 
@@ -378,67 +560,99 @@ src_configure_ase () {
 #############
 
 src_fms_configure_rabbitmq () {
+    export OPENBATON_FMS_CONFIG_FILE_ABSOLUTE=${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}
+
     # Set the RabbitMQ IP
-    rabbitmq_broker_ip=$( awk '$0 ~ "nfvo.rabbit.brokerIp[[:space:]]*="' "${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_NFVO_CONFIG_FILE}" | awk -F'=' '{print $2}' )
-    if [ ! -z ${rabbitmq_broker_ip+x} ] ; then # The empty string is considered as unset
-        log_success_msg "Setting RabbitMQ IP into Fault Management System: ${rabbitmq_broker_ip}"
-        export rabbitmq_broker_ip=${rabbitmq_broker_ip}
-        sed -i "s|spring.rabbitmq.host\s*=.*|spring.rabbitmq.host=${rabbitmq_broker_ip}|g" ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_COMPONENT_CONFIG_FILE}
+    fms_rabbitmq_broker_ip=$( awk '$0 ~ "nfvo.rabbit.brokerIp[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
+    if [ ! -z ${fms_rabbitmq_broker_ip+x} ] ; then # The empty string is considered as unset
+        log_success_msg "Setting RabbitMQ IP into Fault Management System: ${fms_rabbitmq_broker_ip}"
+        export fms_rabbitmq_broker_ip=${fms_rabbitmq_broker_ip}
+        $_ex 'sed -i "s|spring.rabbitmq.host\s*=.*|spring.rabbitmq.host=${fms_rabbitmq_broker_ip}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
     fi
 
     # Set the RabbitMQ Management port
-    rabbitmq_management_port=$( awk '$0 ~ "nfvo.rabbit.management.port[[:space:]]*="' "${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_NFVO_CONFIG_FILE}" | awk -F'=' '{print $2}' )
-    if [ ! -z ${rabbitmq_management_port+x} ] ; then # The empty string is considered as unset
-        log_success_msg "Setting RabbitMQ Management port into Fault Management System: ${rabbitmq_management_port}"
-        export rabbitmq_management_port=${rabbitmq_management_port}
-        sed -i "s|spring.rabbitmq.port\s*=\s*15672|spring.rabbitmq.port=${rabbitmq_management_port}|g" ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_COMPONENT_CONFIG_FILE}
+    fms_rabbitmq_management_port=$( awk '$0 ~ "nfvo.rabbit.management.port[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
+    if [ ! -z ${fms_rabbitmq_management_port+x} ] ; then # The empty string is considered as unset
+        log_success_msg "Setting RabbitMQ Management port into Fault Management System: ${fms_rabbitmq_management_port}"
+        export fms_rabbitmq_management_port=${fms_rabbitmq_management_port}
+        $_ex 'sed -i "s|spring.rabbitmq.management.port\s*=\s*15672|spring.rabbitmq.management.port=${fms_rabbitmq_management_port}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
+    fi
+
+    # Set the RabbitMQ password
+    fms_rabbitmq_password=$( awk '$0 ~ "spring.rabbitmq.password[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
+    if [ ! -z ${fms_rabbitmq_password+x} ] ; then # The empty string is considered as unset
+        log_success_msg "Setting RabbitMQ password into Fault Management System: ****"
+        export fms_rabbitmq_password=${fms_rabbitmq_password}
+        $_ex 'sed -i "s|spring.rabbitmq.password\s*=\s*.*|spring.rabbitmq.password=${fms_rabbitmq_password}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
     fi
 }
 
 src_fms_configure_nfvo () {
+    export OPENBATON_FMS_CONFIG_FILE_ABSOLUTE=${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}
+
     # In case of "noninteractive" FRONTEND the default value will remain valid (openbaton_nfvo_ip: localhost)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-       read -p " * Please, provide the IP of the NFVO [localhost]: " openbaton_nfvo_ip
+        fms_openbaton_nfvo_ip=$(whiptail --inputbox "\nEnter the IP of the NFVO:" 8 140 localhost --title "Open Baton Fault Management System (FMS) configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
     fi
     # Set the NFVO IP
-    export openbaton_nfvo_ip=${openbaton_nfvo_ip:-$OPENBATON_NFVO_IP_DEFAULT}
-    sed -i "s|nfvo.ip\s*=*|nfvo.ip=${openbaton_nfvo_ip}|g" ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_COMPONENT_CONFIG_FILE}
+    export fms_openbaton_nfvo_ip=${fms_openbaton_nfvo_ip:-$OPENBATON_NFVO_IP_DEFAULT}
+    $_ex 'sed -i "s|nfvo.ip\s*=.*|nfvo.ip=${fms_openbaton_nfvo_ip}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
 
     # Set the NFVO credentials
-    export nfvo_admin_user="admin"
-    sed -i "s|nfvo-usr\s*=*|nfvo-usr=${nfvo_admin_user}|g" ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_COMPONENT_CONFIG_FILE}
+    export fms_nfvo_admin_user="admin"
+    $_ex 'sed -i "s|nfvo-usr\s*=.*|nfvo-usr=${fms_nfvo_admin_user}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
 
-    nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password[[:space:]]*="' "${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_NFVO_CONFIG_FILE}" | awk -F'=' '{print $2}' )
-    if [ ! -z ${nfvo_admin_password+x} ] ; then # The empty string is considered as unset
-        log_success_msg "Setting NFVO admin's password into Fault Management System: ${nfvo_admin_password}"
-        export nfvo_admin_password=${nfvo_admin_password}
-        sed -i "s|nfvo-pwd\s*=.*|nfvo-pwd=${nfvo_admin_password}|g" ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_COMPONENT_CONFIG_FILE}
+    fms_nfvo_admin_password=$( awk '$0 ~ "nfvo.security.admin.password[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
+    if [ ! -z ${fms_nfvo_admin_password+x} ] ; then # The empty string is considered as unset
+        log_success_msg "Setting NFVO admin's password into Fault Management System: ****"
+        export fms_nfvo_admin_password=${fms_nfvo_admin_password}
+        $_ex 'sed -i "s|nfvo-pwd\s*=.*|nfvo-pwd=${fms_nfvo_admin_password}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
     fi
 }
 
 src_fms_configure_mysql () {
+    export OPENBATON_FMS_CONFIG_FILE_ABSOLUTE=${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}
+
     # In case of "noninteractive" FRONTEND the default value will remain valid (openbaton_fms_mysql_user: fmsuser ; openbaton_fms_mysql_user_password: changeme)
     if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
-        read -p " * Please, type the name of the MySQL user you would like the Open Baton FMS to use [fmsuser]: " openbaton_fms_mysql_user
+        openbaton_fms_mysql_user=$(whiptail --inputbox "\nPlease, type the name of the MySQL user you would like the Open Baton FMS to use:" 8 140 fmsuser --title "Open Baton Fault Management System (FMS) configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
 
-        # Turning echo ON and OFF between password reading
-        stty -echo
-        read -p " * Please, provide the password for this user [changeme]: " openbaton_fms_mysql_user_password ; echo
-        stty echo
+        openbaton_fms_mysql_user_password=$(whiptail --passwordbox "\nPlease, provide the password for this user [changeme]:" 8 140 changeme --title "Open Baton Fault Management System (FMS) configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
 
-        # Turning echo ON and OFF batween password reading
-        stty -echo
-        read -p " * Please, provide the password of the 'root' user of MySQL [root]: " mysql_root_password ; echo
-        stty echo
+        mysql_root_password=$(whiptail --passwordbox "\nPlease, provide the password of the 'root' user of MySQL [root]:" 8 140 root --title "Open Baton Fault Management System (FMS) configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
     fi
 
     # Set the MySQL user
     export openbaton_fms_mysql_user=${openbaton_fms_mysql_user:-$OPENBATON_FMS_MYSQL_USER_DEFAULT}
-    sed -i "s|spring.datasource.username\s*=.*|spring.datasource.username=${openbaton_fms_mysql_user}|g" ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_COMPONENT_CONFIG_FILE}
+    $_ex 'sed -i "s|spring.datasource.username\s*=.*|spring.datasource.username=${openbaton_fms_mysql_user}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
 
     # Set the MySQL user's password
     export openbaton_fms_mysql_user_password=${openbaton_fms_mysql_user_password:-$OPENBATON_FMS_MYSQL_USER_PASSWORD_DEFAULT}
-    sed -i "s|spring.datasource.password\s*=.*|spring.datasource.password=${openbaton_fms_mysql_user_password}|g" ${OPENBATON_BASE_CONFIG_DIR}/${OPENBATON_COMPONENT_CONFIG_FILE}
+    $_ex 'sed -i "s|spring.datasource.password\s*=.*|spring.datasource.password=${openbaton_fms_mysql_user_password}|g" ${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}'
 
     result=$(ps aux | grep -v 'grep' | grep 'mysql' | wc -l)
     if [ ${result} -le 0 ]; then
@@ -460,6 +674,130 @@ src_configure_fms () {
 }
 
 
+#############
+#### NSE ####
+#############
+
+src_nse_configure_rabbitmq () {
+    export OPENBATON_NSE_CONFIG_FILE_ABSOLUTE=${OPENBATON_NSE_CONFIG_FILE_ABSOLUTE}
+
+    # Set the RabbitMQ IP
+    nse_rabbitmq_broker_ip=$( awk '$0 ~ "nfvo.rabbit.brokerIp[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
+    if [ ! -z ${nse_rabbitmq_broker_ip+x} ] ; then # The empty string is considered as unset
+        log_success_msg "Setting RabbitMQ IP into Network Slicing Engine: ${nse_rabbitmq_broker_ip}"
+        export nse_rabbitmq_broker_ip=${nse_rabbitmq_broker_ip}
+        $_ex 'sed -i "s|rabbitmq.host\s*=.*|rabbitmq.host=${nse_rabbitmq_broker_ip}|g" ${OPENBATON_NSE_CONFIG_FILE_ABSOLUTE}'
+    fi
+
+    # Set the RabbitMQ password
+    nse_rabbitmq_password=$( awk '$0 ~ "spring.rabbitmq.password[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
+    if [ ! -z ${nse_rabbitmq_password+x} ] ; then # The empty string is considered as unset
+        log_success_msg "Setting RabbitMQ password into Network Slicing Engine: ****"
+        export nse_rabbitmq_password=${nse_rabbitmq_password}
+        $_ex 'sed -i "s|rabbitmq.password\s*=\s*.*|rabbitmq.password=${nse_rabbitmq_password}|g" ${OPENBATON_NSE_CONFIG_FILE_ABSOLUTE}'
+    fi
+}
+
+src_configure_nse () {
+    src_nse_configure_rabbitmq
+}
+
+
+#######################
+#### Zabbix Plugin ####
+#######################
+
+src_plugin_monitoring_zabbix_configure_zabbix () {
+    export OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE=${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE}
+
+    # In case of "noninteractive" FRONTEND the default value will remain valid (user: admin ; password: openbaton)
+    if [ "${DEBIAN_FRONTEND}" != "Noninteractive" -a "${DEBIAN_FRONTEND}" != "noninteractive" ]; then
+        zabbix_plugin_ip=$(whiptail --inputbox "\nEnter the Zabbix plugin host IP:" 8 140 localhost --title "Open Baton ZABBIX Monitoring Plugin configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
+
+        zabbix_server_ip=$(whiptail --inputbox "\nEnter the Zabbix server IP:" 8 140 localhost --title "Open Baton ZABBIX Monitoring Plugin configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
+
+        zabbix_user=$(whiptail --inputbox "\nEnter the Zabbix user:" 8 140 Admin --title "Open Baton ZABBIX Monitoring Plugin configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
+
+        zabbix_user_password=$(whiptail --passwordbox "\nProvide the password for the Zabbix '${zabbix_user}' user:" 8 140 zabbix --title "Open Baton ZABBIX Monitoring Plugin configuration" 3>&1 1>&2 2>&3)
+        exit_status="$?"
+        if [ ${exit_status} != 0 ]; then
+            echo ""
+            log_warning_msg "Aborting Open Baton installation"
+            exit 1
+        fi
+    fi
+
+    # Set the Zabbix Plugin host IP
+    export zabbix_plugin_ip=${zabbix_plugin_ip}
+    if [ -z ${zabbix_plugin_ip} ] ; then # The empty string is considered as unset
+        zabbix_plugin_ip=${ZABBIX_PLUGIN_IP_DEFAULT}
+    fi
+    log_success_msg "Setting the ZABBIX plugin host IP: ${zabbix_plugin_ip}"
+    $_ex 'sed -i "s|zabbix-plugin-ip\s*=.*|zabbix-plugin-ip=${zabbix_plugin_ip}|g" ${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE}'
+
+    # Set the Zabbix server IP
+    export zabbix_server_ip=${zabbix_server_ip}
+    if [ -z ${zabbix_server_ip} ] ; then # The empty string is considered as unset
+        zabbix_server_ip=${ZABBIX_SERVER_IP_DEFAULT}
+    fi
+    log_success_msg "Setting the ZABBIX server IP: ${zabbix_server_ip}"
+    $_ex 'sed -i "s|zabbix-host\s*=\s*localhost|zabbix-host=${zabbix_server_ip}|g" ${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE}'
+
+    # Set the zabbix user
+    export zabbix_user=${zabbix_user}
+    if [ -z ${zabbix_user} ] ; then # The empty string is considered as unset
+        zabbix_user=${ZABBIX_USER_DEFAULT}
+    fi
+    log_success_msg "Setting the ZABBIX user: ${zabbix_user}"
+    $_ex 'sed -i "s|user-zbx\s*=\s*admin|user-zbx=${zabbix_user}|g" ${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE}'
+
+    # Set the zabbix user's password
+    export zabbix_user_password=${zabbix_user_password}
+    if [ -z ${zabbix_user_password} ] ; then # The empty string is considered as unset
+        zabbix_user_password=${ZABBIX_USER_PASSWORD_DEFAULT}
+    fi
+    log_success_msg "Setting the ZABBIX user's password: ${zabbix_user_password}"
+    $_ex 'sed -i "s|password-zbx\s*=\s*zabbix|password-zbx=${zabbix_user_password}|g" ${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE}'
+}
+
+src_plugin_monitoring_zabbix_configure_nfvo () {
+    export OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE=${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}
+
+    # Set the Zabbix Server IP in the NFVO "nfvo.monitoring.ip" property
+    if [ -f ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE} ]; then
+        zabbix_server_ip=$( awk '$0 ~ "zabbix-host[[:space:]]*="' "${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
+        if [ ! -z ${zabbix_server_ip+x} ] ; then # The empty string is considered as unset
+            log_success_msg "Setting Zabbix Server IP into NFVO: ${zabbix_server_ip}"
+            export zabbix_server_ip=${zabbix_server_ip}
+            $_ex 'sed -i "s|#nfvo.monitoring.ip\s*=.*|nfvo.monitoring.ip=${zabbix_server_ip}|g" ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}'
+        fi
+    fi
+}
+
+src_configure_plugin_monitoring_zabbix () {
+    src_plugin_monitoring_zabbix_configure_zabbix
+    src_plugin_monitoring_zabbix_configure_nfvo
+}
+
+
 ##############
 #### Main ####
 ##############
@@ -467,52 +805,105 @@ src_configure_fms () {
 src_bootstrap () {
     src_prereq
 
+    #
+    # Arguments of "src_checkout_nfvo": oldest_nfvo_version_supported(with this bootstrap) nfvo_version
+    #
     src_checkout_nfvo "3.2.0" "${openbaton_nfvo_version}"
 
-    # VIM Driver Plugins
-    #openbaton_plugin_vimdriver_all_version=${openbaton_plugin_vimdriver_all_version:-$OPENBATON_PLUGIN_VIMDRIVER_OPENSTACK_VERSION_DEFAULT}
-    src_download_plugins
-
-    src_install_rabbitmq
     src_check_environment
+    src_install_rabbitmq
+    src_configure_rabbitmq_for_nfvo "${openbaton_nfvo_version}"
+    install_mysql
+    enable_https
 
-    enable_https "openbaton.properties"
+    # Plugins configuration for NFVO
+    src_configure_plugins_log_directory
+
+    #
+    # Arguments of "src_checkout_additional_component": component_repo_url component_name(the directory on which the repo will be locally cloned) component_name_fancy component_properties_file_src component_properties_file_dest install_during_noninteractive_installation oldest_component_version_supported component_version
+    #
+
+    # Test VIM Driver Plugin
+    src_checkout_additional_component "${OPENBATON_PLUGINS_VIMDRIVERS_TEST_REPO_URL}" "${OPENBATON_PLUGINS_VIMDRIVERS_TEST_REPO_NAME}" "Test VIM Driver Plugin" "" "" "${openbaton_plugin_vimdriver_test}" "3.2.0" "${openbaton_plugin_vimdriver_test_version}"
+    if [ -d "${OPENBATON_BASE_DIR}/test-plugin" ]; then
+        src_deploy_plugin_vimdriver "test-plugin" "Test VIM Driver Plugin"
+    fi
+
+    # OpenStack VIM Driver Plugin
+    src_checkout_additional_component "${OPENBATON_PLUGINS_VIMDRIVERS_OPENSTACK_4J_REPO_URL}" "${OPENBATON_PLUGINS_VIMDRIVERS_OPENSTACK_4J_REPO_NAME}" "OpenStack VIM Driver Plugin" "" "" "${openbaton_plugin_vimdriver_openstack}" "3.2.0" "${openbaton_plugin_vimdriver_openstack_version}"
+    if [ -d "${OPENBATON_BASE_DIR}/openstack4j-plugin" ]; then
+        src_deploy_plugin_vimdriver "openstack4j-plugin" "OpenStack VIM Driver Plugin"
+    fi
+
+    # Zabbix monitoring Plugin
+    src_checkout_additional_component "${OPENBATON_PLUGINS_MONITORING_ZABBIX_REPO_URL}" "${OPENBATON_PLUGINS_MONITORING_ZABBIX_REPO_NAME}" "ZABBIX Monitoring Plugin" "src/main/resources/plugin.conf.properties" "${OPENBATON_PLUGIN_MONITORING_ZABBIX_CONFIG_FILE}" "${openbaton_plugin_monitoring_zabbix}" "3.2.0" "${openbaton_plugin_monitoring_zabbix_version}"
+    if [ -d "${OPENBATON_BASE_DIR}/zabbix-plugin" ]; then
+        src_configure_plugin_monitoring_zabbix
+        src_deploy_plugin_vimdriver "zabbix-plugin" "ZABBIX Monitoring Plugin"
+    fi
 
     src_deploy_nfvo
 
-   
-    # Generic VNFM
-    src_checkout_additional_component "${OPENBATON_VNFM_GENERIC_REPO_URL}" "generic-vnfm" "Generic VNFM" "src/main/resources/application.properties" "openbaton-vnfm-generic.properties" ${openbaton_vnfm_generic} "3.2.0" "${openbaton_vnfm_generic_version}"
-    if [ "${installed}" = "0" ]; then
-        src_deploy_additional_component "generic-vnfm" "Generic VNFM"
+    # Command Line Interface
+    prereq_openbaton_cli
+    openbaton_cli_version="5.0"
+    src_do_checkout "${OPENBATON_CLI_REPO_URL}" "${OPENBATON_CLI_REPO_NAME}" "Open Baton CLI" "" "" "${openbaton_cli_version}" #"${openbaton_nfvo_version}"
+    if [ -d "${OPENBATON_BASE_DIR}/${OPENBATON_CLI_REPO_NAME}" ]; then
+        cd "${OPENBATON_BASE_DIR}/${OPENBATON_CLI_REPO_NAME}"
+        git checkout "${openbaton_cli_version}"
+        pip install .
     fi
 
-    # Fault Management System
-    src_checkout_additional_component "${OPENBATON_FMS_REPO_URL}" "fm-system" "Fault Management System (FMS)" "etc/fms.properties" "openbaton-fms.properties" "${openbaton_fms}" "1.2.4" "${openbaton_fms_version}"
+    export OPENBATON_BASE_CONFIG_DIR=${OPENBATON_BASE_CONFIG_DIR}
+   
+    # Generic VNFM
+    src_checkout_additional_component "${OPENBATON_VNFM_GENERIC_REPO_URL}" "${OPENBATON_VNFM_GENERIC_REPO_NAME}" "VNFM Generic (VNFMG)" "src/main/resources/application.properties" "${OPENBATON_VNFM_GENERIC_CONFIG_FILE}" "${openbaton_vnfm_generic}" "3.2.0" "${openbaton_vnfm_generic_version}"
     if [ "${installed}" = "0" ]; then
+        src_configure_rabbitmq_for_vnfm_generic "${openbaton_vnfm_generic_version}"
+        src_deploy_additional_component "generic-vnfm" "VNFM Generic (VNFMG)" "generic-vnfm.sh"
+    fi
+
+    # To be sure that the NFVO is up before trying to create the services
+    wait_for_nfvo_up
+
+    # Fault Management System
+    src_checkout_additional_component "${OPENBATON_FMS_REPO_URL}" "${OPENBATON_FMS_REPO_NAME}" "Fault Management System (FMS)" "src/main/resources/application.properties" "${OPENBATON_FMS_CONFIG_FILE}" "${openbaton_fms}" "1.2.4" "${openbaton_fms_version}"
+    if [ "${installed}" = "0" ]; then
+        create_service "fms" "fms" "${OPENBATON_FMS_CONFIG_FILE_ABSOLUTE}"
         src_configure_fms
-        src_deploy_additional_component "fm-system" "Fault Management System (FMS)"
+        src_deploy_additional_component "fm-system" "Fault Management System (FMS)" "openbaton-fms.sh"
     fi
 
     # Auto Scaling Engine
-    src_checkout_additional_component "${OPENBATON_ASE_REPO_URL}" "autoscaling-engine" "Auto Scaling Engine (ASE)" "etc/ase.properties" "ase.properties" "${openbaton_ase}" "1.2.2" "${openbaton_ase_version}"
+    src_checkout_additional_component "${OPENBATON_ASE_REPO_URL}" "${OPENBATON_ASE_REPO_NAME}" "Auto Scaling Engine (ASE)" "src/main/resources/application.properties" "${OPENBATON_ASE_CONFIG_FILE}" "${openbaton_ase}" "1.2.2" "${openbaton_ase_version}"
     if [ "${installed}" = "0" ]; then
+        create_service "ase" "autoscaling-engine" "${OPENBATON_ASE_CONFIG_FILE_ABSOLUTE}"
         src_configure_ase
-        src_deploy_additional_component "autoscaling-engine" "Auto Scaling Engine (ASE)"
+        disable_plugins_startup
+        src_deploy_additional_component "autoscaling-engine" "Auto Scaling Engine (ASE)" "autoscaling-engine.sh"
     fi
 
     # Network Slicing Engine
-    src_checkout_additional_component "${OPENBATON_NSE_REPO_URL}" "network-slicing-engine" "Network Slicing Engine (NSE)" "etc/nse.properties" "openbaton-nse.properties" "${openbaton_nse}" "1.1.2" "${openbaton_nse_version}"
+    src_checkout_additional_component "${OPENBATON_NSE_REPO_URL}" "${OPENBATON_NSE_REPO_NAME}" "Network Slicing Engine (NSE)" "src/main/resources/application.properties" "${OPENBATON_NSE_CONFIG_FILE}" "${openbaton_nse}" "1.1.2" "${openbaton_nse_version}"
     if [ "${installed}" = "0" ]; then
-        src_deploy_additional_component "network-slicing-engine" "Network Slicing Engine"
+        create_service "nse" "nse" "${OPENBATON_NSE_CONFIG_FILE_ABSOLUTE}"
+        src_configure_nse
+        src_deploy_additional_component "network-slicing-engine" "Network Slicing Engine (NSE)" "network-slicing-engine.sh"
     fi
 
     echo " * Waiting for Open Baton to be up..."
     wait_for_nfvo_up
-    echo " * Now open http://localhost:8080/"
+    https_enabled=$(cat ${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE} | grep "nfvo.https=true" | wc -l)
+    if [ "${https_enabled}" = "1" ]; then
+        nfvo_proto="https"
+        nfvo_port=$( awk '$0 ~ "server.port[[:space:]]*="' "${OPENBATON_NFVO_CONFIG_FILE_ABSOLUTE}" | awk -F'=' '{print $2}' )
+    else
+        nfvo_proto="http"
+        nfvo_port="8080"
+    fi
+    echo " * Now open ${nfvo_proto}://${rabbitmq_broker_ip}:${nfvo_port}/"
 
     if [ -f "${BOOTSTRAP_DIR}/bootstrap-src-functions" ]; then
         rm ${BOOTSTRAP_DIR}/bootstrap-src-functions
     fi
 }
-
