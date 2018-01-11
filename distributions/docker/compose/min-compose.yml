@@ -65,4 +65,3 @@ services:
       - "15672:15672"
     volumes:
       - ./dbdata_rabbit:/var/lib/rabbitmq
-
