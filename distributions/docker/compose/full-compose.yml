@@ -103,7 +103,7 @@ services:
       - MYSQL_USER=admin
       - MYSQL_PASSWORD=changeme
     volumes:
-      - dbdata_nfvo::/var/lib/mysql
+      - dbdata_nfvo:/var/lib/mysql
   fms_database:
     image: mysql/mysql-server
     environment:
