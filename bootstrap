@@ -15,6 +15,11 @@
 set -u
 #set -x # only for DEBUG
 
+if [[ `uname` == 'Darwin' ]]; then 
+	echo "The boostrap script does not support Mac OS. Consider using the docker installation mode in this case. More info at: http://openbaton.github.io/documentation/nfvo-installation-docker/ "
+	exit 42;
+fi
+
 # Make available the functions defined in /lib/lsb/init-functions
 . /lib/lsb/init-functions
 
