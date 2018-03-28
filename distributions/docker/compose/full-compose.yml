@@ -32,6 +32,9 @@ services:
     restart: always
     environment:
       - RABBITMQ=rabbitmq_broker
+      - PASS_FACTOR=1.01
+      - LAUNCH_INSTANCE_WAIT=4000
+      - LAUNCH_INSTANCE_WAIT_RANDOM=5000
   plugin-vimdriver-openstack-4j:
     image: openbaton/plugin-vimdriver-openstack-4j:latest
     depends_on:
