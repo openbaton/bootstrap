@@ -46,7 +46,7 @@ services:
     environment:
       - RABBITMQ=rabbitmq_broker
   nfvo_database:
-    image: mysql/mysql-server
+    image: mysql/mysql-server:5.7
     environment:
       - MYSQL_RANDOM_ROOT_PASSWORD=true
       - MYSQL_DATABASE=openbaton
