@@ -46,14 +46,14 @@ services:
     environment:
       - RABBITMQ=rabbitmq_broker
   nfvo_database:
-    image: mysql/mysql-server
+    image: mysql/mysql-server:5.7
     environment:
       - MYSQL_RANDOM_ROOT_PASSWORD=true
       - MYSQL_DATABASE=openbaton
       - MYSQL_USER=admin
       - MYSQL_PASSWORD=changeme
     volumes:
-      - ./dbdata_nfvo:/var/lib/mysql
+      - dbdata_nfvo:/var/lib/mysql
   rabbitmq_broker:
     image: rabbitmq:3-management-alpine
     hostname: openbaton-rabbitmq
@@ -64,4 +64,7 @@ services:
       - "5672:5672"
       - "15672:15672"
     volumes:
-      - ./dbdata_rabbit:/var/lib/rabbitmq
+      - dbdata_rabbit:/var/lib/rabbitmq
+volumes:
+  dbdata_rabbit:
+  dbdata_nfvo:
