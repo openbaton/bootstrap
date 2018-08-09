@@ -1,7 +1,7 @@
 version: '3'
 services:
   nfvo:
-    image: openbaton/nfvo:6.0.0-RC1
+    image: openbaton/nfvo:latest
     depends_on:
       - rabbitmq_broker
       - nfvo_database
@@ -18,14 +18,14 @@ services:
     ports:
       - "8080:8080"
   vnfm-generic:
-    image: openbaton/vnfm-generic:6.0.0-RC1
+    image: openbaton/vnfm-generic:latest
     depends_on:
       - nfvo
     restart: always
     environment:
       - VNFM_RABBITMQ_BROKERIP=rabbitmq_broker
   plugin-vimdriver-openstack-4j:
-    image: openbaton/plugin-vimdriver-openstack-4j:6.0.0-RC1
+    image: openbaton/plugin-vimdriver-openstack-4j:latest
     depends_on:
       - nfvo
     restart: always
