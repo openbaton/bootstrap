@@ -36,7 +36,8 @@ services:
     depends_on:
       - nfvo
     restart: always
-    entrypoint: ./go-docker-vnfm -ip rabbitmq_broker
+    environment:
+      - BROKER_IP=rabbitmq_broker
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw
   driver-docker-go:
@@ -57,16 +58,16 @@ services:
       - "5672:5672"
       - "15672:15672"
     volumes:
-      - dbdata_rabbit:/var/lib/rabbitmq
+      - ./dbdata_rabbit:/var/lib/rabbitmq
   nfvo_database:
-    image: mysql/mysql-server
+    image: mysql/mysql-server:5.7.20
     environment:
       - MYSQL_RANDOM_ROOT_PASSWORD=true
       - MYSQL_DATABASE=openbaton
       - MYSQL_USER=admin
       - MYSQL_PASSWORD=changeme
     volumes:
-      - dbdata_nfvo:/var/lib/mysql
+      - ./dbdata_nfvo:/var/lib/mysql
 volumes:
   dbdata_nfvo:
   dbdata_rabbit:
