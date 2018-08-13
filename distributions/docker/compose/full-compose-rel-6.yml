@@ -45,7 +45,8 @@ services:
     depends_on:
       - nfvo
     restart: always
-    entrypoint: ./goapp -ip rabbitmq_broker
+    environment:
+      - BROKER_IP=rabbitmq_broker
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw
   rabbitmq_broker:
