@@ -1,2 +1,4 @@
 .idea
 openstack-setup/.venv
+bootstrap.iml
+dbdata*

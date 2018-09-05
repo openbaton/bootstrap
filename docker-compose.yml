@@ -6,9 +6,9 @@ services:
       - rabbitmq_broker
       - nfvo_database
     restart: always
-    environment: 
-      - NFVO_RABBIT_BROKERIP=${HOST_IP} # for use in userdata.sh in vnfm-generic
-      - NFVO_MONITORING_IP=${ZABBIX_IP}
+    environment:
+      - NFVO_RABBIT_BROKERIP=${HOST_IP}
+      - NFVO_QUOTA_CHECK=false
       - NFVO_PLUGIN_INSTALLATION-DIR=/dev/null
       - SPRING_RABBITMQ_HOST=rabbitmq_broker
       - SPRING_DATASOURCE_URL=jdbc:mysql://nfvo_database:3306/openbaton
@@ -17,43 +17,38 @@ services:
       - SPRING_JPA_HIBERNATE_DDL-AUTO=update
     ports:
       - "8080:8080"
-  vnfm-generic:
+  vnfm_generic:
     image: openbaton/vnfm-generic:latest
     depends_on:
       - nfvo
     restart: always
-    environment: 
+    environment:
       - VNFM_RABBITMQ_BROKERIP=rabbitmq_broker
-  vnfm-dummy-amqp:
-    image: openbaton/vnfm-dummy-amqp:latest
-    depends_on:
-      - nfvo
-    restart: always
-    environment:
-      - SPRING_RABBITMQ_HOST=rabbitmq_broker
-  plugin-vimdriver-test:
-    image: openbaton/plugin-vimdriver-test:latest
-    depends_on:
-      - nfvo
-    restart: always
-    environment:
-      - RABBITMQ=rabbitmq_broker
-  plugin-vimdriver-openstack-4j:
+  plugin_vimdriver_openstack_4j:
     image: openbaton/plugin-vimdriver-openstack-4j:latest
     depends_on:
       - nfvo
     restart: always
     environment:
       - RABBITMQ=rabbitmq_broker
-  nfvo_database:
-    image: mysql/mysql-server:5.7
+  vnfm-docker-go:
+    image: openbaton/vnfm-docker-go:latest
+    depends_on:
+      - nfvo
+    restart: always
     environment:
-      - MYSQL_RANDOM_ROOT_PASSWORD=true
-      - MYSQL_DATABASE=openbaton
-      - MYSQL_USER=admin
-      - MYSQL_PASSWORD=changeme
+      - BROKER_IP=rabbitmq_broker
     volumes:
-      - dbdata_nfvo:/var/lib/mysql
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+  driver_docker_go:
+    image: openbaton/driver-docker-go:latest
+    depends_on:
+      - nfvo
+    restart: always
+    environment:
+      - BROKER_IP=rabbitmq_broker
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:rw
   rabbitmq_broker:
     image: rabbitmq:3-management-alpine
     hostname: openbaton-rabbitmq
@@ -64,7 +59,16 @@ services:
       - "5672:5672"
       - "15672:15672"
     volumes:
-      - dbdata_rabbit:/var/lib/rabbitmq
+      - ./dbdata_rabbit:/var/lib/rabbitmq
+  nfvo_database:
+    image: mysql/mysql-server:5.7.20
+    environment:
+      - MYSQL_RANDOM_ROOT_PASSWORD=true
+      - MYSQL_DATABASE=openbaton
+      - MYSQL_USER=admin
+      - MYSQL_PASSWORD=changeme
+    volumes:
+      - ./dbdata_nfvo:/var/lib/mysql
 volumes:
-  dbdata_rabbit:
   dbdata_nfvo:
+  dbdata_rabbit:

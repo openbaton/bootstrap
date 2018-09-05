@@ -1,0 +1,100 @@
+version: '3'
+services:
+  nfvo:
+    image: openbaton/nfvo:${OB_VERSION}
+    depends_on:
+      - rabbitmq_broker
+      - mysql_server
+    restart: always
+    env_file:
+      - env/openbaton.env
+    environment:
+      - SPRING_RABBITMQ_HOST=rabbitmq_broker
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql_server:3306/openbaton
+      - SPRING_DATASOURCE_DRIVER-CLASS-NAME=org.mariadb.jdbc.Driver
+      - SPRING_JPA_DATABASE-PLATFORM=org.hibernate.dialect.MySQLDialect
+    ports:
+      - "8080:8080"
+  vnfm_generic:
+    image: openbaton/vnfm-generic:${OB_VERSION}
+    depends_on:
+      - nfvo
+    restart: always
+    env_file:
+      - env/openbaton.env
+    environment:
+      - VNFM_RABBITMQ_BROKERIP=rabbitmq_broker
+  plugin_vimdriver_openstack_4j:
+    image: openbaton/plugin-vimdriver-openstack-4j:${OB_VERSION}
+    depends_on:
+      - nfvo
+    restart: always
+    env_file:
+      - env/openbaton.env
+    environment:
+      - RABBITMQ=rabbitmq_broker
+  rabbitmq_broker:
+    image: rabbitmq:${OB_RABBITMQ_VERSION}
+    hostname: openbaton-rabbitmq
+    env_file:
+      - env/openbaton.env
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ./dbdata_rabbit:/var/lib/rabbitmq
+  mysql_server:
+    image: mysql/mysql-server:${OB_MYSQL_VERSION}
+    env_file:
+      - env/openbaton.env
+    volumes:
+      - ./dbdata_nfvo:/var/lib/mysql
+  zabbix_monitoring_plugin:
+    image: openbaton/plugin-monitoring-zabbix:${OB_VERSION}
+    depends_on:
+      - nfvo
+    env_file:
+      - env/openbaton.env
+    environment:
+      - ZABBIX_PLUGIN_IP=zabbix_monitoring_plugin
+      - ZABBIX_HOST=zabbix_web_apache_mysql
+      - RABBITMQ_BROKERIP=rabbitmq_broker
+  autoscaling_engine:
+    image: openbaton/ase:$OB_ASE_VERSION
+    depends_on:
+      - nfvo
+    env_file:
+      - env/openbaton.env
+    environment:
+      - NFVO_IP=nfvo
+      - ASE_SERVER_IP=autoscaling_engine
+      - ASE_RABBITMQ_BROKERIP=rabbitmq_broker
+  zabbix_server:
+    image: zabbix/zabbix-server-mysql:alpine-3.4.10
+    ports:
+      - "10051:10051"
+    env_file:
+      - env/zabbix.env
+    environment:
+      - DB_SERVER_HOST=zabbix_database
+    volumes:
+      - ./zbx_env/usr/lib/zabbix/alertscripts:/usr/lib/zabbix/alertscripts:ro
+  zabbix_web_apache_mysql:
+    image: zabbix/zabbix-web-apache-mysql:alpine-3.4.10
+    ports:
+      - "80:80"
+    env_file:
+      - env/zabbix.env
+    environment:
+      - DB_SERVER_HOST=zabbix_database
+      - ZBX_SERVER_HOST=zabbix_server
+  zabbix_database:
+    image: mysql/mysql-server:5.7
+    env_file:
+      - env/zabbix.env
+    volumes:
+      - ./dbdata_zabbix:/var/lib/mysql
+volumes:
+  dbdata_nfvo:
+  dbdata_rabbit:
+  dbdata_zabbix:
