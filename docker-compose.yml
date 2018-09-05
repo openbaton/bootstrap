@@ -31,7 +31,7 @@ services:
     restart: always
     environment:
       - RABBITMQ=rabbitmq_broker
-  vnfm-docker-go:
+  vnfm_docker_go:
     image: openbaton/vnfm-docker-go:latest
     depends_on:
       - nfvo
