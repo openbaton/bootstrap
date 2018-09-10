@@ -1,38 +1,34 @@
 version: '3'
 services:
   nfvo:
-    image: openbaton/nfvo:6.0.0-RC1
+    image: openbaton/nfvo:6.0.0
     depends_on:
       - rabbitmq_broker
       - nfvo_database
     restart: always
     environment:
       - NFVO_RABBIT_BROKERIP=${HOST_IP}
-      - NFVO_QUOTA_CHECK=false
-      - NFVO_PLUGIN_INSTALLATION-DIR=/dev/null
       - SPRING_RABBITMQ_HOST=rabbitmq_broker
-      - SPRING_DATASOURCE_URL=jdbc:mysql://nfvo_database:3306/openbaton
-      - SPRING_DATASOURCE_DRIVER-CLASS-NAME=org.mariadb.jdbc.Driver
-      - SPRING_JPA_DATABASE-PLATFORM=org.hibernate.dialect.MySQLDialect
-      - SPRING_JPA_HIBERNATE_DDL-AUTO=update
+      - SPRING_PROFILES_ACTIVE=mysql
+      - SPRING_DATASOURCE_URL=jdbc:mysql://nfvo_database:3306/openbaton?useSSL=false
     ports:
       - "8080:8080"
   vnfm-generic:
-    image: openbaton/vnfm-generic:6.0.0-RC1
+    image: openbaton/vnfm-generic:6.0.0
     depends_on:
       - nfvo
     restart: always
     environment:
       - VNFM_RABBITMQ_BROKERIP=rabbitmq_broker
   plugin-vimdriver-openstack-4j:
-    image: openbaton/plugin-vimdriver-openstack-4j:6.0.0-RC1
+    image: openbaton/plugin-vimdriver-openstack-4j:6.0.0
     depends_on:
       - nfvo
     restart: always
     environment:
       - RABBITMQ=rabbitmq_broker
   vnfm-docker-go:
-    image: openbaton/vnfm-docker-go:latest
+    image: openbaton/vnfm-docker-go:6.0.0
     depends_on:
       - nfvo
     restart: always
@@ -41,7 +37,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw
   driver-docker-go:
-    image: openbaton/driver-docker-go:latest
+    image: openbaton/driver-docker-go:6.0.0
     depends_on:
       - nfvo
     restart: always
