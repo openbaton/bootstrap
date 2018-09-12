@@ -4,15 +4,13 @@ services:
     image: openbaton/nfvo:${OB_VERSION}
     depends_on:
       - rabbitmq_broker
-      - mysql_server
+      - nfvo_database
     restart: always
     env_file:
       - env/openbaton.env
     environment:
       - SPRING_RABBITMQ_HOST=rabbitmq_broker
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql_server:3306/openbaton
-      - SPRING_DATASOURCE_DRIVER-CLASS-NAME=org.mariadb.jdbc.Driver
-      - SPRING_JPA_DATABASE-PLATFORM=org.hibernate.dialect.MySQLDialect
+      - SPRING_DATASOURCE_URL=jdbc:mysql://nfvo_database:3306/openbaton?useSSL=false
     ports:
       - "8080:8080"
   vnfm_generic:
@@ -79,7 +77,7 @@ services:
       - "15672:15672"
     volumes:
       - ./dbdata_rabbit:/var/lib/rabbitmq
-  mysql_server:
+  nfvo_database:
     image: mysql/mysql-server:${OB_MYSQL_VERSION}
     env_file:
       - env/openbaton.env
@@ -103,8 +101,17 @@ services:
       - env/openbaton.env
     environment:
       - NFVO_IP=nfvo
-      - ASE_SERVER_IP=autoscaling-engine
+      - ASE_SERVER_IP=autoscaling_engine
       - ASE_RABBITMQ_BROKERIP=rabbitmq_broker
+  network_slicing_engine:
+    image: openbaton/nse:$OB_NSE_VERSION
+    depends_on:
+    - nfvo
+    env_file:
+    - env/openbaton.env
+    environment:
+    - NFVO_IP=nfvo
+    - RABBITMQ_HOST=rabbitmq_broker
   zabbix_server:
     image: zabbix/zabbix-server-mysql:alpine-3.4.10
     ports:

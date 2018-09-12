@@ -4,16 +4,14 @@ services:
     image: openbaton/nfvo:${OB_VERSION}
     depends_on:
       - rabbitmq_broker
-      - mysql_server
+      - nfvo_database
     restart: always
     env_file:
       - env/openbaton.env
     environment:
       - SPRING_RABBITMQ_HOST=rabbitmq_broker
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql_server:3306/openbaton
-      - SPRING_DATASOURCE_DRIVER-CLASS-NAME=org.mariadb.jdbc.Driver
-      - SPRING_JPA_DATABASE-PLATFORM=org.hibernate.dialect.MySQLDialect
-    ports:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://nfvo_database:3306/openbaton?useSSL=false
+      ports:
       - "8080:8080"
   vnfm_docker_go:
     image: openbaton/vnfm-docker-go:${OB_VERSION}
@@ -43,7 +41,7 @@ services:
       - "15672:15672"
     volumes:
       - ./dbdata_rabbit:/var/lib/rabbitmq
-  mysql_server:
+  nfvo_database:
     image: mysql/mysql-server:${OB_MYSQL_VERSION}
     env_file:
       - env/openbaton.env

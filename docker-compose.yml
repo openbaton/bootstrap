@@ -8,13 +8,9 @@ services:
     restart: always
     environment:
       - NFVO_RABBIT_BROKERIP=${HOST_IP}
-      - NFVO_QUOTA_CHECK=false
-      - NFVO_PLUGIN_INSTALLATION-DIR=/dev/null
       - SPRING_RABBITMQ_HOST=rabbitmq_broker
-      - SPRING_DATASOURCE_URL=jdbc:mysql://nfvo_database:3306/openbaton
-      - SPRING_DATASOURCE_DRIVER-CLASS-NAME=org.mariadb.jdbc.Driver
-      - SPRING_JPA_DATABASE-PLATFORM=org.hibernate.dialect.MySQLDialect
-      - SPRING_JPA_HIBERNATE_DDL-AUTO=update
+      - SPRING_PROFILES_ACTIVE=mysql
+      - SPRING_DATASOURCE_URL=jdbc:mysql://nfvo_database:3306/openbaton?useSSL=false
     ports:
       - "8080:8080"
   vnfm_generic:
