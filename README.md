@@ -313,63 +313,67 @@ Parameters:
 ### Network Slicing Engine
 
 ```bash
-$ docker run -e NFVO_IP=10.147.66.217 -e RABBITMQ_HOST=10.147.66.217 openbaton/nse:latest
+$ docker run -e NFVO_IP=<NFVO_IP> -e RABBITMQ_HOST=${RABBITMQ_HOST} openbaton/nse:latest
 ```
 
 * `RABBITMQ_HOST` is the IP where RabbitMQ is reachable
 * `NFVO_IP` is the IP where the NFVO is reachable 
 
 ## Related commands
+This section provides some useful commands. 
+
+Important to note here is that the docker-compose file must be provided in every request, except the name of the target file is `docker-compose.yaml` or `docker-compose.yml`. 
+
+
 To list all running containers execute:
 ```bash
-$ docker ps
-CONTAINER ID        IMAGE                                            COMMAND                  CREATED             STATUS                         PORTS                                                                                        NAMES
-9dab845e3048        openbaton/vnfm-generic:latest                    "java -jar /vnfm-g..."   31 seconds ago      Up 3 seconds                                                                                                                compose_vnfm-generic_1
-62890a2918b5        openbaton/plugin-vimdriver-test:latest           "sh -c 'java -jar ..."   37 seconds ago      Restarting (1) 2 seconds ago                                                                                                compose_plugin-vimdriver-test_1
-43062dd707b9        openbaton/plugin-vimdriver-openstack-4j:latest   "sh -c 'java -jar ..."   37 seconds ago      Up Less than a second                                                                                                       compose_plugin-vimdriver-openstack-4j_1
-92dfd7baa5d8        openbaton/nfvo:latest                            "java -jar /nfvo.j..."   41 seconds ago      Up 37 seconds                  0.0.0.0:8080->8080/tcp, 8443/tcp                                                             compose_nfvo_1
-03c96f100235        rabbitmq:3-management-alpine                     "docker-entrypoint..."   25 minutes ago      Up 25 minutes                  4369/tcp, 5671/tcp, 0.0.0.0:5672->5672/tcp, 15671/tcp, 25672/tcp, 0.0.0.0:15672->15672/tcp   compose_rabbitmq_broker_1
+$ docker-compose -f docker-compose-openstack.yml ps
+                 Name                               Command                       State                           Ports
+---------------------------------------------------------------------------------------------------------------------------------------
+bootstrap_nfvo_1                         java -jar /nfvo.jar              Up                      0.0.0.0:8080->8080/tcp
+bootstrap_nfvo_database_1                /entrypoint.sh mysqld            Up (health: starting)   3306/tcp, 33060/tcp
+bootstrap_plugin_vimdriver_openstack_4   sh -c java -jar /plugin-vi ...   Restarting
+j_1
+bootstrap_rabbitmq_broker_1              docker-entrypoint.sh rabbi ...   Up                      15671/tcp, 0.0.0.0:15672->15672/tcp,
+                                                                                                  25672/tcp, 4369/tcp, 5671/tcp,
+                                                                                                  0.0.0.0:5672->5672/tcp
+bootstrap_vnfm_generic_1                 java -jar /vnfm-generic.jar      Up
 ```
 
-To attach to one of the running containers with an interactive shell:
+To attach to one of the running containers (e.g. NFVO) with an interactive shell:
 ```bash
-$ docker exec -ti compose_nfvo_1 sh
+$ docker exec -ti bootstrap_nfvo_1 sh
 / #
 ```
 
-To attach to the logs of a running container (drop the -f to only dump "what-is"):
+To attach to the logs of all the running services (drop the -f to only dump "what-is"):
 ```bash
-$ docker logs -f compose_nfvo_1
+$ docker-compose -f docker-compose-openstack.yml logs -f
 [...]
 ```
 
+**Note** You may also provide the service names to filter the logs.
+
 To dispose a deployment:
 ```bash
-$ cd bootstrap/distribution/docker/compose
-$ docker-compose -f min_nomysql.yml down
-WARNING: The HOST_IP variable is not set. Defaulting to a blank string.
-WARNING: The ZABBIX_IP variable is not set. Defaulting to a blank string.
-Stopping compose_plugin-vimdriver-openstack-4j_1 ... done
-Stopping compose_vnfm-dummy-rest_1 ... done
-Stopping compose_vnfm-dummy-amqp_1 ... done
-Stopping compose_plugin-vimdriver-test_1 ... done
-Stopping compose_vnfm-generic_1 ... done
-Stopping compose_nfvo_1 ... done
-Stopping compose_rabbitmq_broker_1 ... done
-Removing compose_plugin-vimdriver-openstack-4j_1 ... done
-Removing compose_vnfm-dummy-rest_1 ... done
-Removing compose_vnfm-dummy-amqp_1 ... done
-Removing compose_plugin-vimdriver-test_1 ... done
-Removing compose_vnfm-generic_1 ... done
-Removing compose_nfvo_1 ... done
-Removing compose_rabbitmq_broker_1 ... done
-Removing network compose_default
+$ $ docker-compose -f docker-compose-openstack.yml down
+Stopping bootstrap_plugin_vimdriver_openstack_4j_1 ... done
+Stopping bootstrap_vnfm_generic_1                  ... done
+Stopping bootstrap_nfvo_1                          ... done
+Stopping bootstrap_nfvo_database_1                 ... done
+Stopping bootstrap_rabbitmq_broker_1               ... done
+Removing bootstrap_plugin_vimdriver_openstack_4j_1 ... done
+Removing bootstrap_vnfm_generic_1                  ... done
+Removing bootstrap_nfvo_1                          ... done
+Removing bootstrap_nfvo_database_1                 ... done
+Removing bootstrap_rabbitmq_broker_1               ... done
+Removing network bootstrap_default
 ```
 
 To restart only a single service, e.g. after changing ENV variables of the openstackplugin in the compose file:
 ```bash
-$ docker-compose -f min-compose.yml up -d --no-deps plugin-vimdriver-openstack-4j
-Recreating compose_plugin-vimdriver-openstack-4j_1
+$ docker-compose -f docker-compose-openstack.yml up -d --no-deps nfvo
+Recreating bootstrap_nfvo_1
 ```
 
 ## Issue tracker
