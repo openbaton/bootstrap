@@ -1,0 +1,34 @@
+version: '3'
+services:
+  nfvo:
+    image: openbaton/nfvo:${OB_VERSION}
+    depends_on:
+      - rabbitmq_broker
+      - nfvo_database
+    restart: always
+    env_file:
+      - env/openbaton.env
+    environment:
+      - SPRING_RABBITMQ_HOST=rabbitmq_broker
+      - SPRING_DATASOURCE_URL=jdbc:mysql://nfvo_database:3306/openbaton?useSSL=false
+    ports:
+      - "8080:8080"
+  rabbitmq_broker:
+    image: rabbitmq:${OB_RABBITMQ_VERSION}
+    hostname: openbaton-rabbitmq
+    env_file:
+      - env/openbaton.env
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ./dbdata_rabbit:/var/lib/rabbitmq
+  nfvo_database:
+    image: mysql/mysql-server:${OB_MYSQL_VERSION}
+    env_file:
+      - env/openbaton.env
+    volumes:
+      - ./dbdata_nfvo:/var/lib/mysql
+volumes:
+  dbdata_nfvo:
+  dbdata_rabbit:
