@@ -23,7 +23,7 @@ In one command you can start Open Baton by using docker-compose and the docker-c
 It downloads the docker-compose.yml in the current folder via `curl` and executes `docker-compose up`. All configurations are contained in this compose file. Only the **HOST_IP** must be set to the actual IP of your host machine so that the virtual machines' Generic EMS can connect to the Generic VNFM via RabbitMQ. Below the command to use:
 
 ```bash
-curl -o docker-compose.yml https://raw.githubusercontent.com/openbaton/bootstrap/develop/distributions/docker/compose/full-compose-rel-6.yml | env HOST_IP=$YOUR_LOCAL_IP docker-compose up -d
+curl -o docker-compose.yml https://raw.githubusercontent.com/openbaton/bootstrap/master/docker-compose.yml | env HOST_IP=$YOUR_LOCAL_IP docker-compose up -d
 ``` 
 
 This basic deployment setup is there for a quick start and contains the following components:
@@ -44,6 +44,9 @@ $ env HOST_IP=$YOUR_LOCAL_IP docker-compose up -d
 ```
 
 You can use a simple curl loop to check if the orchestrator is up and running:
+```bash
+$ until curl -sSf --stderr /dev/null http://localhost:8080; do printf '.' && sleep 5;done
+```
 
 Alternatively, you can also check the logs of the orchestrator: 
 
