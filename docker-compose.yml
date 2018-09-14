@@ -1,7 +1,7 @@
 version: '3'
 services:
   nfvo:
-    image: openbaton/nfvo:latest
+    image: openbaton/nfvo:6.0.0
     depends_on:
       - rabbitmq_broker
       - nfvo_database
@@ -14,21 +14,21 @@ services:
     ports:
       - "8080:8080"
   vnfm_generic:
-    image: openbaton/vnfm-generic:latest
+    image: openbaton/vnfm-generic:6.0.0
     depends_on:
       - nfvo
     restart: always
     environment:
       - VNFM_RABBITMQ_BROKERIP=rabbitmq_broker
   plugin_vimdriver_openstack_4j:
-    image: openbaton/plugin-vimdriver-openstack-4j:latest
+    image: openbaton/plugin-vimdriver-openstack-4j:6.0.0
     depends_on:
       - nfvo
     restart: always
     environment:
       - RABBITMQ=rabbitmq_broker
   vnfm_docker_go:
-    image: openbaton/vnfm-docker-go:latest
+    image: openbaton/vnfm-docker-go:6.0.0
     depends_on:
       - nfvo
     restart: always
@@ -37,7 +37,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw
   driver_docker_go:
-    image: openbaton/driver-docker-go:latest
+    image: openbaton/driver-docker-go:6.0.0
     depends_on:
       - nfvo
     restart: always
