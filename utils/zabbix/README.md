@@ -36,7 +36,7 @@ Both can't be automated and must be done via the dashboard directly. Below the i
 Can be easily achieved by following the steps below:
 1. Click `Configuration -> Actions`
 2. Select `Event source: "Auto registration"` 
-3. Click `Create action
+3. Click `Create action`
 4. Enter `Name: "Auto registration"`
 5. Click `Operations`
 6. Create a new Operation by clicking `New`
