@@ -90,7 +90,7 @@ services:
     env_file:
       - env/openbaton.env
     environment:
-      - ZABBIX_PLUGIN_IP=zabbix-monitoring-plugin
+      - ZABBIX_PLUGIN_IP=zabbix_monitoring_plugin
       - ZABBIX_HOST=zabbix-web-apache-mysql
       - RABBITMQ_BROKERIP=rabbitmq_broker
   autoscaling_engine:

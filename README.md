@@ -37,7 +37,7 @@ This basic deployment setup is there for a quick start and contains the followin
 
 These components are enough to make deployments in OpenStack and Docker.
 
-Alternatively, you can also clone this repository via *git* and making use directly the docker-compose.yml by issuing [up](https://docs.docker.com/compose/reference/up/) command. It is important that you set the handed over env variable **HOST_IP** to the reachable IP of your workstation so that deployed VM's can reach the generic VNFM.
+Alternatively, you can also clone this repository via *git* and making use directly the docker-compose.yml by issuing [up](https://docs.docker.com/compose/reference/up/) command. It is important to define the environment variable **HOST_IP** to the reachable IP of your workstation so that all components (including VNFs/EMS) the central message bus.
 
 ```bash
 $ env HOST_IP=$YOUR_LOCAL_IP docker-compose up -d
@@ -100,7 +100,7 @@ $ docker-compose -f <DOCKER_COMPOSE_FILE> up -d
 
 **Note** This provides also some examples how to configure different environments. Adding or removing services can easily be achives (e.g. using an external MySQL or RabbitMQ installation). Moreover, any setup can be extended by plugging-in other components (check [Plug-and-Play](#plug-and-play)).
 
-**Note** '**NFVO_IP**' should always be set/provided. Especially the Generic VNFM won't work without it.
+**Note** '**HOST_IP**' should always be set/provided in the environment variables' file (in env/openbaton.env). Especially the Generic VNFM won't work without it.
 
 ### **default** ([``docker-compose.yml``](docker-compose.yml)):
 Provides a self-contained template providing an Open Baton setup to make deployments in OpenStack and Docker. Check [Quick Start](#quick-start) to see purpose and basic usage.
@@ -226,7 +226,7 @@ The file [./env/openbaton.env](env/openbaton.env) contains all configuration par
 
 Besides the basic variables provided via the this configuration file you can also check the corresponding configuration guides of the relevant component and provide other configuration   
 
-**Note** The only variable that must be changed here is the `NFVO_HOST` to the IP of your host machine that is reachable by the VMs. Alternatively, you can also set it via the command line when deploying:  
+**Note** The only variable that must be changed here is the `HOST_IP` to the IP of your host machine that is reachable by the VMs. Alternatively, you can also set it via the command line when deploying:  
 
 ```bash
 $ env HOST_IP=$YOUR_LOCAL_IP docker-compose -f docker-compose-minimal.yml up -d
@@ -281,7 +281,7 @@ $ docker run -e RABBITMQ_IP=${RABBITMQ_HOST} openbaton/plugin-vimdriver-openstac
 
 ### Docker VNFM
 ```bash
-
+docker run -e BROKER_IP=${RABBITMQ_HOST} openbaton/vnfm-docker-go:latest
 ```
 
 ### Docker driver
