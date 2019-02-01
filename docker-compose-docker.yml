@@ -11,7 +11,7 @@ services:
     environment:
       - SPRING_RABBITMQ_HOST=rabbitmq_broker
       - SPRING_DATASOURCE_URL=jdbc:mysql://nfvo_database:3306/openbaton?useSSL=false
-      ports:
+    ports:
       - "8080:8080"
   vnfm_docker_go:
     image: openbaton/vnfm-docker-go:${OB_VERSION}

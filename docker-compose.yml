@@ -19,7 +19,7 @@ services:
       - nfvo
     restart: always
     environment:
-      - VNFM_RABBITMQ_BROKERIP=rabbitmq_broker
+      - RABBITMQ_HOST=rabbitmq_broker
   plugin_vimdriver_openstack_4j:
     image: openbaton/plugin-vimdriver-openstack-4j:latest
     depends_on:

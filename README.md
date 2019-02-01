@@ -266,7 +266,7 @@ Parameters:
 
 ### Generic VNFM
 ```bash
-$ docker run -e VNFM_RABBITMQ_BROKERIP=<RABBITMQ_HOST> openbaton/vnfm-generic:latest
+$ docker run -e RABBITMQ_HOST=<RABBITMQ_HOST> openbaton/vnfm-generic:latest
 ```
 
 ### Openstack4j driver

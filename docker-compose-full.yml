@@ -21,7 +21,7 @@ services:
     env_file:
       - env/openbaton.env
     environment:
-      - VNFM_RABBITMQ_BROKERIP=rabbitmq_broker
+      - RABBITMQ_HOST=rabbitmq_broker
   plugin_vimdriver_openstack_4j:
     image: openbaton/plugin-vimdriver-openstack-4j:${OB_VERSION}
     depends_on:
